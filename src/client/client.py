@@ -1,8 +1,9 @@
+# Python 3.6.2
+
 import socket
 import struct
 import threading
 
-# Python 3.6.2
 network_tuple = ([], [])  # (sockets, addresses)
 localhost = socket.socket()
 
@@ -40,6 +41,10 @@ class Client:
         print("success!")
         print("Client -> Connected.")
 
+    ''' The following thee functions were written by StackOverflow user 
+    Adam Rosenfield and modified by me, HexicPyth.
+    https://stackoverflow.com/a/17668009
+    https://stackoverflow.com/users/9530/adam-rosenfield '''
     @staticmethod
     def send(in_socket, message):
         msg = message.encode('utf-8')

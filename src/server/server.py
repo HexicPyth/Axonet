@@ -1,7 +1,8 @@
+# Python 3.6.2
+
 import socket
 import struct
 import threading
-
 network_tuple = ([], [])  # (sockets, addresses)
 localhost = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # TODO: add SO_REUSEADDR
 
@@ -29,6 +30,10 @@ class Server:
 
         return local_ip
 
+    ''' The three functions below were written by StackOverflow user 
+    Adam Rosenfield and modified by me, HexicPyth.
+    https://stackoverflow.com/a/17668009
+    https://stackoverflow.com/users/9530/adam-rosenfield '''
     @staticmethod
     def send(sock, msg):
         msg = msg.encode('utf-8')  # TODO: implement hashing someday
