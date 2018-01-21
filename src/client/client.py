@@ -145,7 +145,3 @@ class Client:
             print("Failed")
             print("Client -> Connection to local server was not successful; check that your server is "
                   "up, and try again later.")
-
-
-x = Client()
-x.initialize(port=3705)
