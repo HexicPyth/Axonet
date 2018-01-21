@@ -3,6 +3,7 @@
 import socket
 import struct
 import threading
+
 network_tuple = ([], [])  # (sockets, addresses)
 localhost = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # TODO: add SO_REUSEADDR
 
