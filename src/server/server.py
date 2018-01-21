@@ -1,7 +1,7 @@
 # Python 3.6.2
-
 import socket
 import struct
+import inject
 import threading
 
 network_tuple = ([], [])  # (sockets, addresses)
@@ -63,6 +63,11 @@ class Server:
         msglen = struct.unpack('>I', raw_msglen)[0]
         return self.receiveall(in_sock, msglen).decode()
 
+    def broadcast(self, message):
+        sockets = network_tuple[0]  # List of client we need to broadcast to
+        for client in sockets:
+            self.send(client, message)  # For each of them send the given message( = Broadcast)
+
     @staticmethod
     def append(in_socket, address):
         global network_tuple  # (sockets, addresses)
@@ -75,12 +80,12 @@ class Server:
         localhost.close()
         quit(0)
 
-    @staticmethod
-    def respond(message, in_sock):
+    def respond(self, message, in_sock):
         message = message  # TODO: implement hashing someday.
         if message == "echo":
             # If received, we can two-way communication is functional
             print("Server -> Note: Two-Way communication established and tested functional")
+            self.send(in_sock, 'continue')
 
     def listen(self, in_sock):
         def listener():
@@ -97,7 +102,7 @@ class Server:
         print('starting listener thread')
         threading.Thread(target=listener, name='listener_thread').start()
 
-    def initialize(self, port=3704, listening=True, method="socket"):
+    def initialize(self, port=3704, listening=True, method="socket", network_injection=False):
         if method == "socket":
             global localhost
             address_string = self.get_local_ip()+":"+str(port)
@@ -132,17 +137,21 @@ class Server:
                         self.listen(client)
                         print("Server -> Listening on localhost...")
 
+                        if network_injection:
+                            injector = inject.NetworkInjector()
+                            injector.init(network_tuple)
+
                     else:
                         print("Server -> ", address, " has connected.", sep='')
                         print("Server -> Listening on ", address, sep='')
                         self.listen(client)
+
+                        if network_injection:
+                            injector = inject.NetworkInjector()
+                            injector.init(network_tuple)
 
                 except ConnectionResetError:
                     print("Server -> localhost has disconnected")
 
         else:
             print("TODO: implement other protocols")  # TODO: Implement other protocols
-
-
-x = Server()
-x.initialize(port=3705, method="socket", listening=True)
