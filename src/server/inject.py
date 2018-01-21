@@ -11,9 +11,10 @@ class NetworkInjector(threading.Thread):
             server.Server.send(client, message)  # For each of them send the given message( = Broadcast)
 
     def collect(self, network_tuple):
-        msg = str(input("Please enter flag to inject into network:  "))
-        print("Server/Injector -> Broadcasting", msg, "to the network")
-        self.broadcast(msg, network_tuple)
+        while 1:
+            msg = str(input("Please enter flag to inject into network:  "))
+            print("Server/Injector -> Broadcasting", msg, "to the network")
+            self.broadcast(msg, network_tuple)
 
     def init(self, network_tuple):
         injector = threading.Thread(target=self.collect, args=(network_tuple,), name='Injector')

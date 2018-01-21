@@ -5,7 +5,8 @@ import inject
 import threading
 
 network_tuple = ([], [])  # (sockets, addresses)
-localhost = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # TODO: add SO_REUSEADDR
+localhost = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Add SO_REUSEADDR
 
 
 class Server:
