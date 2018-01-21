@@ -6,6 +6,7 @@ import threading
 
 network_tuple = ([], [])  # (sockets, addresses)
 localhost = socket.socket()
+terminated = False
 
 
 class Client:
@@ -28,6 +29,11 @@ class Client:
             temp_socket.close()
 
         return local_ip
+
+    @staticmethod
+    def append(sock, address):
+        network_tuple[0].append(sock)
+        network_tuple[1].append(address)
 
     @staticmethod
     def connect(in_socket, address, port, local=False):
@@ -57,10 +63,17 @@ class Client:
         # Helper function to receive n bytes or return None if EOF is hit
         data = ''
         while len(data) < n:
-            packet = (sock.recv(n - len(data))).decode()
+            try:
+                packet = (sock.recv(n - len(data))).decode()
+
+            except OSError:
+                print("Client -> Connection probably down or terminated (OSError: receiveall()")
+                packet = None
+
             if not packet:
                 return None
-            data += packet
+            else:
+                data += packet
         return data.encode()
 
     def receive(self, in_sock):
@@ -79,9 +92,12 @@ class Client:
             print("Client -> echoing...")
             self.send(in_sock, message)  # If received, send back
 
+        if message == "stop":
+            self.terminate()
+
     def listen(self, in_socket):
         def listener_thread(in_sock):
-            while 1:
+            while not terminated:
                 incoming = self.receive(in_sock)
                 message = incoming  # TODO: Implement hashing someday
                 try:
@@ -90,13 +106,26 @@ class Client:
                         self.respond(in_sock, message)
 
                 except OSError:
-                    pass
+                    print("Client -> Connection probably down or terminated (OSError: listen() -> listener_thread())")
+                except TypeError:
+                    print("Client -> Connection probably down or terminated (TypeError: listen() -> listener_thread()")
 
         # Start listener in a new thread
         threading.Thread(target=listener_thread, args=(in_socket,), name='listener_thread').start()
 
-    def terminate(self):
-        pass
+    @staticmethod
+    def terminate():
+        global terminated
+        print("Client -> Safely terminating our connections...")
+        index = 0
+        sock = network_tuple[0]
+        addresses = network_tuple[1]
+
+        for device in sock:
+            print("Client -> Terminating connection to", addresses[index])
+            device.close()
+        terminated = True
+        return 0
 
     def initialize(self, port=3704):
         global localhost
@@ -105,6 +134,9 @@ class Client:
 
         try:
             self.connect(localhost, 'localhost', port, local=True)
+            self.append(localhost, 'localhost')
+
+            print("Client -> Connection to localhost successful")
             print("Client -> Starting listener on localhost...")
 
             self.listen(localhost)

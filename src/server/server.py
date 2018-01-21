@@ -88,9 +88,23 @@ class Server:
             print("Server -> Note: Two-Way communication established and tested functional")
             self.send(in_sock, 'continue')
 
+    @staticmethod
+    def disconnect(in_sock):
+        index = network_tuple[0].index(in_sock)  # Find the index of this socket so we can find it's address
+        print("Disconnecting from ", network_tuple[1][index])
+        in_sock.close()
+
+        print("Server -> Removing from network_tuple")
+        network_tuple[0].pop(index)
+        network_tuple[1].pop(index)
+
+        print("Server -> Successfully disconnected.")
+
     def listen(self, in_sock):
         def listener():
-            while 1:
+            listener_terminated = False  # When set, this thread and this thread only, is stopped.
+
+            while not listener_terminated:
                 incoming = self.receive(in_sock)
                 try:
                     if type(incoming):
@@ -98,6 +112,10 @@ class Server:
                         self.respond(incoming, in_sock)
                 except OSError:
                     pass
+                except TypeError:
+                    print("Server -> Connection probably down or terminated; Disconnecting...")
+                    self.disconnect(in_sock)
+                    listener_terminated = True
 
         # Start listener in a new thread
         print('starting listener thread')
