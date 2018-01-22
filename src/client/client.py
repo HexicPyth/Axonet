@@ -45,7 +45,8 @@ class Client:
 
         if not local:
             print("Client -> Connecting to ", address, sep='')
-            in_socket.connect((address, port))
+            in_socket.connect((address, port))  # TODO: fix socket.gaierror: [Errno -2] Name or service not known
+
             self.append(in_socket, address)
             print("Client -> Success")
 
@@ -98,7 +99,7 @@ class Client:
         if message == "stop":
             self.terminate()
 
-        if message[:10] == "ConnectTo":
+        if message[:10] == "ConnectTo:":
             address = message[10:]
             if address not in network_tuple[1]:
                 sock = socket.socket()

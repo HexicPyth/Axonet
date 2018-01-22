@@ -1,5 +1,7 @@
 import server
 import multiprocessing
+import sys
+import os
 
 
 class NetworkInjector(multiprocessing.Process):
@@ -10,14 +12,16 @@ class NetworkInjector(multiprocessing.Process):
         for client in sockets:
             server.Server.send(client, message)  # For each of them send the given message( = Broadcast)
 
-    def collect(self, network_tuple):
+    def collect(self, network_tuple, fileno):
+        sys.stdin = os.fdopen(fileno)
         while 1:
             msg = str(input("Please enter flag to inject into network:  "))
             print("Server/Injector -> Broadcasting", msg, "to the network")
             self.broadcast(msg, network_tuple)
 
     def init(self, network_tuple):
-        injector = multiprocessing.Process(target=self.collect, args=(network_tuple,), name='Injector')
+        fn = sys.stdin.fileno()
+        injector = multiprocessing.Process(target=self.collect, args=(network_tuple,fn,), name='Injector')
         injector.start()
     ''' TODO: READ: Implement some way to kill other network injectors before starting a new one on connection;
         It's a waste of threads, creates race conditions, and does other nasty stuff!'''
