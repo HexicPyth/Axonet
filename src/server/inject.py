@@ -23,5 +23,3 @@ class NetworkInjector(multiprocessing.Process):
         fn = sys.stdin.fileno()
         injector = multiprocessing.Process(target=self.collect, args=(network_tuple,fn,), name='Injector')
         injector.start()
-    ''' TODO: READ: Implement some way to kill other network injectors before starting a new one on connection;
-        It's a waste of threads, creates race conditions, and does other nasty stuff!'''
