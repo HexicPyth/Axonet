@@ -7,7 +7,7 @@ import threading
 network_tuple = ([], [])  # (sockets, addresses)
 localhost = socket.socket()
 terminated = False
-
+PORT = 1111  # This will be defined on initialization
 
 class Client:
     # Find our local IP address and return it as a string
@@ -98,6 +98,13 @@ class Client:
         if message == "stop":
             self.terminate()
 
+        if message[:10] == "ConnectTo":
+            address = message[10:]
+            if address not in network_tuple[1]:
+                sock = socket.socket()
+                self.connect(sock, address, PORT)
+                self.listen(sock)
+
     def listen(self, in_socket):
         def listener_thread(in_sock):
             while not terminated:
@@ -132,7 +139,8 @@ class Client:
 
     def initialize(self, port=3704, network_architecture="Complete", remote_addresses=None):
         global localhost
-
+        global  PORT
+        PORT = port
         # Stage 0
         print("Client -> Initializing...")
 

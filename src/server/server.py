@@ -121,7 +121,8 @@ class Server:
         print('starting listener thread')
         threading.Thread(target=listener, name='listener_thread').start()
 
-    def initialize(self, port=3704, listening=True, method="socket", network_injection=False):
+    def initialize(self, port=3704, listening=True, method="socket", network_injection=False,
+                   network_architecture="complete"):
         if method == "socket":
             global localhost
             address_string = self.get_local_ip()+":"+str(port)
@@ -156,7 +157,7 @@ class Server:
                         self.listen(client)
                         print("Server -> Listening on localhost...")
 
-                    else:
+                    else:  # this is a remote connection
                         print("Server -> ", address, " has connected.", sep='')
                         print("Server -> Listening on ", address, sep='')
                         self.listen(client)
@@ -165,6 +166,9 @@ class Server:
                             injector = inject.NetworkInjector()
                             injector.terminate()  # Let's make sure this doesn't run in multiple processes
                             injector.init(network_tuple)
+
+                        if network_architecture == "complete":
+                            self.send(localhost, 'ConnectTo: '+address)
 
                 except ConnectionResetError:
                     print("Server -> localhost has disconnected")
