@@ -107,7 +107,7 @@ class Server:
             while not listener_terminated:
                 incoming = self.receive(in_sock)
                 try:
-                    if type(incoming):
+                    if incoming:
                         print('Server -> Received: ' + incoming)
                         self.respond(incoming, in_sock)
                 except OSError:
@@ -131,7 +131,7 @@ class Server:
             print("Server -> Binding server on: ", address_string, "...", sep='')
 
             try:
-                localhost.bind(('127.0.0.1', port))
+                localhost.bind(('', port))
                 print(" success!")
             except OSError:
                 print(" failed!")
@@ -156,9 +156,6 @@ class Server:
                         self.listen(client)
                         print("Server -> Listening on localhost...")
 
-                        if network_injection:
-                            injector = inject.NetworkInjector()
-                            injector.init(network_tuple)
 
                     else:
                         print("Server -> ", address, " has connected.", sep='')
