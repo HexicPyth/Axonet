@@ -39,14 +39,15 @@ class Client:
         if local:
             print("Client -> Connecting to localhost server...", end='')
             in_socket.connect((address, port))
+            self.append(in_socket, address)
             print("success!")
             print("Client -> Connected.")
 
         if not local:
             print("Client -> Connecting to ", address, sep='')
             in_socket.connect((address, port))
+            self.append(in_socket, address)
             print("Client -> Success")
-            self.send(in_socket, "echo")
 
     ''' The following thee functions were written by StackOverflow user 
     Adam Rosenfield and modified by me, HexicPyth.
