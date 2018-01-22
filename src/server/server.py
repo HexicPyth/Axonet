@@ -7,6 +7,7 @@ import threading
 network_tuple = ([], [])  # (sockets, addresses)
 localhost = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Add SO_REUSEADDR
+injector = inject.NetworkInjector()
 
 
 class Server:
@@ -124,6 +125,7 @@ class Server:
     def initialize(self, port=3704, listening=True, method="socket", network_injection=False,
                    network_architecture="complete"):
         if method == "socket":
+            global injector
             global localhost
             address_string = self.get_local_ip()+":"+str(port)
 
@@ -163,9 +165,12 @@ class Server:
                         self.listen(client)
 
                         if network_injection:
-                            injector = inject.NetworkInjector()
-                            injector.terminate()  # Let's make sure this doesn't run in multiple processes
-                            injector.init(network_tuple)
+                            try:
+                                injector.terminate()  # Let's make sure this doesn't run in multiple processes
+                            except AttributeError:
+                                pass
+                            finally:
+                                injector.init(network_tuple)
 
                         if network_architecture == "complete":
                             self.send(localhost, 'ConnectTo: '+address)
