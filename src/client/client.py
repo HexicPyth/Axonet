@@ -35,22 +35,24 @@ class Client:
         network_tuple[0].append(sock)
         network_tuple[1].append(address)
 
-    @staticmethod
-    def connect(in_socket, address, port, local=False):
+    def connect(self, in_socket, address, port, local=False):
         if local:
             print("Client -> Connecting to localhost server...", end='')
+            in_socket.connect((address, port))
+            print("success!")
+            print("Client -> Connected.")
 
         if not local:
             print("Client -> Connecting to ", address, sep='')
-
-        in_socket.connect((address, port))
-        print("success!")
-        print("Client -> Connected.")
+            in_socket.connect((address, port))
+            print("Client -> Success")
+            self.send(in_socket, "echo")
 
     ''' The following thee functions were written by StackOverflow user 
     Adam Rosenfield and modified by me, HexicPyth.
     https://stackoverflow.com/a/17668009
     https://stackoverflow.com/users/9530/adam-rosenfield '''
+
     @staticmethod
     def send(in_socket, message):
         msg = message.encode('utf-8')
@@ -127,9 +129,10 @@ class Client:
         terminated = True
         return 0
 
-    def initialize(self, port=3704):
+    def initialize(self, port=3704, network_architecture="Complete", remote_addresses=None):
         global localhost
 
+        # Stage 0
         print("Client -> Initializing...")
 
         try:
@@ -145,3 +148,21 @@ class Client:
             print("Failed")
             print("Client -> Connection to local server was not successful; check that your server is "
                   "up, and try again later.")
+
+        print("Client -> Attempting to connect to remote server... (Initiating stage 1)")
+        # Stage 1
+        if network_architecture == "Complete":
+            if remote_addresses:
+                for i in remote_addresses:
+                    sock = socket.socket()
+                    try:
+                        self.connect(sock, i, port)
+                        self.send(sock, "respond")
+                    except ConnectionRefusedError:
+                        print("Client -> Unable to connect to remove server; Failed to bootstrap.")
+            else:
+                print("Client -> Error:"
+                      "Bootstrapping a complete network architecture requires at least one remote connection")
+                quit(1)
+        else:
+            print("TODO: Implement other network architectures")  # TODO: implement other architectures
