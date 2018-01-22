@@ -112,7 +112,7 @@ class Client:
                 incoming = self.receive(in_sock)
                 message = incoming  # TODO: Implement hashing someday
                 try:
-                    if type(incoming):
+                    if incoming:
                         print('Client -> Received: ' + message)
                         self.respond(in_sock, message)
 
