@@ -157,7 +157,7 @@ class Client:
                     sock = socket.socket()
                     try:
                         self.connect(sock, i, port)
-                        self.send(sock, "respond")
+                        self.send(sock, "echo")
                     except ConnectionRefusedError:
                         print("Client -> Unable to connect to remove server; Failed to bootstrap.")
             else:
