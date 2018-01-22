@@ -163,6 +163,7 @@ class Server:
 
                         if network_injection:
                             injector = inject.NetworkInjector()
+                            injector.terminate()  # Let's make sure this doesn't run in multiple processes
                             injector.init(network_tuple)
 
                 except ConnectionResetError:

@@ -1,8 +1,8 @@
-import threading
 import server
+import multiprocessing
 
 
-class NetworkInjector(threading.Thread):
+class NetworkInjector(multiprocessing.Process):
 
     @staticmethod
     def broadcast(message, network_tuple):
