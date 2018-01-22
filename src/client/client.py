@@ -7,7 +7,8 @@ import threading
 network_tuple = ([], [])  # (sockets, addresses)
 localhost = socket.socket()
 terminated = False
-PORT = 1111  # This will be defined on initialization
+PORT = 1111  # This will be re-defined on initialization; It's temporary
+
 
 class Client:
     # Find our local IP address and return it as a string
@@ -137,6 +138,7 @@ class Client:
         for device in sock:
             print("Client -> Terminating connection to", addresses[index])
             device.close()
+            index += 1
         terminated = True
         return 0
 
