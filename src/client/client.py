@@ -105,6 +105,8 @@ class Client:
                 sock = socket.socket()
                 self.connect(sock, address, PORT)
                 self.listen(sock)
+            else:
+                print("Not connecting to", address+";", "We're already connected.")
 
     def listen(self, in_socket):
         def listener_thread(in_sock):
