@@ -84,9 +84,11 @@ class Server:
 
     def respond(self, message, in_sock):
         message = message  # TODO: implement hashing someday.
+        index = network_tuple[0].index(in_sock)
+        address = network_tuple[1][index]
         if message == "echo":
             # If received, we can two-way communication is functional
-            print("Server -> Note: Two-Way communication established and tested functional")
+            print("Server -> Note: Two-Way communication with", address, "established and tested functional")
             self.send(in_sock, 'continue')
 
     @staticmethod
