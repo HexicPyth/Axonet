@@ -161,8 +161,6 @@ class Client:
                     except ConnectionRefusedError:
                         print("Client -> Unable to connect to remove server; Failed to bootstrap.")
             else:
-                print("Client -> Error:"
-                      "Bootstrapping a complete network architecture requires at least one remote connection")
-                quit(1)
+                print("Client -> Initializing with no remote connections...")
         else:
             print("TODO: Implement other network architectures")  # TODO: implement other architectures

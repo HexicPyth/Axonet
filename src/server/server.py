@@ -156,7 +156,6 @@ class Server:
                         self.listen(client)
                         print("Server -> Listening on localhost...")
 
-
                     else:
                         print("Server -> ", address, " has connected.", sep='')
                         print("Server -> Listening on ", address, sep='')
