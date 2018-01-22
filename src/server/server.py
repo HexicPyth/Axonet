@@ -165,6 +165,7 @@ class Server:
                         print("Server -> ", address, " has connected.", sep='')
                         print("Server -> Listening on ", address, sep='')
                         self.listen(client)
+                        self.send(client, "echo")
 
                         if network_injection:
                             try:
