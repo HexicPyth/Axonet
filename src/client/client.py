@@ -143,7 +143,7 @@ class Client:
 
     def initialize(self, port=3704, network_architecture="Complete", remote_addresses=None):
         global localhost
-        global  PORT
+        global PORT
         PORT = port
         # Stage 0
         print("Client -> Initializing...")
