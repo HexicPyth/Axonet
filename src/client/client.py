@@ -46,8 +46,7 @@ class Client:
 
         if not local:
             print("Client -> Connecting to ", address, sep='')
-            in_socket.connect((address, port))  # TODO: fix socket.gaierror: [Errno -2] Name or service not known
-
+            in_socket.connect((address, port))
             self.append(in_socket, address)
             print("Client -> Success")
 
@@ -105,6 +104,7 @@ class Client:
             if address not in network_tuple[1]:
                 sock = socket.socket()
                 self.connect(sock, address, PORT)
+                print(sock)
                 self.listen(sock)
             else:
                 print("Not connecting to", address+";", "We're already connected.")
@@ -171,6 +171,10 @@ class Client:
                     sock = socket.socket()
                     try:
                         self.connect(sock, i, port)
+
+                        print("Starting listener on", i)
+                        self.listen(sock)
+
                         self.send(sock, "echo")
                     except ConnectionRefusedError:
                         print("Client -> Unable to connect to remove server; Failed to bootstrap.")
