@@ -10,6 +10,9 @@ class NetworkInjector(multiprocessing.Process):
     def broadcast(message, network_tuple):
         sockets = network_tuple[0]  # List of clients we need to broadcast to
         for client in sockets:
+            index = network_tuple[0].index(client)
+            address = network_tuple[1][index]
+            print("Sending: "+"'"+message+"'"+" to "+address)
             server.Server.send(client, message)  # For each of them send the given message( = Broadcast)
 
     def collect(self, network_tuple, fileno):
