@@ -104,7 +104,6 @@ class Client:
             if address not in network_tuple[1]:
                 sock = socket.socket()
                 self.connect(sock, address, PORT)
-                print(sock)
                 self.listen(sock)
             else:
                 print("Not connecting to", address+";", "We're already connected.")
