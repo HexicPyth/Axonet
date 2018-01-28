@@ -24,6 +24,11 @@ class NetworkInjector(multiprocessing.Process):
             print("Server/Injector -> Broadcasting", msg, "to the network")
             self.broadcast(msg, network_tuple)
 
+    def kill(self):
+        print("FlagThread - Terminate() : Reluctantly terminating myself... * cries to the thought of SIGKILL *")
+        self.terminate()
+        return
+
     def init(self, network_tuple):
         fn = sys.stdin.fileno()
         injector = multiprocessing.Process(target=self.collect, args=(network_tuple, fn,), name='Injector')

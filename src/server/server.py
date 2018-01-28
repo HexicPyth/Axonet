@@ -169,7 +169,7 @@ class Server:
 
                         if network_injection:
                             try:
-                                injector.terminate()  # Let's make sure this doesn't run in multiple processes
+                                injector.kill()  # Let's make sure this doesn't run in multiple processes
                             except AttributeError:
                                 pass
                             finally:

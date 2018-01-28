@@ -101,10 +101,15 @@ class Client:
 
         if message[:10] == "ConnectTo:":
             address = message[10:]
-            if address not in network_tuple[1] and address != self.get_local_ip():
-                sock = socket.socket()
-                self.connect(sock, address, PORT)
-                self.listen(sock)
+            if address not in network_tuple[1]:
+
+                if address == self.get_local_ip():
+                    print("Not connecting to", address + ";", "That's localhost :P")
+
+                else:
+                    sock = socket.socket()
+                    self.connect(sock, address, PORT)
+                    self.listen(sock)
             else:
                 print("Not connecting to", address+";", "We're already connected.")
 
