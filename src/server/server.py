@@ -176,10 +176,7 @@ class Server:
                                 injector.init(network_tuple)
 
                         if network_architecture == "complete":
-                            sockets = network_tuple[0]
-                            local = sockets[0]
-                            self.send(local, 'ConnectTo:'+address)
-
+                            self.broadcast('ConnectTo:'+address)
                 except ConnectionResetError:
                     print("Server -> localhost has disconnected")
 
