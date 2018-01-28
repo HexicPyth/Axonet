@@ -101,7 +101,7 @@ class Client:
 
         if message[:10] == "ConnectTo:":
             address = message[10:]
-            if address not in network_tuple[1]:
+            if address not in network_tuple[1] and address != self.get_local_ip():
                 sock = socket.socket()
                 self.connect(sock, address, PORT)
                 self.listen(sock)
