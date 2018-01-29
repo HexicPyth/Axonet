@@ -4,6 +4,7 @@ import os
 import struct
 import datetime
 from hashlib import sha3_224
+current_message = None
 
 
 class NetworkInjector(multiprocessing.Process):
@@ -22,19 +23,25 @@ class NetworkInjector(multiprocessing.Process):
         return out
 
     def send(self, sock, msg, signing=True):
+        global current_message
         if signing:
             msg = self.prepare(msg).encode('utf-8')
-            print("Server -> Injector -> Broadcast: "+msg.decode()+" to the network.")
-
 
         else:
             msg.encode('utf-8')
 
         # Prefix each message with a 4-byte length (network byte order)
         msg = struct.pack('>I', len(msg)) + msg
-        sock.sendall(msg)
+
+        if not current_message:
+            current_message = msg
+
+        print("Server -> Injector -> Broadcast: " + current_message.decode() + " to the network.")
+
+        sock.sendall(current_message)
 
     def broadcast(self, message, network_tuple):
+        global current_message
         sockets = network_tuple[0]  # List of clients we need to broadcast to
         for client in sockets:
 
@@ -43,6 +50,7 @@ class NetworkInjector(multiprocessing.Process):
 
             print("Sending: "+"'"+message+"'"+" to "+address)  # print("Sending: '(message)' to (address)")
             self.send(client, message)  # For each of them send the given message( = Broadcast)
+        current_message = None  # reset current message
 
     def collect(self, network_tuple, fileno):
         sys.stdin = os.fdopen(fileno)
