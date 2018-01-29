@@ -121,7 +121,9 @@ class Client:
         if sig in message_list:
             pass
         else:
-            print('Client -> Received: ' + message + " (" + sig + ")")
+            index = network_tuple[0].index(in_sock)
+            address = network_tuple[1][index]  # Find the address of the socket we're receiving from...
+            print('Client -> Received: ' + message + " (" + sig + ")" + "from: " + address)
 
         if message == "echo":
             # Check if Client/Server communication is intact
