@@ -11,6 +11,7 @@ localhost = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Add SO_REUSEADDR
 injector = inject.NetworkInjector()
 message_list = []
+no_prop = "ffffffffffffffff"
 
 
 class Server:
@@ -54,11 +55,11 @@ class Server:
     https://stackoverflow.com/a/17668009
     https://stackoverflow.com/users/9530/adam-rosenfield '''
 
-    def send(self, sock, msg, signing=True):
+    def send(self, sock, message, signing=True):
         if signing:
-            msg = self.prepare(msg).encode('utf-8')
+            msg = self.prepare(message).encode('utf-8')
         else:
-            msg.encode('utf-8')
+            msg = message.encode('utf-8')
 
         # Prefix each message with a 4-byte length (network byte order)
         msg = struct.pack('>I', len(msg)) + msg
@@ -103,19 +104,28 @@ class Server:
         quit(0)
 
     def respond(self, msg, in_sock):
+        global no_prop
         global message_list
+        full_message = str(msg)
         sig = msg[:16]
+        if sig not in message_list:
+            print('Server -> Received: ' + msg)
+
         message = msg[17:]
         index = network_tuple[0].index(in_sock)
         address = network_tuple[1][index]
         if message == "echo":
             # If received, we can two-way communication is functional
-            print("Server -> Note: Two-Way communication with", address, "established and tested functional")
-            self.send(in_sock, 'continue')
+            print("Server -> Note: Two-Way communication with", address, "established and/or tested functional")
+            self.send(in_sock, no_prop+":continue", signing=False)
 
         if sig not in message_list:
-            self.broadcast(msg)
-            message_list += sig
+            print(message_list)
+            print("Broadcasting: "+full_message)
+            self.broadcast(full_message)
+            message_list.append(sig)
+        elif sig == no_prop:
+            print("Server -> Info: Not propagating: " + message + " (sig = "+no_prop+')"')
 
     @staticmethod
     def disconnect(in_sock):
@@ -137,7 +147,6 @@ class Server:
                 incoming = self.receive(in_sock)
                 try:
                     if incoming:
-                        print('Server -> Received: ' + incoming)
                         self.respond(incoming, in_sock)
                 except OSError:
                     pass
@@ -186,6 +195,14 @@ class Server:
                         self.send(client, "echo")
                         self.listen(client)
                         print("Server -> Listening on localhost...")
+
+                        if network_injection:
+                            try:
+                                injector.kill()  # Let's make sure this doesn't run in multiple processes
+                            except AttributeError:
+                                pass
+                            finally:
+                                injector.init(network_tuple)
 
                     else:  # this is a remote connection
                         print("Server -> ", address, " has connected.", sep='')

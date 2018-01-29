@@ -12,6 +12,8 @@ terminated = False
 PORT = 1111  # This will be re-defined on initialization; It's temporary
 message_list = []
 
+# ffffffffffffffff:[message] (i.e a message with a True hash) indicates that no propagation is required.
+no_prop = "ffffffffffffffff"
 
 class Client:
     # Find our local IP address and return it as a string
@@ -60,10 +62,7 @@ class Client:
         out += timestamp
         out += message
         sig = sha3_224(out.encode()).hexdigest()[:16]
-        out = ""
-        out += sig
-        out += ":"
-        out += message
+        out = sig+":"+message
         return out
 
     ''' The following thee functions were written by StackOverflow user 
@@ -71,11 +70,11 @@ class Client:
     https://stackoverflow.com/a/17668009
     https://stackoverflow.com/users/9530/adam-rosenfield '''
 
-    def send(self, sock, msg, signing=True):
+    def send(self, sock, message, signing=True):
         if signing:
-            msg = self.prepare(msg).encode('utf-8')
+            msg = self.prepare(message).encode('utf-8')
         else:
-            msg.encode('utf-8')
+            msg = message.encode('utf-8')
 
         # Prefix each message with a 4-byte length (network byte order)
         msg = struct.pack('>I', len(msg)) + msg
@@ -116,12 +115,18 @@ class Client:
 
     def respond(self, in_sock, msg):
         global message_list
+        full_message = str(msg)
         sig = msg[:16]
         message = msg[17:]
+        if sig in message_list:
+            pass
+        else:
+            print('Client -> Received: ' + message + " (" + sig + ")")
+
         if message == "echo":
             # Check if Client/Server communication is intact
             print("Client -> echoing...")
-            self.send(in_sock, message)  # If received, send back
+            self.send(in_sock, no_prop+':'+message, signing=False)  # If received, send back
 
         if message == "stop":
             self.terminate()
@@ -139,21 +144,23 @@ class Client:
                     self.listen(sock)
             else:
                 print("Not connecting to", address+";", "We're already connected.")
+
+        elif sig == no_prop:
+            print("Client -> Info: Not propagating: " + message + " (sig = "+no_prop+')"')
+            return
+
         if sig not in message_list:
-            self.broadcast(msg)
-            message_list += sig
+            message_list.append(sig)
+            self.broadcast(full_message)
 
     def listen(self, in_socket):
         def listener_thread(in_sock):
             while not terminated:
                 incoming = self.receive(in_sock)
                 msg = incoming  # TODO: Implement hashing someday
-                sig = msg[:16]
-                message = msg[17:]
                 try:
                     if incoming:
-                        print('Client -> Received: ' + message + " (" + sig + ")")
-                        self.respond(in_sock, message)
+                        self.respond(in_sock, msg)
 
                 except OSError:
                     print("Client -> Connection probably down or terminated (OSError: listen() -> listener_thread())")
