@@ -120,7 +120,6 @@ class Server:
             self.send(in_sock, no_prop+":continue", signing=False)
 
         if sig not in message_list:
-            print(message_list)
             print("Broadcasting: "+full_message)
             self.broadcast(full_message)
             message_list.append(sig)
@@ -219,7 +218,8 @@ class Server:
                                 injector.init(network_tuple)
 
                         if network_architecture == "complete":
-                            self.broadcast('ConnectTo:'+address)
+                            self.broadcast(self.prepare('ConnectTo:'+address))
+                            print('...')
                 except ConnectionResetError:
                     print("Server -> localhost has disconnected")
 
