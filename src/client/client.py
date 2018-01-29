@@ -3,11 +3,14 @@
 import socket
 import struct
 import threading
+import datetime
+from hashlib import sha3_224
 
 network_tuple = ([], [])  # (sockets, addresses)
 localhost = socket.socket()
 terminated = False
 PORT = 1111  # This will be re-defined on initialization; It's temporary
+message_list = []
 
 
 class Client:
@@ -50,17 +53,33 @@ class Client:
             self.append(in_socket, address)
             print("Client -> Success")
 
+    @staticmethod
+    def prepare(message):  # Process our message for broadcasting (Please ignore the mess :P)
+        out = ""
+        timestamp = str(datetime.datetime.utcnow())
+        out += timestamp
+        out += message
+        sig = sha3_224(out.encode()).hexdigest()[:16]
+        out = ""
+        out += sig
+        out += ":"
+        out += message
+        return out
+
     ''' The following thee functions were written by StackOverflow user 
     Adam Rosenfield and modified by me, HexicPyth.
     https://stackoverflow.com/a/17668009
     https://stackoverflow.com/users/9530/adam-rosenfield '''
 
-    @staticmethod
-    def send(in_socket, message):
-        msg = message.encode('utf-8')
+    def send(self, sock, msg, signing=True):
+        if signing:
+            msg = self.prepare(msg).encode('utf-8')
+        else:
+            msg.encode('utf-8')
+
         # Prefix each message with a 4-byte length (network byte order)
         msg = struct.pack('>I', len(msg)) + msg
-        in_socket.sendall(msg)
+        sock.sendall(msg)
 
     @staticmethod
     def receiveall(sock, n):
@@ -90,7 +109,15 @@ class Client:
         msglen = struct.unpack('>I', raw_msglen)[0]
         return self.receiveall(in_sock, msglen).decode()
 
-    def respond(self, in_sock, message):
+    def broadcast(self, message):
+        sockets = network_tuple[0]  # List of client we need to broadcast to
+        for server in sockets:
+            self.send(server, message, signing=False)  # For each of them send the given message( = Broadcast)
+
+    def respond(self, in_sock, msg):
+        global message_list
+        sig = msg[:16]
+        message = msg[17:]
         if message == "echo":
             # Check if Client/Server communication is intact
             print("Client -> echoing...")
@@ -112,15 +139,20 @@ class Client:
                     self.listen(sock)
             else:
                 print("Not connecting to", address+";", "We're already connected.")
+        if sig not in message_list:
+            self.broadcast(msg)
+            message_list += sig
 
     def listen(self, in_socket):
         def listener_thread(in_sock):
             while not terminated:
                 incoming = self.receive(in_sock)
-                message = incoming  # TODO: Implement hashing someday
+                msg = incoming  # TODO: Implement hashing someday
+                sig = msg[:16]
+                message = msg[17:]
                 try:
                     if incoming:
-                        print('Client -> Received: ' + message)
+                        print('Client -> Received: ' + message + " (" + sig + ")")
                         self.respond(in_sock, message)
 
                 except OSError:

@@ -3,11 +3,14 @@ import socket
 import struct
 import inject
 import threading
+from hashlib import sha3_224
+import datetime
 
 network_tuple = ([], [])  # (sockets, addresses)
 localhost = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Add SO_REUSEADDR
 injector = inject.NetworkInjector()
+message_list = []
 
 
 class Server:
@@ -33,13 +36,30 @@ class Server:
 
         return local_ip
 
+    @staticmethod
+    def prepare(message):  # Process our message for broadcasting
+        out = ""
+        timestamp = str(datetime.datetime.utcnow())
+        out += timestamp
+        out += message
+        sig = sha3_224(out.encode()).hexdigest()[:16]
+        out = ""
+        out += sig
+        out += ":"
+        out += message
+        return out
+
     ''' The three functions below were written by StackOverflow user 
     Adam Rosenfield and modified by me, HexicPyth.
     https://stackoverflow.com/a/17668009
     https://stackoverflow.com/users/9530/adam-rosenfield '''
-    @staticmethod
-    def send(sock, msg):
-        msg = msg.encode('utf-8')  # TODO: implement hashing someday
+
+    def send(self, sock, msg, signing=True):
+        if signing:
+            msg = self.prepare(msg).encode('utf-8')
+        else:
+            msg.encode('utf-8')
+
         # Prefix each message with a 4-byte length (network byte order)
         msg = struct.pack('>I', len(msg)) + msg
         sock.sendall(msg)
@@ -68,7 +88,7 @@ class Server:
     def broadcast(self, message):
         sockets = network_tuple[0]  # List of client we need to broadcast to
         for client in sockets:
-            self.send(client, message)  # For each of them send the given message( = Broadcast)
+            self.send(client, message, signing=False)  # For each of them send the given message( = Broadcast)
 
     @staticmethod
     def append(in_socket, address):
@@ -82,14 +102,20 @@ class Server:
         localhost.close()
         quit(0)
 
-    def respond(self, message, in_sock):
-        message = message  # TODO: implement hashing someday.
+    def respond(self, msg, in_sock):
+        global message_list
+        sig = msg[:16]
+        message = msg[17:]
         index = network_tuple[0].index(in_sock)
         address = network_tuple[1][index]
         if message == "echo":
             # If received, we can two-way communication is functional
             print("Server -> Note: Two-Way communication with", address, "established and tested functional")
             self.send(in_sock, 'continue')
+
+        if sig not in message_list:
+            self.broadcast(msg)
+            message_list += sig
 
     @staticmethod
     def disconnect(in_sock):
