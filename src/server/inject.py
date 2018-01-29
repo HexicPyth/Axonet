@@ -24,6 +24,9 @@ class NetworkInjector(multiprocessing.Process):
     def send(self, sock, msg, signing=True):
         if signing:
             msg = self.prepare(msg).encode('utf-8')
+            print("Server -> Injector -> Broadcast: "+msg.decode()+" to the network.")
+
+
         else:
             msg.encode('utf-8')
 
