@@ -121,9 +121,9 @@ class Server:
 
                 print("Broadcasting: "+full_message)
                 self.broadcast(full_message)
-                message_list.append(sig)
-            if sig == no_prop:
-                print("Server -> Info: Not propagating: " + message + " (sig = "+no_prop+')"')
+            message_list.append(sig)
+            # if sig == no_prop:
+            #     print("Server -> Info: Not propagating: " + message + " (sig = "+no_prop+')"')
 
     @staticmethod
     def disconnect(in_sock):

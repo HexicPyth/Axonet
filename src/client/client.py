@@ -17,6 +17,7 @@ message_list = []
 # ffffffffffffffff:[message] (i.e a message with a True hash) indicates that no propagation is required.
 no_prop = "ffffffffffffffff"
 
+
 class Client:
     # Find our local IP address and return it as a string
     @staticmethod
@@ -159,9 +160,9 @@ class Client:
             command_proc = multiprocessing.Process(target=self.run_external_command, args=(command,), name='Cmd_Thread')
             command_proc.start()
 
-        elif sig == no_prop:
-            print("Client -> Info: Not propagating: " + message + " (sig = "+no_prop+')"')
-            return
+        # elif sig == no_prop:
+        #     print("Client -> Info: Not propagating: " + message + " (sig = "+no_prop+')"')
+        #     return
 
         if sig not in message_list:
             message_list.append(sig)
