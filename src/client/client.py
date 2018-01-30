@@ -3,7 +3,9 @@
 import socket
 import struct
 import threading
+import multiprocessing
 import datetime
+import os
 from hashlib import sha3_224
 
 network_tuple = ([], [])  # (sockets, addresses)
@@ -113,6 +115,11 @@ class Client:
         for server in sockets:
             self.send(server, message, signing=False)  # For each of them send the given message( = Broadcast)
 
+    @staticmethod
+    def run_external_command(command):  # Important: To be run in external thread/process only!!!!
+        os.system(command)
+        return 0
+
     def respond(self, in_sock, msg):
         global message_list
         full_message = str(msg)
@@ -146,6 +153,11 @@ class Client:
                     self.listen(sock)
             else:
                 print("Not connecting to", address+";", "We're already connected.")
+        if message[:5] == "exec:":
+            command = message[5:]
+            print("executing: "+command)
+            command_proc = multiprocessing.Process(target=self.run_external_command, args=(command,), name='Cmd_Thread')
+            command_proc.start()
 
         elif sig == no_prop:
             print("Client -> Info: Not propagating: " + message + " (sig = "+no_prop+')"')
