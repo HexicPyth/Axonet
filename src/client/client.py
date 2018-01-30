@@ -166,7 +166,7 @@ class Client:
 
         if sig not in message_list:
             message_list.append(sig)
-            print('broadcasting: '+full_message)
+            print('Client -> broadcasting: '+full_message)
             self.broadcast(full_message)
 
     def listen(self, in_socket):

@@ -119,11 +119,10 @@ class Server:
                 print("Server -> Note: Two-Way communication with", address, "established and/or tested functional")
                 self.send(in_sock, no_prop+":continue", signing=False)
 
-                print("Broadcasting: "+full_message)
+            if sig not in message_list and sig != no_prop:
+                print("Server -> Broadcasting "+full_message)
                 self.broadcast(full_message)
-            message_list.append(sig)
-            # if sig == no_prop:
-            #     print("Server -> Info: Not propagating: " + message + " (sig = "+no_prop+')"')
+                message_list.append(sig)
 
     @staticmethod
     def disconnect(in_sock):
