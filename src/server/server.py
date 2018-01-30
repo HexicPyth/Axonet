@@ -111,20 +111,19 @@ class Server:
         if sig not in message_list:
             print('Server -> Received: ' + msg)
 
-        message = msg[17:]
-        index = network_tuple[0].index(in_sock)
-        address = network_tuple[1][index]
-        if message == "echo":
-            # If received, we can two-way communication is functional
-            print("Server -> Note: Two-Way communication with", address, "established and/or tested functional")
-            self.send(in_sock, no_prop+":continue", signing=False)
+            message = msg[17:]
+            index = network_tuple[0].index(in_sock)
+            address = network_tuple[1][index]
+            if message == "echo":
+                # If received, we can two-way communication is functional
+                print("Server -> Note: Two-Way communication with", address, "established and/or tested functional")
+                self.send(in_sock, no_prop+":continue", signing=False)
 
-        if sig not in message_list:
-            print("Broadcasting: "+full_message)
-            self.broadcast(full_message)
-            message_list.append(sig)
-        elif sig == no_prop:
-            print("Server -> Info: Not propagating: " + message + " (sig = "+no_prop+')"')
+                print("Broadcasting: "+full_message)
+                self.broadcast(full_message)
+                message_list.append(sig)
+            if sig == no_prop:
+                print("Server -> Info: Not propagating: " + message + " (sig = "+no_prop+')"')
 
     @staticmethod
     def disconnect(in_sock):
