@@ -1,6 +1,7 @@
 # Axonet
 
-Axonet is an active <b>proof of concept</b> demonstrating the functionality, special attributes, and applications of decentralized networking/computing on computationally expensive problems and distributed tasks. As nodes I recommend using as many old and/or not-otherwise-useful laptops as you can come up with, because they're easy to find. However that's up to you.
+Axonet is an active <b>proof of concept</b> demonstrating the functionality, special attributes, and applications of decentralized networking/computing on computationally expensive problems and distributed tasks. 
+As far as nodes are concerned I recommend using as many old and/or not-otherwise-useful laptops as you can come up with, because they're easy to find. However that's up to you.
 
 ## Getting Started
 
