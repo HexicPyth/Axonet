@@ -29,11 +29,11 @@ Axonet is an active <b>proof of concept</b> demonstrating the functionality, spe
 
 ### Prerequisites
 
-```
-A Unix-based operating system - That's your decision to make, not mine. Install as applicable to your hardware? :P
 
-Python 3.6+(<i>Hint: Python 3.5.x doesn't support sha3) - Install as applicable to your operating system.
-```
+```A Unix-based operating system: Preferably linux``` - That's your decision to make, not mine. Install as applicable to your hardware? :P
+
+```Python 3.6+``` - Install as applicable to your operating system.
+
 
 ### Installing
 
