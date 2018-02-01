@@ -19,8 +19,9 @@ Axonet is an active <b>proof of concept</b> demonstrating the functionality, spe
     - `python3.6 src/server/init_server.py`
     - modify src/client/init_client.py so that remote_addresses=["Local_IP_ADDRESS_OF_NODE#1"] substituding the local ip address of node #1 respectively.
     - `python3.6 src/client/init_client.py`
-  Adding more devices to the network (node# > 2)
-  - `python3.6 src/server/init_server.py`
+    
+  <b>Adding more devices to the network (node# > 2)</b>
+ - `python3.6 src/server/init_server.py`
   - modify src/client/init_client.py so that remote_addresses = (an array of at least one local IP address of any other node on the network) The network will take care of completing itself, so don't hesitate to only assign one address here.
   i.e remote_addresses=["192.168.1.91"] or remote_addresses=["192.168.1.91","192.168.1.12"], etc.
   - `python3.6 src/client/init_client.py`
