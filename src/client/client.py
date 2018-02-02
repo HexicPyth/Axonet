@@ -127,9 +127,9 @@ class Client:
         sig = msg[:16]
         message = msg[17:]
         if sig in message_list:
-            print("\n not responding to "+sig+"\n")  # TODO: this isn't working, causing issue #6; Fix me
+            print("Client -> Not responding to "+sig)
         else:
-            message_list.append(sig)
+            message_list.append(sig)  # Note this location. Race conditions occur if this is placed later-on...
             index = network_tuple[0].index(in_sock)
             address = network_tuple[1][index]  # Find the address of the socket we're receiving from...
             print('Client -> Received: ' + message + " (" + sig + ")" + "from: " + address)
