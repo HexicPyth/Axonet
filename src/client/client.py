@@ -133,41 +133,41 @@ class Client:
             address = network_tuple[1][index]  # Find the address of the socket we're receiving from...
             print('Client -> Received: ' + message + " (" + sig + ")" + "from: " + address)
 
-        if message == "echo":
-            # Check if Client/Server communication is intact
-            print("Client -> echoing...")
-            self.send(in_sock, no_prop+':'+message, signing=False)  # If received, send back
+            if message == "echo":
+                # Check if Client/Server communication is intact
+                print("Client -> echoing...")
+                self.send(in_sock, no_prop+':'+message, signing=False)  # If received, send back
 
-        if message == "stop":
-            self.terminate()
+            if message == "stop":
+                self.terminate()
 
-        if message[:10] == "ConnectTo:":
-            address = message[10:]
-            if address not in network_tuple[1]:
+            if message[:10] == "ConnectTo:":
+                address = message[10:]
+                if address not in network_tuple[1]:
 
-                if address == self.get_local_ip():
-                    print("Not connecting to", address + ";", "That's localhost :P")
+                    if address == self.get_local_ip():
+                        print("Not connecting to", address + ";", "That's localhost :P")
 
+                    else:
+                        sock = socket.socket()
+                        self.connect(sock, address, PORT)
+                        self.listen(sock)
                 else:
-                    sock = socket.socket()
-                    self.connect(sock, address, PORT)
-                    self.listen(sock)
-            else:
-                print("Not connecting to", address+";", "We're already connected.")
+                    print("Not connecting to", address+";", "We're already connected.")
 
-        if message[:5] == "exec:":
-            command = message[5:]
-            print("executing: "+command)
-            # Warning: This is about to execute some arbitrary UNIX command in it's own nice little
-            # non-isolated fork of a process. Use as your own risk, and please secure your subnet.
-            command_process = multiprocessing.Process(target=self.run_external_command,
-                                                      args=(command,), name='Cmd_Thread')
-            command_process.start()
+            if message[:5] == "exec:":
+                command = message[5:]
+                print("executing: "+command)
+                # Warning: This is about to execute some arbitrary UNIX command in it's own nice little
+                # non-isolated fork of a process. Use as your own risk, and please secure your subnet.
+                command_process = multiprocessing.Process(target=self.run_external_command,
+                                                          args=(command,), name='Cmd_Thread')
+                command_process.start()
 
-        if sig not in message_list:
-            message_list.append(sig)
-            print('Client -> broadcasting: '+full_message)
-            self.broadcast(full_message)
+            if sig not in message_list:
+                print('Client -> broadcasting: '+full_message)
+                self.broadcast(full_message)
+                message_list.append(sig)
 
     def listen(self, in_socket):
         def listener_thread(in_sock):
@@ -178,8 +178,8 @@ class Client:
                     if incoming:
                         self.respond(in_sock, msg)
 
-                except OSError:
-                    print("Client -> Connection probably down or terminated (OSError: listen() -> listener_thread())")
+                #except OSError:
+                #    print("Client -> Connection probably down or terminated (OSError: listen() -> listener_thread())")
                 except TypeError:
                     print("Client -> Connection probably down or terminated (TypeError: listen() -> listener_thread()")
 
