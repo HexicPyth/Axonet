@@ -127,8 +127,9 @@ class Client:
         sig = msg[:16]
         message = msg[17:]
         if sig in message_list:
-            pass
+            print("\n not responding to "+sig+"\n")  # TODO: this isn't working, causing issue #6; Fix me
         else:
+            message_list.append(sig)
             index = network_tuple[0].index(in_sock)
             address = network_tuple[1][index]  # Find the address of the socket we're receiving from...
             print('Client -> Received: ' + message + " (" + sig + ")" + "from: " + address)
@@ -164,10 +165,8 @@ class Client:
                                                           args=(command,), name='Cmd_Thread')
                 command_process.start()
 
-            if sig not in message_list:
-                print('Client -> broadcasting: '+full_message)
-                self.broadcast(full_message)
-                message_list.append(sig)
+            print('Client -> broadcasting: '+full_message)
+            self.broadcast(full_message)
 
     def listen(self, in_socket):
         def listener_thread(in_sock):
