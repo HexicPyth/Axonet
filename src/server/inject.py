@@ -60,7 +60,7 @@ class NetworkInjector(multiprocessing.Process):
             self.broadcast(msg, network_tuple)
 
     def kill(self):
-        print("FlagThread - Terminate() : Reluctantly terminating myself... * cries to the thought of SIGKILL *")
+        print("Injector -> Terminate() : Reluctantly terminating myself... * cries to the thought of SIGKILL *")
         self.terminate()
         return
 

@@ -154,15 +154,15 @@ class Client:
                     self.listen(sock)
             else:
                 print("Not connecting to", address+";", "We're already connected.")
+
         if message[:5] == "exec:":
             command = message[5:]
             print("executing: "+command)
-            command_proc = multiprocessing.Process(target=self.run_external_command, args=(command,), name='Cmd_Thread')
-            command_proc.start()
-
-        # elif sig == no_prop:
-        #     print("Client -> Info: Not propagating: " + message + " (sig = "+no_prop+')"')
-        #     return
+            # Warning: This is about to execute some arbitrary UNIX command in it's own nice little
+            # non-isolated fork of a process. Use as your own risk, and please secure your subnet.
+            command_process = multiprocessing.Process(target=self.run_external_command,
+                                                      args=(command,), name='Cmd_Thread')
+            command_process.start()
 
         if sig not in message_list:
             message_list.append(sig)
@@ -173,7 +173,7 @@ class Client:
         def listener_thread(in_sock):
             while not terminated:
                 incoming = self.receive(in_sock)
-                msg = incoming  # TODO: Implement hashing someday
+                msg = incoming
                 try:
                     if incoming:
                         self.respond(in_sock, msg)
