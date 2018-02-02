@@ -6,6 +6,7 @@ import threading
 import multiprocessing
 import datetime
 import os
+import random
 from hashlib import sha3_224
 
 network_tuple = ([], [])  # (sockets, addresses)
@@ -13,6 +14,7 @@ localhost = socket.socket()
 terminated = False
 PORT = 1111  # This will be re-defined on initialization; It's temporary
 message_list = []
+ballet_tuple = ([], [])
 
 # ffffffffffffffff:[message] (i.e a message with a True hash) indicates that no propagation is required.
 no_prop = "ffffffffffffffff"
@@ -123,6 +125,7 @@ class Client:
 
     def respond(self, in_sock, msg):
         global message_list
+        global ballet_tuple
         full_message = str(msg)
         sig = msg[:16]
         message = msg[17:]
@@ -165,8 +168,43 @@ class Client:
                                                           args=(command,), name='Cmd_Thread')
                 command_process.start()
 
+            if message == "vote":
+                elect_msg = "elect:"
+
+                uid_str = ""  # <-- Will be a random 16-digit number(zeroes included)
+                for i in range(0, 16):
+                    uid_str += str(random.SystemRandom().randint(0, 10))
+
+                elect_msg += self.get_local_ip()
+                elect_msg += ":"
+                elect_msg += uid_str
+                print(len(uid_str))
+                print("Contributing to the election: "+elect_msg)
+                self.broadcast(self.prepare(elect_msg))
+                del elect_msg
+
+            if message[:6] == "elect:":
+                flag = message[:6]
+                info = message[6:]
+                number = info[-16:]
+                address = info[:-17]
+                print(number, address)
+                ballet_tuple[0].append(number)
+                ballet_tuple[1].append(address)
+
+                print(len(ballet_tuple[0]))
+                print(len(network_tuple[0]))
+                print(ballet_tuple)
+
+                if len(ballet_tuple[0]) == len(network_tuple[0]) and len(ballet_tuple[0]) != 0:
+                    index = ballet_tuple.index(max(ballet_tuple))
+                    print("--- " + ballet_tuple[0][index])
+                    print("--- " + ballet_tuple[1][index] + " won the election for cluster representative")
+
+            # End of respond()
             print('Client -> broadcasting: '+full_message)
             self.broadcast(full_message)
+
 
     def listen(self, in_socket):
         def listener_thread(in_sock):
@@ -209,7 +247,6 @@ class Client:
 
         try:
             self.connect(localhost, 'localhost', port, local=True)
-            self.append(localhost, 'localhost')
 
             print("Client -> Connection to localhost successful")
             print("Client -> Starting listener on localhost...")
