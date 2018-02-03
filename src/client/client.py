@@ -169,6 +169,7 @@ class Client:
                 command_process.start()
 
             if message == "vote":
+                ballet_tuple = ([], [])  # Clear the ballet before initiating the vote
                 elect_msg = "elect:"
 
                 uid_str = ""  # <-- Will be a random 16-digit number(zeroes included)
