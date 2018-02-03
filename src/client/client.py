@@ -203,15 +203,16 @@ class Client:
                 print(ballet_tuple)
 
                 if len(ballet_tuple[0]) == len(network_tuple[0]) and len(ballet_tuple[0]) != 0:
-                    index = ballet_tuple.index(max(ballet_tuple))
-                    print("--- " + ballet_tuple[0][index])
+                    int_ballet_tuple = [int(i) for i in ballet_tuple[0]]
+
+                    index = int_ballet_tuple.index(max(int_ballet_tuple))
+                    print("--- " + ballet_tuple[0][index])   # we actually want the string here, not the int.
                     print("--- " + ballet_tuple[1][index] + " won the election for cluster representative")
                     cluster_rep = ballet_tuple[1][index]
 
             # End of respond()
             print('Client -> broadcasting: '+full_message)
             self.broadcast(full_message)
-
 
     def listen(self, in_socket):
         def listener_thread(in_sock):
