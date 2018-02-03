@@ -18,6 +18,7 @@ ballet_tuple = ([], [])
 
 # ffffffffffffffff:[message] (i.e a message with a True hash) indicates that no propagation is required.
 no_prop = "ffffffffffffffff"
+cluster_rep = None  # type -> str
 
 
 class Client:
@@ -126,6 +127,8 @@ class Client:
     def respond(self, in_sock, msg):
         global message_list
         global ballet_tuple
+        global cluster_rep
+
         full_message = str(msg)
         sig = msg[:16]
         message = msg[17:]
@@ -174,9 +177,9 @@ class Client:
 
                 uid_str = ""  # <-- Will be a random 16-digit number(zeroes included)
                 for i in range(0, 16):
-                    uid_str += str(random.SystemRandom().randint(0, 10))
+                    uid_str += str(random.SystemRandom().randint(0, 9))
 
-                while len(uid_str) != 16:
+                while len(uid_str) != 16:  # Make sure that uid_str is <i>really</i> a 16-digit integer
                     uid_str = uid_str[:-1]
 
                 elect_msg += self.get_local_ip()
@@ -188,7 +191,6 @@ class Client:
                 del elect_msg
 
             if message[:6] == "elect:":
-                flag = message[:6]
                 info = message[6:]
                 number = info[-16:]
                 address = info[:-17]
@@ -204,6 +206,7 @@ class Client:
                     index = ballet_tuple.index(max(ballet_tuple))
                     print("--- " + ballet_tuple[0][index])
                     print("--- " + ballet_tuple[1][index] + " won the election for cluster representative")
+                    cluster_rep = ballet_tuple[1][index]
 
             # End of respond()
             print('Client -> broadcasting: '+full_message)
