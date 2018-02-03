@@ -223,7 +223,7 @@ class Client:
                     if incoming:
                         self.respond(in_sock, msg)
 
-                #except OSError:
+                # except OSError:
                 #    print("Client -> Connection probably down or terminated (OSError: listen() -> listener_thread())")
                 except TypeError:
                     print("Client -> Connection probably down or terminated (TypeError: listen() -> listener_thread()")
