@@ -176,6 +176,9 @@ class Client:
                 for i in range(0, 16):
                     uid_str += str(random.SystemRandom().randint(0, 10))
 
+                while len(uid_str) != 16:
+                    uid_str = uid_str[:-1]
+
                 elect_msg += self.get_local_ip()
                 elect_msg += ":"
                 elect_msg += uid_str
