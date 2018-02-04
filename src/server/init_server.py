@@ -4,5 +4,7 @@
 import server
 port = 3705
 
-x = server.Server()
-x.initialize(port=port, method="socket", listening=True, network_injection=True)
+
+def init():
+    x = server.Server()
+    x.initialize(port=port, method="socket", listening=True, network_injection=True)

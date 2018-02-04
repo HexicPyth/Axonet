@@ -1,25 +1,33 @@
-# Xnet - init.py Written by HexicPyth/Xenonymous
-# Start two processes, a server and a client, each with one sub-thread,
-# who can communicate with each other through raw socket servers.
-
 import multiprocessing
+import threading
+import sys
 from time import sleep
-import server
-import client
+# Some import "magic" to import from other directories; (see issue #4)
+sys.path.insert(0, '../server/')
+sys.path.insert(0, '../client')
+import init_client
+import init_server
+
+
+
 actions = ['server.py', 'client.py']
+PORT = 3705
 
 
 def worker(action):  # Worker function
     print('action:', action)
     if action == 'server.py':
-        from server import init
         print("Initializing server...")
-        init()
+        # Apparently multiprocessing doesn't like starting things that include while loops in the main process,
+        # so instead, we'll start the server in a thread (of a child process of a process)
+        thread = threading.Thread(target=init_server.init)
+        thread.start()
         print('Server has been successfully initialized')
+
     elif action == 'client.py':
-        from client import init
         print("Initializing client...")
-        init()
+        thread = threading.Thread(target=init_client.init)
+        thread.start()
         print('Client has been successfully initialized')
 
 
