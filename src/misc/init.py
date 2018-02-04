@@ -5,6 +5,7 @@ from time import sleep
 # Some import "magic" to import from other directories; (see issue #4)
 sys.path.insert(0, '../server/')
 sys.path.insert(0, '../client')
+
 import init_client
 import init_server
 
