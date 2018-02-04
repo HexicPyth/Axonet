@@ -8,3 +8,6 @@ port = 3705
 def init():
     x = client.Client()
     x.initialize(port=port, network_architecture="Complete", remote_addresses=None)
+
+if __name__ == "__main__":
+    init()
