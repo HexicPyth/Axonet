@@ -2,7 +2,7 @@ import multiprocessing
 import threading
 import sys
 from time import sleep
-# Some import "magic" to import from other directories; (see issue #4)
+# Some import "magic" to import from other directories; (see issue #1)
 sys.path.insert(0, '../server/')
 sys.path.insert(0, '../client')
 
