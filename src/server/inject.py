@@ -36,9 +36,12 @@ class NetworkInjector(multiprocessing.Process):
         if not current_message:
             current_message = msg
 
-        print("Server -> Injector -> Broadcast: " + current_message.decode() + " to the network.")
-
-        sock.sendall(current_message)
+        try:
+            print("Server -> Injector -> Broadcast: " + current_message.decode() + " to the network.")
+        except UnicodeDecodeError:
+            print("Server -> Injector -> Broadcast (unable to decode) to the network")
+        finally:
+            sock.sendall(current_message)
 
     def broadcast(self, message, network_tuple):
         global current_message
