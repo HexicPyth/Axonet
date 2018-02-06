@@ -98,6 +98,10 @@ class Client:
                 print("Client -> Connection probably down or terminated (OSError: receiveall()")
                 packet = None
 
+            except UnicodeDecodeError:
+                packet = (sock.recv(n - len(data))).decode('utf-8', 'ignore')
+                print(packet)
+
             if not packet:
                 return None
             else:
