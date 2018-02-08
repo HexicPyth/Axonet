@@ -10,7 +10,6 @@ import init_client
 import init_server
 
 
-
 actions = ['server.py', 'client.py']
 PORT = 3705
 
