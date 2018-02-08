@@ -3,11 +3,15 @@ import socket
 import struct
 import inject
 import threading
+from hashlib import sha3_224
+import datetime
 
 network_tuple = ([], [])  # (sockets, addresses)
 localhost = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Add SO_REUSEADDR
 injector = inject.NetworkInjector()
+message_list = []
+no_prop = "ffffffffffffffff"
 
 
 class Server:
@@ -33,13 +37,30 @@ class Server:
 
         return local_ip
 
+    @staticmethod
+    def prepare(message):  # Process our message for broadcasting
+        out = ""
+        timestamp = str(datetime.datetime.utcnow())
+        out += timestamp
+        out += message
+        sig = sha3_224(out.encode()).hexdigest()[:16]
+        out = ""
+        out += sig
+        out += ":"
+        out += message
+        return out
+
     ''' The three functions below were written by StackOverflow user 
     Adam Rosenfield and modified by me, HexicPyth.
     https://stackoverflow.com/a/17668009
     https://stackoverflow.com/users/9530/adam-rosenfield '''
-    @staticmethod
-    def send(sock, msg):
-        msg = msg.encode('utf-8')  # TODO: implement hashing someday
+
+    def send(self, sock, message, signing=True):
+        if signing:
+            msg = self.prepare(message).encode('utf-8')
+        else:
+            msg = message.encode('utf-8')
+
         # Prefix each message with a 4-byte length (network byte order)
         msg = struct.pack('>I', len(msg)) + msg
         sock.sendall(msg)
@@ -68,7 +89,7 @@ class Server:
     def broadcast(self, message):
         sockets = network_tuple[0]  # List of client we need to broadcast to
         for client in sockets:
-            self.send(client, message)  # For each of them send the given message( = Broadcast)
+            self.send(client, message, signing=False)  # For each of them send the given message( = Broadcast)
 
     @staticmethod
     def append(in_socket, address):
@@ -82,14 +103,26 @@ class Server:
         localhost.close()
         quit(0)
 
-    def respond(self, message, in_sock):
-        message = message  # TODO: implement hashing someday.
-        index = network_tuple[0].index(in_sock)
-        address = network_tuple[1][index]
-        if message == "echo":
-            # If received, we can two-way communication is functional
-            print("Server -> Note: Two-Way communication with", address, "established and tested functional")
-            self.send(in_sock, 'continue')
+    def respond(self, msg, in_sock):
+        global no_prop
+        global message_list
+        full_message = str(msg)
+        sig = msg[:16]
+        if sig not in message_list:
+            print('Server -> Received: ' + msg)
+
+            message = msg[17:]
+            index = network_tuple[0].index(in_sock)
+            address = network_tuple[1][index]
+            if message == "echo":
+                # If received, we can two-way communication is functional
+                print("Server -> Note: Two-Way communication with", address, "established and/or tested functional")
+                self.send(in_sock, no_prop+":continue", signing=False)
+
+            if sig not in message_list and sig != no_prop:
+                message_list.append(sig)
+                print("Server -> Broadcasting "+full_message)
+                self.broadcast(full_message)
 
     @staticmethod
     def disconnect(in_sock):
@@ -111,7 +144,6 @@ class Server:
                 incoming = self.receive(in_sock)
                 try:
                     if incoming:
-                        print('Server -> Received: ' + incoming)
                         self.respond(incoming, in_sock)
                 except OSError:
                     pass
@@ -161,6 +193,14 @@ class Server:
                         self.listen(client)
                         print("Server -> Listening on localhost...")
 
+                        if network_injection:
+                            try:
+                                injector.kill()  # Let's make sure this doesn't run in multiple processes
+                            except AttributeError:
+                                pass
+                            finally:
+                                injector.init(network_tuple)
+
                     else:  # this is a remote connection
                         print("Server -> ", address, " has connected.", sep='')
                         print("Server -> Listening on ", address, sep='')
@@ -169,14 +209,15 @@ class Server:
 
                         if network_injection:
                             try:
-                                injector.terminate()  # Let's make sure this doesn't run in multiple processes
+                                injector.kill()  # Let's make sure this doesn't run in multiple processes
                             except AttributeError:
                                 pass
                             finally:
                                 injector.init(network_tuple)
 
                         if network_architecture == "complete":
-                            self.broadcast('ConnectTo:'+address)
+                            self.broadcast(self.prepare('ConnectTo:'+address))
+                            print('...')
                 except ConnectionResetError:
                     print("Server -> localhost has disconnected")
 
