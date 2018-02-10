@@ -12,9 +12,13 @@ from hashlib import sha3_224
 network_tuple = ([], [])  # (sockets, addresses)
 localhost = socket.socket()
 terminated = False
-PORT = 1111  # This will be re-defined on initialization; It's temporary
 message_list = []
 ballet_tuple = ([], [])
+
+# Set by parameters passed to init() from init_client (these are defaults)
+PORT = None
+allow_command_execution = False
+
 
 # ffffffffffffffff:[message] (i.e a message with a True hash) indicates that no propagation is required.
 no_prop = "ffffffffffffffff"
@@ -167,13 +171,16 @@ class Client:
                     print("Not connecting to", address+";", "We're already connected.")
 
             if message[:5] == "exec:":
-                command = message[5:]
-                print("executing: "+command)
-                # Warning: This is about to execute some arbitrary UNIX command in it's own nice little
-                # non-isolated fork of a process. Use as your own risk, and please secure your subnet.
-                command_process = multiprocessing.Process(target=self.run_external_command,
-                                                          args=(command,), name='Cmd_Thread')
-                command_process.start()
+                if allow_command_execution:
+                    command = message[5:]
+                    print("executing: "+command)
+                    # Warning: This is about to execute some arbitrary UNIX command in it's own nice little
+                    # non-isolated fork of a process. Use as your own risk, and please secure your subnet.
+                    command_process = multiprocessing.Process(target=self.run_external_command,
+                                                              args=(command,), name='Cmd_Thread')
+                    command_process.start()
+                else:
+                    print("Not executing command: ", message[5:])
 
             if message == "vote":
                 ballet_tuple = ([], [])  # Clear the ballet before initiating the vote
@@ -250,10 +257,14 @@ class Client:
         terminated = True
         return 0
 
-    def initialize(self, port=3704, network_architecture="Complete", remote_addresses=None):
+    def initialize(self, port=3704, network_architecture="Complete", remote_addresses=None,
+                   command_execution=False):
+        global allow_command_execution
         global localhost
         global PORT
+
         PORT = port
+        allow_command_execution = command_execution
         # Stage 0
         print("Client -> Initializing...")
 
