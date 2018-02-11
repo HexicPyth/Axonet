@@ -209,16 +209,12 @@ class Client:
                 ballet_tuple[0].append(number)
                 ballet_tuple[1].append(address)
 
-                print(len(ballet_tuple[0]))
-                print(len(network_tuple[0]))
-                print(ballet_tuple)
-
                 if len(ballet_tuple[0]) == len(network_tuple[0]) and len(ballet_tuple[0]) != 0:
                     int_ballet_tuple = [int(i) for i in ballet_tuple[0]]
 
                     index = int_ballet_tuple.index(max(int_ballet_tuple))
-                    print("--- " + ballet_tuple[0][index])   # we actually want the string here, not the int.
-                    print("--- " + ballet_tuple[1][index] + " won the election for cluster representative")
+                    print("\n--- " + ballet_tuple[0][index])   # we actually want the string here, not the int.
+                    print("--- " + ballet_tuple[1][index] + " won the election for cluster representative\n")
                     cluster_rep = ballet_tuple[1][index]
 
             # End of respond()
