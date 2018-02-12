@@ -217,6 +217,12 @@ class Client:
                     print("--- " + ballet_tuple[1][index] + " won the election for cluster representative\n")
                     cluster_rep = ballet_tuple[1][index]
 
+            elif message[:5] == "file:":
+                info = message[5:]
+                file_hash = info[:16]
+                file_length = info[-4:]
+                print("\n Client -> Store segment of file: "+file_hash+" of length:"+file_length+"?")
+
             # End of respond()
             print('Client -> broadcasting: '+full_message)
             self.broadcast(full_message)

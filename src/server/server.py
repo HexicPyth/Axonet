@@ -39,6 +39,7 @@ class Server:
 
     @staticmethod
     def prepare(message):  # Process our message for broadcasting
+        # Please excuse the mess :P
         out = ""
         timestamp = str(datetime.datetime.utcnow())
         out += timestamp
