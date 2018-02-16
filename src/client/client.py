@@ -1,5 +1,6 @@
 # Python 3.6.2
 
+
 import socket
 import struct
 import threading
@@ -15,7 +16,7 @@ terminated = False
 message_list = []
 ballet_tuple = ([], [])
 
-# Default parameters to be assigned by initialize() from init_client.init() (defaults are below)
+# Default parameters to be assigned by self.initialize() from init_client.init() (defaults are below)
 
 PORT = 3705
 allow_command_execution = False  # Don't execute arbitrary UNIX commands when casually asked, that's bad :]

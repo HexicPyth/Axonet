@@ -8,7 +8,7 @@ import os
 this_dir = os.path.dirname(os.path.realpath(__file__))
 os.chdir(this_dir)
 sys.path.insert(0, '../server/')
-sys.path.insert(0, '../client')
+sys.path.insert(0, '../client')  # TODO: Directory restructure; We shouldn't have to modify PYTHON_PATH
 
 
 actions = ['server.py', 'client.py']

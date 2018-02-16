@@ -6,19 +6,20 @@ import threading
 from hashlib import sha3_224
 import datetime
 
+# Globals
 network_tuple = ([], [])  # (sockets, addresses)
 localhost = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Add SO_REUSEADDR
 injector = inject.NetworkInjector()
-message_list = []
-no_prop = "ffffffffffffffff"
+message_list = []   # List of message hashes
+no_prop = "ffffffffffffffff"  # Sending a message with a true hash indicates that no message propagation is needed.
 
 
 class Server:
     @staticmethod
     def get_local_ip():
-
         # Creates a temporary socket and connects to subnet, yielding our local address.
+        # Returns: (local ip address) -> str
         temp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
         try:
@@ -38,8 +39,11 @@ class Server:
         return local_ip
 
     @staticmethod
-    def prepare(message):  # Process our message for broadcasting
+    def prepare(message):
+        # Assign unique hashes to messages for transport
+        # Returns: (hash+message) -> str
         # Please excuse the mess :P
+
         out = ""
         timestamp = str(datetime.datetime.utcnow())
         out += timestamp
@@ -79,6 +83,7 @@ class Server:
 
     def receive(self, in_sock):
         # Read message length and unpack it into an integer
+        # Returns: (message) -> str
         raw_msglen = self.receiveall(in_sock, 4)
 
         if not raw_msglen:
@@ -94,13 +99,23 @@ class Server:
 
     @staticmethod
     def append(in_socket, address):
+        # Add single address/socket tuple to the (global) network tuple.
         global network_tuple  # (sockets, addresses)
 
         network_tuple[0].append(in_socket)  # Append socket to network tuple
         network_tuple[1].append(address)  # Append address to network tuple
 
-    @staticmethod
-    def stop():
+    def stop(self):
+        # Try to gracefully disconnect & disassociate from the network
+        print("Client -> stop() -> Trying to gracefully disconnect and disassociate.")
+
+        for connection in network_tuple[0]:
+            print("Trying to disconnect from socket: " + str(connection))
+            try:
+                self.disconnect(connection)
+                print("Successfully disconnected")
+            except OSError:
+                print("Failed to disconnect from socket: "+str(connection))
         localhost.close()
         quit(0)
 
