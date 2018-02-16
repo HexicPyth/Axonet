@@ -15,14 +15,12 @@ terminated = False
 message_list = []
 ballet_tuple = ([], [])
 
-# Set by parameters passed to init() from init_client (these are defaults)
-PORT = None
-allow_command_execution = False
+# Default parameters to be assigned by initialize() from init_client.init() (defaults are below)
 
-
-# ffffffffffffffff:[message] (i.e a message with a True hash) indicates that no propagation is required.
-no_prop = "ffffffffffffffff"
-cluster_rep = None  # type -> str
+PORT = 3705
+allow_command_execution = False  # Don't execute arbitrary UNIX commands when casually asked, that's bad :]
+cluster_rep = None  # type -> bool
+no_prop = "ffffffffffffffff"  # ffffffffffffffff:[message] = No message propagation.
 
 
 class Client:
@@ -156,7 +154,7 @@ class Client:
             if message == "stop":
                 self.terminate()
 
-            if message[:10] == "ConnectTo:":
+            if message.startswith("ConnectTo:"):
                 address = message[10:]
                 if address not in network_tuple[1]:
 
@@ -170,7 +168,7 @@ class Client:
                 else:
                     print("Not connecting to", address+";", "We're already connected.")
 
-            if message[:5] == "exec:":
+            if message.startswith('exec:'):
                 if allow_command_execution:
                     command = message[5:]
                     print("executing: "+command)
@@ -179,7 +177,9 @@ class Client:
                     command_process = multiprocessing.Process(target=self.run_external_command,
                                                               args=(command,), name='Cmd_Thread')
                     command_process.start()
+
                 else:
+
                     print("Not executing command: ", message[5:])
 
             if message == "vote":
@@ -201,7 +201,7 @@ class Client:
                 self.broadcast(self.prepare(elect_msg))
                 del elect_msg
 
-            if message[:6] == "elect:":
+            if message.startswith('elect:'):
                 info = message[6:]
                 number = info[-16:]
                 address = info[:-17]
@@ -217,7 +217,7 @@ class Client:
                     print("--- " + ballet_tuple[1][index] + " won the election for cluster representative\n")
                     cluster_rep = ballet_tuple[1][index]
 
-            elif message[:5] == "file:":
+            if message.startswith("file:"):
                 info = message[5:]
                 file_hash = info[:16]
                 file_length = info[-4:]
@@ -236,8 +236,6 @@ class Client:
                     if incoming:
                         self.respond(in_sock, msg)
 
-                # except OSError:
-                #    print("Client -> Connection probably down or terminated (OSError: listen() -> listener_thread())")
                 except TypeError:
                     print("Client -> Connection probably down or terminated (TypeError: listen() -> listener_thread()")
 
@@ -259,14 +257,15 @@ class Client:
         terminated = True
         return 0
 
-    def initialize(self, port=3704, network_architecture="Complete", remote_addresses=None,
+    def initialize(self, port=3705, network_architecture="Complete", remote_addresses=None,
                    command_execution=False):
         global allow_command_execution
         global localhost
         global PORT
 
-        PORT = port
+        PORT = port  # Global variable assignment
         allow_command_execution = command_execution
+
         # Stage 0
         print("Client -> Initializing...")
 

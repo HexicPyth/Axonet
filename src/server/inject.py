@@ -10,7 +10,7 @@ current_message = None
 class NetworkInjector(multiprocessing.Process):
 
     @staticmethod
-    def prepare(message):  # Process our message for broadcasting
+    def prepare(message):  # Process our message for broadcasting (please ignore the mess :])
         out = ""
         timestamp = str(datetime.datetime.utcnow())
         out += timestamp
