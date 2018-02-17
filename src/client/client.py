@@ -74,17 +74,26 @@ class Client:
         out = sig+":"+message
         return out
 
-    @staticmethod
-    def disconnect(in_sock):
-        index = network_tuple[0].index(in_sock)  # Find the index of this socket so we can find it's address
-        print("Disconnecting from ", network_tuple[1][index])
-        in_sock.close()
+    def disconnect(self, in_sock, disallow_local_disconnect=True):
+        try:
+            index = network_tuple[0].index(in_sock)  # Find the index of this socket so we can find it's address
+            address = network_tuple[1][index]
+            if disallow_local_disconnect:
+                if address == self.get_local_ip():
+                    return None
+            else:
+                print("\nDisconnecting from " + str(in_sock))
+                print("Disconnecting from ", network_tuple[1][index])
+                print("Client -> Removing " + str(in_sock) + " from network_tuple\n")
+                network_tuple[0].pop(index)
+                network_tuple[1].pop(index)
+                in_sock.close()
+                print("Client -> Successfully disconnected.")
 
-        print("Server -> Removing from network_tuple")
-        network_tuple[0].pop(index)
-        network_tuple[1].pop(index)
+        except (IndexError, ValueError):
+            print("Already disconnected; passing")
+            pass
 
-        print("Server -> Successfully disconnected.")
 
     ''' The following thee functions were written by StackOverflow user 
     Adam Rosenfield and modified by me, HexicPyth.
@@ -102,11 +111,9 @@ class Client:
         try:
             sock.sendall(msg)
         except OSError:
-            print("Disconnecting...")
             self.disconnect(sock)
 
-    @staticmethod
-    def receiveall(sock, n):
+    def receiveall(self, sock, n):
         # Helper function to receive n bytes or return None if EOF is hit
         data = ''
         while len(data) < n:
@@ -115,7 +122,13 @@ class Client:
 
             except OSError:
                 print("Client -> Connection probably down or terminated (OSError: receiveall()")
+                print("Client -> Disconnecting from "+str(sock))
+                try:
+                    self.disconnect(sock)
+                except ValueError:
+                    raise ValueError
                 packet = None
+                raise ValueError
 
             except UnicodeDecodeError:
                 packet = (sock.recv(n - len(data))).decode('utf-8', 'ignore')
@@ -129,13 +142,16 @@ class Client:
 
     def receive(self, in_sock):
         # Read message length and unpack it into an integer
-        raw_msglen = self.receiveall(in_sock, 4)
+        try:
+            raw_msglen = self.receiveall(in_sock, 4)
 
-        if not raw_msglen:
-            return None
+            if not raw_msglen:
+                return None
 
-        msglen = struct.unpack('>I', raw_msglen)[0]
-        return self.receiveall(in_sock, msglen).decode()
+            msglen = struct.unpack('>I', raw_msglen)[0]
+            return self.receiveall(in_sock, msglen).decode()
+        except ValueError:
+            return 1
 
     def broadcast(self, message):
         sockets = network_tuple[0]  # List of client we need to broadcast to
@@ -258,11 +274,14 @@ class Client:
                     print("Client -> Connection probably down or terminated (TypeError: listen() -> listener_thread()")
                     self.disconnect(in_sock)
                     terminated = True
+                if incoming == 1:
+                    print("Connection to " + str(in_sock) + "doesn't exist, terminating listener_thread()")
+                    terminated = True
         # Start listener in a new thread
         threading.Thread(target=listener_thread, args=(in_socket,), name='listener_thread').start()
 
-    @staticmethod
-    def terminate():
+
+    def terminate(self):
         global terminated
         print("Client -> Safely terminating our connections...")
         index = 0
@@ -271,7 +290,7 @@ class Client:
 
         for device in sock:
             print("Client -> Terminating connection to", addresses[index])
-            device.close()
+            self.disconnect(device, disallow_local_disconnect=False)
             index += 1
         terminated = True
         return 0
@@ -320,3 +339,4 @@ class Client:
                 print("Client -> Initializing with no remote connections...")
         else:
             print("TODO: Implement other network architectures")  # TODO: implement other architectures
+

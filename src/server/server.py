@@ -143,14 +143,17 @@ class Server:
 
     @staticmethod
     def disconnect(in_sock):
-        index = network_tuple[0].index(in_sock)  # Find the index of this socket so we can find it's address
-        print("\nDisconnecting from " + str(in_sock))
-        print("Disconnecting from ", network_tuple[1][index])
-        print("Server -> Removing " + str(in_sock) + " from network_tuple\n")
-        network_tuple[0].pop(index)
-        network_tuple[1].pop(index)
-        in_sock.close()
-
+        try:
+            index = network_tuple[0].index(in_sock)  # Find the index of this socket so we can find it's address
+            print("\nDisconnecting from " + str(in_sock))
+            print("Disconnecting from ", network_tuple[1][index])
+            print("Server -> Removing " + str(in_sock) + " from network_tuple\n")
+            network_tuple[0].pop(index)
+            network_tuple[1].pop(index)
+            in_sock.close()
+        except IndexError:
+            print("Already disconnected; passing")
+            pass
 
         print("Server -> Successfully disconnected.")
 
