@@ -214,7 +214,8 @@ class Server:
 
                         if network_injection:
                             try:
-                                injector.kill()  # Let's make sure this doesn't run in multiple processes
+                                #injector.kill()  # Let's make sure this doesn't run in multiple processes
+                                pass
                             except AttributeError:
                                 pass
                             finally:
@@ -241,6 +242,7 @@ class Server:
                                     if x == 0 and len(network_tuple[0]) >= 1:
                                         try:
                                             x = injector.init(network_tuple)
+                                            print("-\n\n\n\n-")
                                         except BrokenPipeError:
                                             self.disconnect(client)
                                     elif len(network_tuple[0]) == 0:
