@@ -2,7 +2,7 @@
 
 Axonet is an active **_terribly insecure_** <b>proof of concept</b> demonstrating the functionality,
  special attributes, and applications of decentralized networking/computing on computationally expensive
-  problems and distributed tasks. <b> The cluster(s) consist of any networked devices on your local subnet.</b>
+  problems and distributed tasks. <b> The cluster(s) consist of any public facing devices (most likely on your local subnet).</b>
   For nodes, I recommend using as many old and/or not-otherwise-useful laptops as you can come up with, because 
   they're easy to find, and power efficient when on smart chargers. However that's up to you.
 
