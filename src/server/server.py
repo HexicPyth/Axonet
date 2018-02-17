@@ -218,21 +218,7 @@ class Server:
                             except AttributeError:
                                 pass
                             finally:
-                                x = injector.init(network_tuple)
-                                print("!!!")
-
-                                # The mess below handles the collect() loop that would normally be in inject.py
-                                while 1:
-                                    if x == 0 and len(network_tuple[0]) >= 1:
-                                        try:
-                                            x = injector.init(network_tuple)
-                                        except BrokenPipeError:
-                                            self.disconnect(client)
-                                    elif len(network_tuple[0]) == 0:
-                                        break
-                                    elif len(network_tuple[0]) > 1:
-                                        print("!!!")
-                                        break  # We have remote connections...
+                               pass
 
                     else:  # this is a remote connection
                         print("Server -> ", address, " has connected.", sep='')
@@ -246,7 +232,22 @@ class Server:
                             except AttributeError:
                                 pass
                             finally:
-                                injector.init(network_tuple)
+                                x = injector.init(network_tuple)
+                                print("!!!")
+
+                                # The mess below handles the collect() loop that would normally be in inject.py
+                                net_len = len(network_tuple[0])
+                                while 1:
+                                    if x == 0 and len(network_tuple[0]) >= 1:
+                                        try:
+                                            x = injector.init(network_tuple)
+                                        except BrokenPipeError:
+                                            self.disconnect(client)
+                                    elif len(network_tuple[0]) == 0:
+                                        break
+                                    elif len(network_tuple[0]) > 1 or len(network_tuple[0]) < net_len:
+                                        print("!!!")
+                                        break  # We have remote connections...
 
                         if network_architecture == "complete":
                             self.broadcast(self.prepare('ConnectTo:'+address))
