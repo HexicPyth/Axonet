@@ -22,7 +22,7 @@ class NetworkInjector(multiprocessing.Process):
         out += message
         return out
 
-    def send(self, sock, msg, signing=True):
+    def send(self, sock, msg, network_tuple, signing=True):
         global current_message
         if signing:
             msg = self.prepare(msg).encode('utf-8')
@@ -41,7 +41,14 @@ class NetworkInjector(multiprocessing.Process):
         except UnicodeDecodeError:
             print("Server -> Injector -> Broadcast (unable to decode) to the network")
         finally:
+            #try:
             sock.sendall(current_message)
+            #except BrokenPipeError:
+            #    # This socket disconnected; return it's address so the server can remove it from network_tuple.
+            #    index = network_tuple[0].index(sock)
+            #    #socket_to_disconnect = network_tuple[0][index]
+            #    address = network_tuple[1][index]
+            #    print("TODO: disconnect from "+address)
 
     def broadcast(self, message, network_tuple):
         global current_message
@@ -52,11 +59,9 @@ class NetworkInjector(multiprocessing.Process):
             address = network_tuple[1][index]  # Find the address of the socket we're sending to
 
             print("Sending: "+"'"+message+"'"+" to "+address)  # print("Sending: '(message)' to (address)")
-            self.send(client, message)  # For each of them send the given message( = Broadcast)
+            self.send(client, message, network_tuple)  # For each of them send the given message( = Broadcast)
 
         current_message = None  # reset current message
-
-
 
     def kill(self):
         print("Injector -> Terminate() : Reluctantly terminating myself... * cries to the thought of SIGKILL *")

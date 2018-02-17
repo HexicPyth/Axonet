@@ -246,6 +246,7 @@ class Client:
 
     def listen(self, in_socket):
         def listener_thread(in_sock):
+            global terminated
             while not terminated:
                 incoming = self.receive(in_sock)
                 msg = incoming
@@ -255,7 +256,8 @@ class Client:
 
                 except TypeError:
                     print("Client -> Connection probably down or terminated (TypeError: listen() -> listener_thread()")
-
+                    self.disconnect(in_sock)
+                    terminated = True
         # Start listener in a new thread
         threading.Thread(target=listener_thread, args=(in_socket,), name='listener_thread').start()
 

@@ -144,12 +144,13 @@ class Server:
     @staticmethod
     def disconnect(in_sock):
         index = network_tuple[0].index(in_sock)  # Find the index of this socket so we can find it's address
+        print("\nDisconnecting from " + str(in_sock))
         print("Disconnecting from ", network_tuple[1][index])
-        in_sock.close()
-
-        print("Server -> Removing from network_tuple")
+        print("Server -> Removing " + str(in_sock) + " from network_tuple\n")
         network_tuple[0].pop(index)
         network_tuple[1].pop(index)
+        in_sock.close()
+
 
         print("Server -> Successfully disconnected.")
 
@@ -233,16 +234,21 @@ class Server:
 
                         if network_injection:
                                 x = injector.init(network_tuple)
-                                print("!!!")
 
                                 # The mess below handles the collect() loop that would normally be in inject.py
                                 net_len = len(network_tuple[0])
                                 while 1:
                                     if x == 0 and len(network_tuple[0]) >= 1:
                                         try:
+                                            print(network_tuple)
                                             x = injector.init(network_tuple)
                                         except BrokenPipeError:
                                             self.disconnect(client)
+
+                                    elif type(x) == tuple:
+                                        print("Server -> Disconnecting from: "+x[1])
+                                        self.disconnect(x[0])
+
                                     elif len(network_tuple[0]) == 0:
                                         break
                                     elif len(network_tuple[0]) > 1 or len(network_tuple[0]) != net_len:
