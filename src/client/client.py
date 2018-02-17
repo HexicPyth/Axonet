@@ -199,6 +199,7 @@ class Client:
                         self.connect(sock, address, PORT)
                         self.listen(sock)
                 else:
+                    print("\n\n"+str(network_tuple)+"\n\n")
                     print("Not connecting to", address+";", "We're already connected.")
 
             if message.startswith('exec:'):

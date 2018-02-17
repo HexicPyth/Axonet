@@ -13,7 +13,7 @@ localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Add SO_REUSEA
 injector = inject.NetworkInjector()
 message_list = []   # List of message hashes
 no_prop = "ffffffffffffffff"  # Sending a message with a true hash indicates that no message propagation is needed.
-
+net_injection = False
 
 class Server:
     @staticmethod
@@ -175,16 +175,46 @@ class Server:
                         pass  # We're already disconnected
                     listener_terminated = True
 
+        def start_injector(client):
+            global net_injection
+            if net_injection:
+                x = injector.init(network_tuple)
+
+                # The mess below handles the collect() loop that would normally be in inject.py
+                net_len = len(network_tuple[0])
+                while 1:
+                    if x == 0 and len(network_tuple[0]) >= 1:
+                        try:
+                            print(network_tuple)
+                            x = injector.init(network_tuple)
+                        except BrokenPipeError:
+                            self.disconnect(client)
+
+                    elif type(x) == tuple:
+                        print("Server -> Disconnecting from: " + x[1])
+                        self.disconnect(x[0])
+
+                    elif len(network_tuple[0]) == 0:
+                        break
+                    elif len(network_tuple[0]) > 1 or len(network_tuple[0]) != net_len:
+                        print("!!!")
+                        break  # We have remote connections...
+                    else:
+                        break
+
         # Start listener in a new thread
         print('starting listener thread')
         threading.Thread(target=listener, name='listener_thread').start()
+        threading.Thread(target=start_injector, name='injector_thread', args=(in_sock,)).start()
 
     def initialize(self, port=3704, listening=True, method="socket", network_injection=False,
                    network_architecture="complete"):
         if method == "socket":
             global injector
             global localhost
+            global net_injection
             address_string = self.get_local_ip()+":"+str(port)
+            net_injection = network_injection
 
             print("Server -> Initializing...")
 
@@ -234,31 +264,6 @@ class Server:
                         if network_architecture == "complete":
                             self.broadcast(self.prepare('ConnectTo:' + address))
                             print('...')
-
-                        if network_injection:
-                                x = injector.init(network_tuple)
-
-                                # The mess below handles the collect() loop that would normally be in inject.py
-                                net_len = len(network_tuple[0])
-                                while 1:
-                                    if x == 0 and len(network_tuple[0]) >= 1:
-                                        try:
-                                            print(network_tuple)
-                                            x = injector.init(network_tuple)
-                                        except BrokenPipeError:
-                                            self.disconnect(client)
-
-                                    elif type(x) == tuple:
-                                        print("Server -> Disconnecting from: "+x[1])
-                                        self.disconnect(x[0])
-
-                                    elif len(network_tuple[0]) == 0:
-                                        break
-                                    elif len(network_tuple[0]) > 1 or len(network_tuple[0]) != net_len:
-                                        print("!!!")
-                                        break  # We have remote connections...
-                                    else:
-                                        break
 
                 except ConnectionResetError:
                     print("Server -> localhost has disconnected")
