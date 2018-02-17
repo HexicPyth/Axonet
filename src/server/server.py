@@ -227,12 +227,11 @@ class Server:
                         self.listen(client)
                         self.send(client, "echo")
 
+                        if network_architecture == "complete":
+                            self.broadcast(self.prepare('ConnectTo:' + address))
+                            print('...')
+
                         if network_injection:
-                            try:
-                                injector.kill()  # Let's make sure this doesn't run in multiple processes
-                            except AttributeError:
-                                pass
-                            finally:
                                 x = injector.init(network_tuple)
                                 print("!!!")
 
@@ -242,20 +241,16 @@ class Server:
                                     if x == 0 and len(network_tuple[0]) >= 1:
                                         try:
                                             x = injector.init(network_tuple)
-                                            print("-\n\n\n\n-")
                                         except BrokenPipeError:
                                             self.disconnect(client)
                                     elif len(network_tuple[0]) == 0:
                                         break
-                                    elif len(network_tuple[0]) > 1 or len(network_tuple[0]) < net_len:
+                                    elif len(network_tuple[0]) > 1 or len(network_tuple[0]) != net_len:
                                         print("!!!")
                                         break  # We have remote connections...
                                     else:
                                         break
 
-                        if network_architecture == "complete":
-                            self.broadcast(self.prepare('ConnectTo:'+address))
-                            print('...')
                 except ConnectionResetError:
                     print("Server -> localhost has disconnected")
 
