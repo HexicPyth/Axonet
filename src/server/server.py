@@ -250,6 +250,8 @@ class Server:
                                     elif len(network_tuple[0]) > 1 or len(network_tuple[0]) < net_len:
                                         print("!!!")
                                         break  # We have remote connections...
+                                    else:
+                                        break
 
                         if network_architecture == "complete":
                             self.broadcast(self.prepare('ConnectTo:'+address))
