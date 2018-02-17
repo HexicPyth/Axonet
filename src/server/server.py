@@ -84,6 +84,7 @@ class Server:
     def receive(self, in_sock):
         # Read message length and unpack it into an integer
         # Returns: (message) -> str
+
         raw_msglen = self.receiveall(in_sock, 4)
 
         if not raw_msglen:
@@ -157,15 +158,17 @@ class Server:
             listener_terminated = False  # When set, this thread and this thread only, is stopped.
 
             while not listener_terminated:
-                incoming = self.receive(in_sock)
                 try:
+                    incoming = self.receive(in_sock)
                     if incoming:
                         self.respond(incoming, in_sock)
-                except OSError:
-                    pass
-                except TypeError:
+
+                except (OSError, TypeError):
                     print("Server -> Connection probably down or terminated; Disconnecting...")
-                    self.disconnect(in_sock)
+                    try:
+                        self.disconnect(in_sock)
+                    except ValueError:
+                        pass  # We're already disconnected
                     listener_terminated = True
 
         # Start listener in a new thread
@@ -215,7 +218,21 @@ class Server:
                             except AttributeError:
                                 pass
                             finally:
-                                injector.init(network_tuple)
+                                x = injector.init(network_tuple)
+                                print("!!!")
+
+                                # The mess below handles the collect() loop that would normally be in inject.py
+                                while 1:
+                                    if x == 0 and len(network_tuple[0]) >= 1:
+                                        try:
+                                            x = injector.init(network_tuple)
+                                        except BrokenPipeError:
+                                            self.disconnect(client)
+                                    elif len(network_tuple[0]) == 0:
+                                        break
+                                    elif len(network_tuple[0]) > 1:
+                                        print("!!!")
+                                        break  # We have remote connections...
 
                     else:  # this is a remote connection
                         print("Server -> ", address, " has connected.", sep='')

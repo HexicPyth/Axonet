@@ -53,14 +53,10 @@ class NetworkInjector(multiprocessing.Process):
 
             print("Sending: "+"'"+message+"'"+" to "+address)  # print("Sending: '(message)' to (address)")
             self.send(client, message)  # For each of them send the given message( = Broadcast)
+
         current_message = None  # reset current message
 
-    def collect(self, network_tuple, fileno):
-        sys.stdin = os.fdopen(fileno)
-        while 1:
-            msg = str(input("Please enter flag to inject into network:  "))
-            print("Server/Injector -> Broadcasting", msg, "to the network")
-            self.broadcast(msg, network_tuple)
+
 
     def kill(self):
         print("Injector -> Terminate() : Reluctantly terminating myself... * cries to the thought of SIGKILL *")
@@ -68,6 +64,11 @@ class NetworkInjector(multiprocessing.Process):
         return
 
     def init(self, network_tuple):
-        fn = sys.stdin.fileno()
-        injector = multiprocessing.Process(target=self.collect, args=(network_tuple, fn,), name='Injector')
-        injector.start()
+        #fn = sys.stdin.fileno()
+        #sys.stdin = os.fdopen(fn)
+        msg = str(input("Please enter flag to inject into network:  "))
+        print("Server/Injector -> Broadcasting", msg, "to the network")
+        self.broadcast(msg, network_tuple)
+        return 0
+        #injector = multiprocessing.Process(target=self.collect, args=(network_tuple, fn,), name='Injector')
+        #injector.start()

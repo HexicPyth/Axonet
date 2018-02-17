@@ -74,6 +74,18 @@ class Client:
         out = sig+":"+message
         return out
 
+    @staticmethod
+    def disconnect(in_sock):
+        index = network_tuple[0].index(in_sock)  # Find the index of this socket so we can find it's address
+        print("Disconnecting from ", network_tuple[1][index])
+        in_sock.close()
+
+        print("Server -> Removing from network_tuple")
+        network_tuple[0].pop(index)
+        network_tuple[1].pop(index)
+
+        print("Server -> Successfully disconnected.")
+
     ''' The following thee functions were written by StackOverflow user 
     Adam Rosenfield and modified by me, HexicPyth.
     https://stackoverflow.com/a/17668009
@@ -87,7 +99,11 @@ class Client:
 
         # Prefix each message with a 4-byte length (network byte order)
         msg = struct.pack('>I', len(msg)) + msg
-        sock.sendall(msg)
+        try:
+            sock.sendall(msg)
+        except OSError:
+            print("Disconnecting...")
+            self.disconnect(sock)
 
     @staticmethod
     def receiveall(sock, n):
