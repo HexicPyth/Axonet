@@ -14,6 +14,7 @@ injector = inject.NetworkInjector()
 message_list = []   # List of message hashes
 no_prop = "ffffffffffffffff"  # Sending a message with a true hash indicates that no message propagation is needed.
 net_injection = False
+injector_terminated = False
 
 class Server:
     @staticmethod
@@ -158,6 +159,7 @@ class Server:
         print("Server -> Successfully disconnected.")
 
     def listen(self, in_sock):
+        global injector_terminated
         def listener():
             listener_terminated = False  # When set, this thread and this thread only, is stopped.
 
@@ -177,34 +179,51 @@ class Server:
 
         def start_injector(client):
             global net_injection
-            if net_injection:
-                x = injector.init(network_tuple)
+            global injector_terminated
 
-                # The mess below handles the collect() loop that would normally be in inject.py
-                net_len = len(network_tuple[0])
-                while 1:
-                    if x == 0 and len(network_tuple[0]) >= 1:
-                        try:
+            if not injector_terminated:
+                if net_injection:
+                    x = injector.init(network_tuple)
+
+                    # The mess below handles the collect() loop that would normally be in inject.py
+                    net_len = len(network_tuple[0])
+                    while 1:
+                        print(x)
+                        if type(x) == str:
+                            print("\n TODO: Server -> Disconnect from: " + x)
+                            index = network_tuple[1].index(x)
                             print(network_tuple)
-                            x = injector.init(network_tuple)
-                        except BrokenPipeError:
-                            self.disconnect(client)
+                            sock = network_tuple[0][index]
+                            print("\n TODO: Server -> Disconnect from: " + str(sock))
 
-                    elif type(x) == tuple:
-                        print("Server -> Disconnecting from: " + x[1])
-                        self.disconnect(x[0])
+                            #self.disconnect(x[0])
 
-                    elif len(network_tuple[0]) == 0:
-                        break
-                    elif len(network_tuple[0]) > 1 or len(network_tuple[0]) != net_len:
-                        print("!!!")
-                        break  # We have remote connections...
-                    else:
-                        break
+                        if x == 0 and len(network_tuple[0]) >= 1:
+                            try:
+                                print(network_tuple)
+                                x = injector.init(network_tuple)
+                            except BrokenPipeError:
+                                pass  # We'll get the address of the disconnected device shortly; pass
+
+                        elif len(network_tuple[0]) == 0:
+                            break
+
+                        elif len(network_tuple[0]) > 1 or len(network_tuple[0]) != net_len:
+                            print("!!!")
+                            break  # We have remote connections...
+                        else:
+                            break
+            elif injector_terminated:
+                print("Terminating Injector...")
+                return 0
 
         # Start listener in a new thread
         print('starting listener thread')
         threading.Thread(target=listener, name='listener_thread').start()
+
+        injector_terminated = True  # Kill any running network injector(s)
+        injector_terminated = False
+
         threading.Thread(target=start_injector, name='injector_thread', args=(in_sock,)).start()
 
     def initialize(self, port=3704, listening=True, method="socket", network_injection=False,

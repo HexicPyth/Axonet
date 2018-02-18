@@ -191,7 +191,7 @@ class Client:
                 address = message[10:]
                 if address not in network_tuple[1]:
 
-                    if address == self.get_local_ip():
+                    if address == self.get_local_ip() or address == "127.0.0.1":
                         print("Not connecting to", address + ";", "That's localhost :P")
 
                     else:
