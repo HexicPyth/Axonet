@@ -170,11 +170,7 @@ class Server:
                         self.respond(incoming, in_sock)
 
                 except (OSError, TypeError):
-                    print("Server -> Connection probably down or terminated; Disconnecting...")
-                    try:
-                        self.disconnect(in_sock)
-                    except ValueError:
-                        pass  # We're already disconnected
+                    print("Server -> Connection probably down or terminated; terminating listener")
                     listener_terminated = True
 
         def start_injector(client):
@@ -194,9 +190,7 @@ class Server:
                             index = network_tuple[1].index(x)
                             print(network_tuple)
                             sock = network_tuple[0][index]
-                            print("\n TODO: Server -> Disconnect from: " + str(sock))
-
-                            #self.disconnect(x[0])
+                            self.disconnect(sock)
 
                         if x == 0 and len(network_tuple[0]) >= 1:
                             try:
