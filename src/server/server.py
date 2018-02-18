@@ -155,7 +155,7 @@ class Server:
             in_sock.close()
 
             print("Server -> Successfully disconnected.")
-            self.broadcast("remove:"+address)
+            self.broadcast(self.prepare("remove:"+address))
         except IndexError:
             print("Already disconnected; passing")
             pass
