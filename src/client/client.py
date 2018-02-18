@@ -236,6 +236,7 @@ class Client:
                 del elect_msg
 
             if message.startswith('elect:'):
+                print("\n"+str(network_tuple)+"\n")
                 info = message[6:]
                 number = info[-16:]
                 address = info[:-17]

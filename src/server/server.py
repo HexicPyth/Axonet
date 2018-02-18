@@ -160,6 +160,7 @@ class Server:
 
     def listen(self, in_sock):
         global injector_terminated
+
         def listener():
             listener_terminated = False  # When set, this thread and this thread only, is stopped.
 
@@ -170,7 +171,9 @@ class Server:
                         self.respond(incoming, in_sock)
 
                 except (OSError, TypeError):
-                    print("Server -> Connection probably down or terminated; terminating listener")
+                    index = network_tuple[0].index(in_sock)
+                    address = network_tuple[0][index]
+                    print("Server -> Connection to "+address + "probably down or terminated;")
                     listener_terminated = True
 
         def start_injector(client):
@@ -184,6 +187,9 @@ class Server:
                     # The mess below handles the collect() loop that would normally be in inject.py
                     net_len = len(network_tuple[0])
                     while 1:
+                        nl = len(network_tuple[0])
+                        if net_len != nl:
+                            break
                         print(x)
                         if type(x) == str:
                             print("\n TODO: Server -> Disconnect from: " + x)
