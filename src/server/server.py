@@ -246,15 +246,6 @@ class Server:
                         self.listen(client)
                         print("Server -> Listening on localhost...")
 
-                        if network_injection:
-                            try:
-                                #injector.kill()  # Let's make sure this doesn't run in multiple processes
-                                pass
-                            except AttributeError:
-                                pass
-                            finally:
-                               pass
-
                     else:  # this is a remote connection
                         print("Server -> ", address, " has connected.", sep='')
                         print("Server -> Listening on ", address, sep='')
@@ -262,6 +253,7 @@ class Server:
                         self.send(client, "echo")
 
                         if network_architecture == "complete":
+                            print("!")
                             self.broadcast(self.prepare('ConnectTo:' + address))
                             print('...')
 
