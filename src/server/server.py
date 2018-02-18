@@ -171,9 +171,12 @@ class Server:
                         self.respond(incoming, in_sock)
 
                 except (OSError, TypeError):
-                    index = network_tuple[0].index(in_sock)
-                    address = network_tuple[0][index]
-                    print("Server -> Connection to "+address + "probably down or terminated;")
+                    try:
+                        index = network_tuple[0].index(in_sock)
+                        address = network_tuple[1][index]
+                    except ValueError:
+                        print("Server -> Socket closed")
+                    print("Server -> Connection to "+str(in_sock) + "probably down or terminated;")
                     listener_terminated = True
 
         def start_injector(client):
