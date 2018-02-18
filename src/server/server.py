@@ -16,6 +16,7 @@ no_prop = "ffffffffffffffff"  # Sending a message with a true hash indicates tha
 net_injection = False
 injector_terminated = False
 
+
 class Server:
     @staticmethod
     def get_local_ip():
@@ -142,21 +143,22 @@ class Server:
                 print("Server -> Broadcasting "+full_message)
                 self.broadcast(full_message)
 
-    @staticmethod
-    def disconnect(in_sock):
+    def disconnect(self, in_sock):
         try:
             index = network_tuple[0].index(in_sock)  # Find the index of this socket so we can find it's address
             print("\nDisconnecting from " + str(in_sock))
-            print("Disconnecting from ", network_tuple[1][index])
+            address = network_tuple[1][index]
+            print("Disconnecting from ", address)
             print("Server -> Removing " + str(in_sock) + " from network_tuple\n")
             network_tuple[0].pop(index)
             network_tuple[1].pop(index)
             in_sock.close()
+
+            print("Server -> Successfully disconnected.")
+            self.broadcast("remove:"+address)
         except IndexError:
             print("Already disconnected; passing")
             pass
-
-        print("Server -> Successfully disconnected.")
 
     def listen(self, in_sock):
         global injector_terminated
@@ -172,8 +174,7 @@ class Server:
 
                 except (OSError, TypeError):
                     try:
-                        index = network_tuple[0].index(in_sock)
-                        address = network_tuple[1][index]
+                        self.disconnect(in_sock)
                     except ValueError:
                         print("Server -> Socket closed")
                     print("Server -> Connection to "+str(in_sock) + "probably down or terminated;")
