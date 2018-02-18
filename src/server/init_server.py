@@ -7,7 +7,8 @@ port = 3705
 
 def init():
     x = server.Server()
-    x.initialize(port=port, method="socket", listening=True, network_injection=True)
+    x.initialize(port=port, network_architecture="complete", method="socket", listening=True, network_injection=True)
+
 
 if __name__ == "__main__":
     init()

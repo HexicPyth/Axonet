@@ -252,10 +252,10 @@ class Server:
                         self.listen(client)
                         self.send(client, "echo")
 
-                        if network_architecture == "complete":
-                            print("!")
-                            self.broadcast(self.prepare('ConnectTo:' + address))
-                            print('...')
+                    if network_architecture == "complete":
+                        print("!")
+                        self.broadcast(self.prepare('ConnectTo:' + address))
+                        print('...')
 
                 except ConnectionResetError:
                     print("Server -> localhost has disconnected")
