@@ -263,13 +263,13 @@ class Client:
                 sock = network_tuple[0][index]
 
                 try:
+                    print("Client -> Disconnecting from "+address)
                     index = network_tuple[1].index(address_to_remove)
                     network_tuple[1].pop(index)
                     network_tuple[0].pop(index)
-
-                except ValueError:
-                    print("Client -> Already disconnected")
                     
+                except (ValueError, TypeError):
+                    print("Client -> Already disconnected")
                 finally:
                     sock.shutdown()
                     sock.close()
