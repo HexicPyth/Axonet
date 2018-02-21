@@ -268,10 +268,9 @@ class Client:
                     network_tuple[1].pop(index)
                     network_tuple[0].pop(index)
                     
-                except (ValueError, TypeError):
+                except ValueError:
                     print("Client -> Already disconnected")
                 finally:
-                    sock.shutdown()
                     sock.close()
 
             # End of respond()

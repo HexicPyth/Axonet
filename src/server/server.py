@@ -81,7 +81,6 @@ class Server:
             network_tuple[0].pop(index)
             network_tuple[1].pop(index)  # self.disconnect() doesn't like broken sockets
             self.broadcast(self.prepare("remove:" + address))
-            sock.shutdown()
             sock.close()
 
     @staticmethod
