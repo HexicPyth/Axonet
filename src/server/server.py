@@ -202,9 +202,22 @@ class Server:
                         if type(x) == str:
                             print("\n TODO: Server -> Disconnect from: " + x)
                             index = network_tuple[1].index(x)
-                            print(network_tuple)
                             sock = network_tuple[0][index]
-                            self.disconnect(sock)
+                            print("----")
+                            print(sock)
+                            print("----")
+
+                            '''self.disconnect doesn't like sockets without remote addresses(raddr flags), so let's
+                                write another mini-disconnect function :P'''
+
+                            # TODO: what will sock.close() return if it fails? Put it in a try statement
+                            network_tuple[0].pop(index)
+                            network_tuple[1].pop(index)
+                            sock.close()
+
+                            print("--------------")
+                            print(network_tuple)
+                            print("\n")
 
                         if x == 0 and len(network_tuple[0]) >= 1:
                             try:
