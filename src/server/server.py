@@ -115,7 +115,7 @@ class Server:
         for connection in network_tuple[0]:
             print("Trying to disconnect from socket: " + str(connection))
             try:
-                self.disconnect(connection)
+                self.disconnect(connection, disallow_local_disconnect=True)
                 print("Successfully disconnected")
             except OSError:
                 print("Failed to disconnect from socket: "+str(connection))
@@ -143,22 +143,22 @@ class Server:
                 print("Server -> Broadcasting "+full_message)
                 self.broadcast(full_message)
 
-    def disconnect(self, in_sock):
+    def disconnect(self, in_sock, disallow_local_disconnect=True):
         try:
             index = network_tuple[0].index(in_sock)  # Find the index of this socket so we can find it's address
-            print("\nDisconnecting from " + str(in_sock))
             address = network_tuple[1][index]
-            print("Disconnecting from ", address)
-            print("Server -> Removing " + str(in_sock) + " from network_tuple\n")
-            network_tuple[0].pop(index)
-            network_tuple[1].pop(index)
-            in_sock.close()
-
-            print("Server -> Successfully disconnected.")
-            try:
-                self.broadcast(self.prepare("remove:"+address))
-            except (BrokenPipeError, OSError):
-                pass
+            if disallow_local_disconnect:
+                if address == self.get_local_ip():
+                    print("Client -> BUG -> Refusing to disconnect from localhost; that's a terrible idea.")
+                    return None
+            else:
+                print("\nDisconnecting from " + str(in_sock))
+                print("Disconnecting from ", network_tuple[1][index])
+                print("Client -> Removing " + str(in_sock) + " from network_tuple\n")
+                network_tuple[0].pop(index)
+                network_tuple[1].pop(index)
+                in_sock.close()
+                print("Client -> Successfully disconnected.")
 
         except IndexError:
             print("Already disconnected; passing")
