@@ -260,15 +260,19 @@ class Client:
 
             if message.startswith("remove:"):
                 address_to_remove = message[8:]
+                sock = network_tuple[0][index]
+
                 try:
                     index = network_tuple[1].index(address_to_remove)
                     network_tuple[1].pop(index)
-                    sock = network_tuple[0][index]
                     network_tuple[0].pop(index)
+
+                except ValueError:
+                    print("Client -> Already disconnected")
+                    
+                finally:
                     sock.shutdown()
                     sock.close()
-                except (ValueError, OSError):
-                    print("Client -> Already disconnected")
 
             # End of respond()
             print('Client -> broadcasting: '+full_message)
