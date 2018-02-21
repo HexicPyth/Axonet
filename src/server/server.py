@@ -70,7 +70,18 @@ class Server:
 
         # Prefix each message with a 4-byte length (network byte order)
         msg = struct.pack('>I', len(msg)) + msg
-        sock.sendall(msg)
+        try:
+            sock.sendall(msg)
+        except BrokenPipeError:
+            index = network_tuple[0].index(sock)
+            address = network_tuple[1][index]
+            print("Server -> Something happened sending to "+address)
+            print("Server -> Disconnecting from "+address)
+
+            network_tuple[0].pop(index)
+            network_tuple[1].pop(index)  # self.disconnect() doesn't like broken sockets
+            sock.shutdown()
+            sock.close()
 
     @staticmethod
     def receiveall(sock, n):
@@ -98,6 +109,9 @@ class Server:
     def broadcast(self, message):
         sockets = network_tuple[0]  # List of client we need to broadcast to
         for client in sockets:
+            index = network_tuple[0].index(client)
+            address = network_tuple[1][index]
+            print("Server -> Sending to: "+address)
             self.send(client, message, signing=False)  # For each of them send the given message( = Broadcast)
 
     @staticmethod
@@ -177,12 +191,21 @@ class Server:
                         self.respond(incoming, in_sock)
 
                 except (OSError, TypeError):
-                    try:
-                        self.disconnect(in_sock)
-                    except ValueError:
-                        print("Server -> Socket closed")
-                    print("Server -> Connection to "+str(in_sock) + "probably down or terminated;")
-                    listener_terminated = True
+                    print(str(in_sock))
+                    index = network_tuple[0].index(in_sock)
+                    address = network_tuple[1][index]
+                    print(address)
+
+                    if address == self.get_local_ip() or address == "127.0.0.1":
+                        print("Server -> Something happened with localhost; not disconnecting")
+                    else:
+                        try:
+                            self.disconnect(in_sock)
+                        except ValueError:
+                            print("Server -> Socket closed")
+                        finally:
+                            print("Server -> Connection to "+str(in_sock) + "probably down or terminated;")
+                            listener_terminated = True
 
         def start_injector(client):
             global net_injection
