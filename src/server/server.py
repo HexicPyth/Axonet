@@ -80,6 +80,7 @@ class Server:
 
             network_tuple[0].pop(index)
             network_tuple[1].pop(index)  # self.disconnect() doesn't like broken sockets
+            self.broadcast(self.prepare("remove:" + address))
             sock.shutdown()
             sock.close()
 
@@ -171,6 +172,7 @@ class Server:
                 print("Client -> Removing " + str(in_sock) + " from network_tuple\n")
                 network_tuple[0].pop(index)
                 network_tuple[1].pop(index)
+                self.broadcast(self.prepare("remove:"+address))
                 in_sock.close()
                 print("Client -> Successfully disconnected.")
 
@@ -229,6 +231,7 @@ class Server:
                             print("\n TODO: Server -> Disconnect from: " + x)
                             index = network_tuple[1].index(x)
                             sock = network_tuple[0][index]
+                            address = network_tuple[1][index]
                             print("----")
                             print(sock)
                             print("----")
@@ -239,6 +242,7 @@ class Server:
                             # TODO: what will sock.close() return if it fails? Put it in a try statement
                             network_tuple[0].pop(index)
                             network_tuple[1].pop(index)
+                            self.broadcast(self.prepare("remove:" + address))
                             sock.close()
 
                             print("--------------")

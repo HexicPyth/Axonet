@@ -258,6 +258,18 @@ class Client:
                 file_length = info[-4:]
                 print("\n Client -> Store segment of file: "+file_hash+" of length:"+file_length+"?")
 
+            if message.startswith("remove:"):
+                address_to_remove = message[8:]
+                try:
+                    index = network_tuple[1].index(address_to_remove)
+                    network_tuple[1].pop(index)
+                    sock = network_tuple[0][index]
+                    network_tuple[0].pop(index)
+                    sock.shutdown()
+                    sock.close()
+                except (ValueError, OSError):
+                    print("Client -> Already disconnected")
+
             # End of respond()
             print('Client -> broadcasting: '+full_message)
             self.broadcast(full_message)
