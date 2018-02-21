@@ -191,21 +191,24 @@ class Server:
                         self.respond(incoming, in_sock)
 
                 except (OSError, TypeError):
-                    print(str(in_sock))
-                    index = network_tuple[0].index(in_sock)
-                    address = network_tuple[1][index]
-                    print(address)
+                    try:
+                        print(str(in_sock))
+                        index = network_tuple[0].index(in_sock)
+                        address = network_tuple[1][index]
+                        print(address)
 
-                    if address == self.get_local_ip() or address == "127.0.0.1":
-                        print("Server -> Something happened with localhost; not disconnecting")
-                    else:
-                        try:
-                            self.disconnect(in_sock)
-                        except ValueError:
-                            print("Server -> Socket closed")
-                        finally:
-                            print("Server -> Connection to "+str(in_sock) + "probably down or terminated;")
-                            listener_terminated = True
+                        if address == self.get_local_ip() or address == "127.0.0.1":
+                            print("Server -> Something happened with localhost; not disconnecting")
+                        else:
+                            try:
+                                self.disconnect(in_sock)
+                            except ValueError:
+                                print("Server -> Socket closed")
+                            finally:
+                                print("Server -> Connection to "+str(in_sock) + "probably down or terminated;")
+                                listener_terminated = True
+                    except ValueError:  # socket is [closed]
+                        listener_terminated = True
 
         def start_injector(client):
             global net_injection
