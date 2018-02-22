@@ -173,7 +173,8 @@ class Client:
         if sig in message_list:
             print("Client -> Not responding to "+sig)
         else:
-            message_list.append(sig)  # Note this location. Race conditions occur if this is placed later-on...
+            if sig != no_prop:
+                message_list.append(sig)  # Note this location. Race conditions occur if this is placed later-on...
             index = network_tuple[0].index(in_sock)
             address = network_tuple[1][index]  # Find the address of the socket we're receiving from...
             print('Client -> Received: ' + message + " (" + sig + ")" + "from: " + address)
