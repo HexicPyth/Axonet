@@ -305,6 +305,7 @@ class Client:
                         self.respond(in_sock, msg)
 
                 except TypeError:
+                    print(in_sock)
                     print("Client -> Connection probably down or terminated (TypeError: listen() -> listener_thread()")
                     self.disconnect(in_sock)
                     terminated = True
