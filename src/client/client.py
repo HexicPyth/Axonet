@@ -269,6 +269,9 @@ class Client:
 
                         network_tuple[0].pop(index)
                         network_tuple[1].pop(index)  # self.disconnect() has an attitude again...
+                        print("\n TODO: close socket: ")
+                        print(sock)
+                        print("(above)")
                         # sock.close()
 
                     else:
