@@ -262,17 +262,24 @@ class Client:
 
                 try:
                     if address_to_remove != self.get_local_ip() and address_to_remove != "127.0.0.1":
-                        print("Client -> remove -> Disconnecting from " + address_to_remove)
+                        print("Client -> Remove -> Disconnecting from " + address_to_remove)
                         index = network_tuple[1].index(address_to_remove)
                         sock = network_tuple[0][index]
+
                         print('\n', address_to_remove, '=', sock, '\n')
+                        print("Client -> Remove -> popping from network tuple")
 
                         network_tuple[0].pop(index)
                         network_tuple[1].pop(index)  # self.disconnect() has an attitude again...
-                        print("\n TODO: close socket: ")
+
+                        print("\n Client -> Remove -> TODO: close the following socket: ")
                         print(sock)
-                        print("(above)")
-                        # sock.close()
+                        print("("+address_to_remove+")")
+                        print("\n")
+                        try:
+                            sock.shutdown(socket.SHUT_RDWR)
+                        except OSError:  # Endpoint isn't connected
+                            sock.close()
 
                     else:
                         print("Client -> Not disconnecting from localhost, dimwit.")
@@ -288,7 +295,9 @@ class Client:
     def listen(self, in_socket):
         def listener_thread(in_sock):
             global terminated
-            while not terminated:
+            listener_terminated = False
+
+            while not listener_terminated or terminated:
                 incoming = self.receive(in_sock)
                 msg = incoming
                 try:
@@ -296,13 +305,16 @@ class Client:
                         self.respond(in_sock, msg)
 
                 except TypeError:
-                    print(in_sock)
-                    print("Client -> Connection probably down or terminated (TypeError: listen() -> listener_thread()")
+                    print("Client -> Connection to "+str(in_sock) + "was severed or disconnected." +
+                          "(TypeError: listen() -> listener_thread()")
+
                     self.disconnect(in_sock)
-                    terminated = True
+                    listener_terminated = True
                 if incoming == 1:
                     print("Connection to " + str(in_sock) + "doesn't exist, terminating listener_thread()")
-                    terminated = True
+                    print(network_tuple)
+                    listener_terminated = True
+
         # Start listener in a new thread
         threading.Thread(target=listener_thread, args=(in_socket,), name='listener_thread').start()
 
