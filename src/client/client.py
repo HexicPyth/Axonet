@@ -269,7 +269,7 @@ class Client:
 
                         network_tuple[0].pop(index)
                         network_tuple[1].pop(index)  # self.disconnect() has an attitude again...
-                        sock.close()
+                        # sock.close()
 
                     else:
                         print("Client -> Not disconnecting from localhost, dimwit.")

@@ -170,7 +170,7 @@ class Server:
             else:
                 print("\nDisconnecting from " + str(in_sock))
                 print("Disconnecting from ", network_tuple[1][index])
-                print("Client -> Removing " + str(in_sock) + " from network_tuple\n")
+                print("Server -> Removing " + str(in_sock) + " from network_tuple\n")
                 network_tuple[0].pop(index)
                 network_tuple[1].pop(index)
                 local_client = network_tuple[0][0]
