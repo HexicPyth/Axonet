@@ -123,7 +123,6 @@ class Client:
                 try:
                     self.disconnect(sock)
                 except ValueError:
-                    packet = None
                     raise ValueError
                 raise ValueError
 

@@ -68,10 +68,12 @@ class Server:
         else:
             msg = message.encode('utf-8')
 
-        # Prefix each message with a 4-byte length (network byte order)
+        # Prefix each message with a 4-byte length (network byte order). Message lengths must be less than (2^32)-4.
         msg = struct.pack('>I', len(msg)) + msg
+
         try:
             sock.sendall(msg)
+
         except BrokenPipeError:
             index = network_tuple[0].index(sock)
             address = network_tuple[1][index]
@@ -215,7 +217,7 @@ class Server:
                     except ValueError:  # socket is [closed]
                         listener_terminated = True
 
-        def start_injector(client):
+        def start_injector():
             global net_injection
             global injector_terminated
 
@@ -235,7 +237,6 @@ class Server:
                                 print("\n TODO: Server -> Disconnect from: " + x)
                                 index = network_tuple[1].index(x)
                                 sock = network_tuple[0][index]
-                                address = network_tuple[1][index]
                                 print("----")
                                 print(sock)
                                 print("----")
@@ -275,10 +276,11 @@ class Server:
         print('starting listener thread')
         threading.Thread(target=listener, name='listener_thread').start()
 
-        injector_terminated = True  # Kill any running network injector(s)
-        injector_terminated = False
+        if net_injection:
+            injector_terminated = True  # Kill any running network injector(s)
+            injector_terminated = False
 
-        threading.Thread(target=start_injector, name='injector_thread', args=(in_sock,)).start()
+            threading.Thread(target=start_injector, name='injector_thread', args=()).start()  # Start a new one
 
     def initialize(self, port=3704, listening=True, method="socket", network_injection=False,
                    network_architecture="complete"):
