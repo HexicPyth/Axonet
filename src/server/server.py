@@ -173,8 +173,10 @@ class Server:
                 print("Client -> Removing " + str(in_sock) + " from network_tuple\n")
                 network_tuple[0].pop(index)
                 network_tuple[1].pop(index)
-                self.broadcast(self.prepare("remove:"+address))
+                local_client = network_tuple[0][0]
                 in_sock.close()
+                message = no_prop+":remove:"+address
+                self.send(local_client, message, signing=False)
                 print("Client -> Successfully disconnected.")
 
         except IndexError:
