@@ -276,7 +276,7 @@ class Client:
                     else:
                         print("Client -> Not disconnecting from localhost, dimwit.")
 
-                except ValueError:  # (ValueError, TypeError)
+                except (ValueError, TypeError):
                     print("Server -> Sorry, we're not connected to " + address_to_remove)
                     pass
 
