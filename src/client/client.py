@@ -258,17 +258,19 @@ class Client:
                 print("\n Client -> Store segment of file: "+file_hash+" of length:"+file_length+"?")
 
             if message.startswith("remove:"):
+
                 address_to_remove = message[7:]
+                print("\nClient -> remove -> Removing: "+address_to_remove)
 
                 try:
-                    print("Client -> Disconnecting from "+address)
+                    print("Client -> remove -> Disconnecting from "+address)
                     index = network_tuple[1].index(address_to_remove)
                     sock = network_tuple[0][index]
                     network_tuple[1].pop(index)
                     network_tuple[0].pop(index)
                     sock.close()
                     
-                except ValueError:
+                except (ValueError, TypeError):
                     print("Client -> Already disconnected")
 
             # End of respond()
