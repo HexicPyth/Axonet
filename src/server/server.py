@@ -80,7 +80,7 @@ class Server:
 
             network_tuple[0].pop(index)
             network_tuple[1].pop(index)  # self.disconnect() doesn't like broken sockets
-            # self.broadcast(self.prepare("remove:" + address))
+            self.broadcast(self.prepare("remove:" + address))
             sock.close()
 
     @staticmethod
@@ -164,11 +164,12 @@ class Server:
                         sock = network_tuple[0][index]
                         print('\n', address_to_remove, '=', sock, '\n')
 
-                        network_tuple[0].pop(index)
-                        network_tuple[1].pop(index)  # self.disconnect() has an attitude again...
-                        sock.close()
+                        #etwork_tuple[0].pop(index)
+                        #network_tuple[1].pop(index)  # self.disconnect() has an attitude again...
+                        #sock.close()
+                        self.disconnect(sock)
 
-                except ValueError:  # (ValueError, TypeError)
+                except ValueError:
                     print("Server -> Sorry, we're not connected to " + address_to_remove)
                     pass
 
