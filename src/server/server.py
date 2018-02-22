@@ -141,18 +141,37 @@ class Server:
         global message_list
         full_message = str(msg)
         sig = msg[:16]
-        if sig not in message_list:
-            print('Server -> Received: ' + msg)
+        message = msg[17:]
 
-            message = msg[17:]
+        if sig not in message_list:
+            print('Server -> Received: ' + message + " (" + sig + ")")  # Server -> Received echo (ffffffffffffffff)
+
             index = network_tuple[0].index(in_sock)
             address = network_tuple[1][index]
+
             if message == "echo":
                 # If received, we can two-way communication is functional
                 print("Server -> Note: Two-Way communication with", address, "established and/or tested functional")
                 self.send(in_sock, no_prop+":continue", signing=False)
 
-            if sig not in message_list and sig != no_prop:
+            if message.startswith("remove:"):
+                address_to_remove = message[7:]
+
+                try:
+                    print("Server -> remove -> Disconnecting from " + address_to_remove)
+                    index = network_tuple[1].index(address_to_remove)
+                    sock = network_tuple[0][index]
+                    print('\n', address_to_remove, '=', sock, '\n')
+
+                    network_tuple[0].pop(index)
+                    network_tuple[1].pop(index)  # self.disconnect() has an attitude again...
+                    sock.close()
+
+                except ValueError:  # (ValueError, TypeError)
+                    print("Server -> Sorry, we're not connected to " + address_to_remove)
+                    pass
+
+            if sig not in message_list and sig != no_prop:   # Don't append no_prop to message_list. That would be bad.
                 message_list.append(sig)
                 print("Server -> Broadcasting "+full_message)
                 self.broadcast(full_message)

@@ -267,10 +267,22 @@ class Client:
                     index = network_tuple[1].index(address_to_remove)
                     sock = network_tuple[0][index]
                     print('\n', address_to_remove, '=', sock, '\n')
-                    self.disconnect(sock)
+                    network_tuple[0].pop(index)
+                    network_tuple[1].pop(index)   # self.disconnect() doesn't like us again.
+                    sock.close()
+                    removed_from_client = True
                     
                 except (ValueError, TypeError):
                     print("Client -> Already disconnected")
+                    removed_from_client = False
+
+                if removed_from_client:
+                    '''We just finished disconnecting the client(s) from given address, 
+                        have the server(s) should do the same.'''
+
+                    message = no_prop + ":remove:" + address_to_remove
+                    local_server = network_tuple[0][0]  # Localhost is always the first element in network_tuple.
+                    self.send(local_server, message, signing=False)
 
             # End of respond()
             print('Client -> broadcasting: '+full_message)
