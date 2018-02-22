@@ -75,13 +75,13 @@ class Server:
         except BrokenPipeError:
             index = network_tuple[0].index(sock)
             address = network_tuple[1][index]
-            print("Server -> Something happened sending to "+address)
-            print("Server -> Disconnecting from "+address)
-
-            network_tuple[0].pop(index)
-            network_tuple[1].pop(index)  # self.disconnect() doesn't like broken sockets
-            self.broadcast(self.prepare("remove:" + address))
-            sock.close()
+            if address != self.get_local_ip() and address != "127.0.0.1":
+                print("Server -> Something happened sending to "+address)
+                print("Server -> Disconnecting from "+address)
+                network_tuple[0].pop(index)
+                network_tuple[1].pop(index)  # self.disconnect() doesn't like broken sockets
+                self.broadcast(self.prepare("remove:" + address))
+                sock.close()
 
     @staticmethod
     def receiveall(sock, n):
