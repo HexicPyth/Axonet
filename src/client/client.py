@@ -79,7 +79,7 @@ class Client:
             index = network_tuple[0].index(in_sock)  # Find the index of this socket so we can find it's address
             address = network_tuple[1][index]
             if disallow_local_disconnect:
-                if address == self.get_local_ip():
+                if address == self.get_local_ip() or address == "127.0.0.1":
                     return None
             else:
                 print("\nDisconnecting from " + str(in_sock))

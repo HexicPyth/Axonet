@@ -246,8 +246,6 @@ class Server:
                                 # TODO: what will sock.close() return if it fails? Put it in a try statement
                                 network_tuple[0].pop(index)
                                 network_tuple[1].pop(index)
-                                sock.close()
-
                                 print("--------------")
                                 print(network_tuple)
                                 print("\n")
