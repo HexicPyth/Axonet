@@ -94,7 +94,6 @@ class Client:
             print("Already disconnected; passing")
             pass
 
-
     ''' The following thee functions were written by StackOverflow user 
     Adam Rosenfield and modified by me, HexicPyth.
     https://stackoverflow.com/a/17668009
@@ -126,8 +125,8 @@ class Client:
                 try:
                     self.disconnect(sock)
                 except ValueError:
+                    packet = None
                     raise ValueError
-                packet = None
                 raise ValueError
 
             except UnicodeDecodeError:
@@ -259,19 +258,18 @@ class Client:
                 print("\n Client -> Store segment of file: "+file_hash+" of length:"+file_length+"?")
 
             if message.startswith("remove:"):
-                address_to_remove = message[8:]
-                sock = network_tuple[0][index]
+                address_to_remove = message[7:]
 
                 try:
                     print("Client -> Disconnecting from "+address)
                     index = network_tuple[1].index(address_to_remove)
+                    sock = network_tuple[0][index]
                     network_tuple[1].pop(index)
                     network_tuple[0].pop(index)
+                    sock.close()
                     
                 except ValueError:
                     print("Client -> Already disconnected")
-                finally:
-                    sock.close()
 
             # End of respond()
             print('Client -> broadcasting: '+full_message)
@@ -296,7 +294,6 @@ class Client:
                     terminated = True
         # Start listener in a new thread
         threading.Thread(target=listener_thread, args=(in_socket,), name='listener_thread').start()
-
 
     def terminate(self):
         global terminated
@@ -356,4 +353,3 @@ class Client:
                 print("Client -> Initializing with no remote connections...")
         else:
             print("TODO: Implement other network architectures")  # TODO: implement other architectures
-
