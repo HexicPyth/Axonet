@@ -262,15 +262,20 @@ class Client:
                 address_to_remove = message[7:]
 
                 try:
-                    print("Client -> remove -> Disconnecting from " + address_to_remove)
-                    index = network_tuple[1].index(address_to_remove)
-                    sock = network_tuple[0][index]
-                    print('\n', address_to_remove, '=', sock, '\n')
+                    if address_to_remove != self.get_local_ip() and address_to_remove != "127.0.0.1":
+                        print("Client -> remove -> Disconnecting from " + address_to_remove)
+                        index = network_tuple[1].index(address_to_remove)
+                        sock = network_tuple[0][index]
+                        print('\n', address_to_remove, '=', sock, '\n')
 
-                    network_tuple[0].pop(index)
-                    network_tuple[1].pop(index)  # self.disconnect() has an attitude again...
-                    sock.close()
-                    removed_from_client = True
+                        network_tuple[0].pop(index)
+                        network_tuple[1].pop(index)  # self.disconnect() has an attitude again...
+                        sock.close()
+                        removed_from_client = True
+
+                    else:
+                        print("Client -> Not disconnecting from localhost, dimwit.")
+                        removed_from_client = False
 
                 except ValueError:  # (ValueError, TypeError)
                     print("Server -> Sorry, we're not connected to " + address_to_remove)

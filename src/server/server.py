@@ -246,26 +246,28 @@ class Server:
                             break
                         print(x)
                         if type(x) == str:
-                            print("\n TODO: Server -> Disconnect from: " + x)
-                            index = network_tuple[1].index(x)
-                            sock = network_tuple[0][index]
-                            address = network_tuple[1][index]
-                            print("----")
-                            print(sock)
-                            print("----")
+                            if x != self.get_local_ip() and x != "127.0.0.1":
+                                print("\n TODO: Server -> Disconnect from: " + x)
+                                index = network_tuple[1].index(x)
+                                sock = network_tuple[0][index]
+                                address = network_tuple[1][index]
+                                print("----")
+                                print(sock)
+                                print("----")
 
-                            '''self.disconnect doesn't like sockets without remote addresses(raddr flags), so let's
-                                write another mini-disconnect function :P'''
+                                '''self.disconnect doesn't like sockets without remote addresses(raddr flags), so let's
+                                    write another mini-disconnect function :P'''
 
-                            # TODO: what will sock.close() return if it fails? Put it in a try statement
-                            network_tuple[0].pop(index)
-                            network_tuple[1].pop(index)
-                            self.broadcast(self.prepare("remove:" + address))
-                            sock.close()
+                                # TODO: what will sock.close() return if it fails? Put it in a try statement
+                                network_tuple[0].pop(index)
+                                network_tuple[1].pop(index)
+                                sock.close()
 
-                            print("--------------")
-                            print(network_tuple)
-                            print("\n")
+                                print("--------------")
+                                print(network_tuple)
+                                print("\n")
+                            else:
+                                print("Server -> Not disconnecting from localhost, dimwit.")
 
                         if x == 0 and len(network_tuple[0]) >= 1:
                             try:
