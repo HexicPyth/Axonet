@@ -260,21 +260,22 @@ class Client:
             if message.startswith("remove:"):
 
                 address_to_remove = message[7:]
-                print("\nClient -> remove -> Removing: "+address_to_remove)
 
                 try:
-                    print("Client -> remove -> Disconnecting from "+address_to_remove)
+                    print("Client -> remove -> Disconnecting from " + address_to_remove)
                     index = network_tuple[1].index(address_to_remove)
                     sock = network_tuple[0][index]
                     print('\n', address_to_remove, '=', sock, '\n')
+
                     network_tuple[0].pop(index)
-                    network_tuple[1].pop(index)   # self.disconnect() doesn't like us again.
+                    network_tuple[1].pop(index)  # self.disconnect() has an attitude again...
                     sock.close()
                     removed_from_client = True
-                    
-                except (ValueError, TypeError):
-                    print("Client -> Already disconnected")
+
+                except ValueError:  # (ValueError, TypeError)
+                    print("Server -> Sorry, we're not connected to " + address_to_remove)
                     removed_from_client = False
+                    pass
 
                 if removed_from_client:
                     '''We just finished disconnecting the client(s) from given address, 
