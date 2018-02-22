@@ -271,24 +271,13 @@ class Client:
                         network_tuple[0].pop(index)
                         network_tuple[1].pop(index)  # self.disconnect() has an attitude again...
                         sock.close()
-                        removed_from_client = True
 
                     else:
                         print("Client -> Not disconnecting from localhost, dimwit.")
-                        removed_from_client = False
 
                 except ValueError:  # (ValueError, TypeError)
                     print("Server -> Sorry, we're not connected to " + address_to_remove)
-                    removed_from_client = False
                     pass
-
-                if removed_from_client:
-                    '''We just finished disconnecting the client(s) from given address, 
-                        have the server(s) should do the same.'''
-
-                    message = no_prop + ":remove:" + address_to_remove
-                    local_server = network_tuple[0][0]  # Localhost is always the first element in network_tuple.
-                    self.send(local_server, message, signing=False)
 
             # End of respond()
             print('Client -> broadcasting: '+full_message)

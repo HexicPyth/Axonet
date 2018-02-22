@@ -154,25 +154,6 @@ class Server:
                 print("Server -> Note: Two-Way communication with", address, "established and/or tested functional")
                 self.send(in_sock, no_prop+":continue", signing=False)
 
-            if message.startswith("remove:"):
-                address_to_remove = message[7:]
-
-                try:
-                    if address_to_remove != self.get_local_ip() and address_to_remove != "127.0.0.1":
-                        print("Server -> remove -> Disconnecting from " + address_to_remove)
-                        index = network_tuple[1].index(address_to_remove)
-                        sock = network_tuple[0][index]
-                        print('\n', address_to_remove, '=', sock, '\n')
-
-                        #etwork_tuple[0].pop(index)
-                        #network_tuple[1].pop(index)  # self.disconnect() has an attitude again...
-                        #sock.close()
-                        self.disconnect(sock)
-
-                except ValueError:
-                    print("Server -> Sorry, we're not connected to " + address_to_remove)
-                    pass
-
             if sig not in message_list and sig != no_prop:   # Don't append no_prop to message_list. That would be bad.
                 message_list.append(sig)
                 print("Server -> Broadcasting "+full_message)
