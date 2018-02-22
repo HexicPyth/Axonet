@@ -80,7 +80,7 @@ class Server:
 
             network_tuple[0].pop(index)
             network_tuple[1].pop(index)  # self.disconnect() doesn't like broken sockets
-            self.broadcast(self.prepare("remove:" + address))
+            # self.broadcast(self.prepare("remove:" + address))
             sock.close()
 
     @staticmethod
@@ -158,14 +158,15 @@ class Server:
                 address_to_remove = message[7:]
 
                 try:
-                    print("Server -> remove -> Disconnecting from " + address_to_remove)
-                    index = network_tuple[1].index(address_to_remove)
-                    sock = network_tuple[0][index]
-                    print('\n', address_to_remove, '=', sock, '\n')
+                    if address_to_remove != self.get_local_ip() and address_to_remove != "127.0.0.1":
+                        print("Server -> remove -> Disconnecting from " + address_to_remove)
+                        index = network_tuple[1].index(address_to_remove)
+                        sock = network_tuple[0][index]
+                        print('\n', address_to_remove, '=', sock, '\n')
 
-                    network_tuple[0].pop(index)
-                    network_tuple[1].pop(index)  # self.disconnect() has an attitude again...
-                    sock.close()
+                        network_tuple[0].pop(index)
+                        network_tuple[1].pop(index)  # self.disconnect() has an attitude again...
+                        sock.close()
 
                 except ValueError:  # (ValueError, TypeError)
                     print("Server -> Sorry, we're not connected to " + address_to_remove)
