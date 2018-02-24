@@ -1,6 +1,4 @@
 # Python 3.6.2
-
-
 import socket
 import struct
 import threading
@@ -10,34 +8,37 @@ import os
 import random
 from hashlib import sha3_224
 
-network_tuple = ([], [])  # (sockets, addresses)
+# Globals
 localhost = socket.socket()
-terminated = False
-message_list = []
-ballet_tuple = ([], [])
-
-# Default parameters to be assigned by self.initialize() from init_client.init() (defaults are below)
-
 PORT = 3705
-allow_command_execution = False  # Don't execute arbitrary UNIX commands when casually asked, that's bad :]
+network_tuple = ([], [])  # (socket, address)
+ballet_tuple = ([], [])  # (value, address)
+message_list = []
+
 cluster_rep = None  # type -> bool
+terminated = False  # If true: the client has instructed to terminate; inform our functions and exit cleanly.
+allow_command_execution = False  # Don't execute arbitrary UNIX commands when casually asked, that's bad :]
+
 no_prop = "ffffffffffffffff"  # ffffffffffffffff:[message] = No message propagation.
 
 
 class Client:
-    # Find our local IP address and return it as a string
+
     @staticmethod
     def get_local_ip():
-
-        # Creates a temporary socket and connects to subnet, yielding our local IP address.
+        # Creates a temporary socket and connects to subnet, yielding our local address.
+        # Returns: (local ip address) -> str
         temp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
         try:
             temp_socket.connect(('10.255.255.0', 0))
+
+            # Yield our local address
             local_ip = temp_socket.getsockname()[0]
 
         except OSError:
             # Connect refused; there is likely no network connection.
+            print("Server -> get_local_ip() -> No network connection detected.")
             local_ip = "127.0.0.1"
 
         finally:
@@ -46,11 +47,28 @@ class Client:
         return local_ip
 
     @staticmethod
+    def prepare(message):
+        # Assign unique hashes to messages ready for transport.
+        # Returns (new hashed message) -> str
+        out = ""
+        timestamp = str(datetime.datetime.utcnow())
+        out += timestamp
+        out += message
+        sig = sha3_224(out.encode()).hexdigest()[:16]
+        out = sig+":"+message
+        return out
+
+    @staticmethod
     def append(sock, address):
+        # Append a connection(address and socket) to the network tuple.
+        # Returns nothing.
         network_tuple[0].append(sock)
         network_tuple[1].append(address)
 
     def connect(self, in_socket, address, port, local=False):
+        # Connect to a remote server and handle the connection(i.e append it).
+        # Returns nothing.
+
         if local:
             print("Client -> Connecting to localhost server...", end='')
             in_socket.connect((address, port))
@@ -64,30 +82,30 @@ class Client:
             self.append(in_socket, address)
             print("Client -> Success")
 
-    @staticmethod
-    def prepare(message):  # Process our message for broadcasting (Please ignore the mess :P)
-        out = ""
-        timestamp = str(datetime.datetime.utcnow())
-        out += timestamp
-        out += message
-        sig = sha3_224(out.encode()).hexdigest()[:16]
-        out = sig+":"+message
-        return out
-
     def disconnect(self, in_sock, disallow_local_disconnect=True):
+        # Try to disconnect from a remote server and remove it from the network tuple.
+        # Returns None if you try to do something stupid. otherwise returns nothing at all.
+
         try:
-            index = network_tuple[0].index(in_sock)  # Find the index of this socket so we can find it's address
+            index = network_tuple[0].index(in_sock)  # Find the address of the socket we're disconnecting from.
             address = network_tuple[1][index]
+
+            # Don't disconnect from localhost. That's done with self.terminate().
             if disallow_local_disconnect:
+
                 if address == self.get_local_ip() or address == "127.0.0.1":
                     return None
+
+            # Do disconnect from remote nodes. That actually makes sense.
             else:
-                print("\nDisconnecting from " + str(in_sock))
-                print("Disconnecting from ", network_tuple[1][index])
-                print("Client -> Removing " + str(in_sock) + " from network_tuple\n")
+                print("\nDisconnecting from " + str(in_sock))  # Print the socket we're disconnecting from
+                print("Disconnecting from ", network_tuple[1][index])  # Print the address we're disconnecting from
+
                 self.disconnect(in_sock)
+
                 print("Client -> Successfully disconnected.")
 
+        # Either the socket in question doesn't exist, or  the socket is probably [closed].
         except (IndexError, ValueError):
             print("Already disconnected; passing")
             pass
@@ -98,6 +116,9 @@ class Client:
     https://stackoverflow.com/users/9530/adam-rosenfield '''
 
     def send(self, sock, message, signing=True):
+        # Helper function to encode a given message and send it to a given server.
+        # Returns nothing.
+
         if signing:
             msg = self.prepare(message).encode('utf-8')
         else:
@@ -105,14 +126,22 @@ class Client:
 
         # Prefix each message with a 4-byte length (network byte order)
         msg = struct.pack('>I', len(msg)) + msg
+
+        # Attempt to send the message through normal means.
         try:
             sock.sendall(msg)
+
+        # Socket probably disconnected, let's do the same and remove it
+        # from the network tuple so it can't cause issues.
         except OSError:
             self.disconnect(sock)
 
     def receiveall(self, sock, n):
-        # Helper function to receive n bytes or return None if EOF is hit
+        # Helper function to receive n bytes.
+        # returns None if EOF is hit
+
         data = ''
+
         while len(data) < n:
             try:
                 packet = (sock.recv(n - len(data))).decode()
@@ -126,18 +155,21 @@ class Client:
                     raise ValueError
                 raise ValueError
 
+            # Something corrupted in transit. Let's just ignore the bad pieces for now.
             except UnicodeDecodeError:
                 packet = (sock.recv(n - len(data))).decode('utf-8', 'ignore')
                 print(packet)
 
             if not packet:
                 return None
+
             else:
                 data += packet
         return data.encode()
 
     def receive(self, in_sock):
         # Read message length and unpack it into an integer
+        # Returns None if self.receiveall fails, or nothing at all otherwise.
         try:
             raw_msglen = self.receiveall(in_sock, 4)
 
@@ -146,20 +178,31 @@ class Client:
 
             msglen = struct.unpack('>I', raw_msglen)[0]
             return self.receiveall(in_sock, msglen).decode()
+
+        # This socket disconnected. Return 1 so the calling function(probably the listener) knows what happened.
         except ValueError:
             return 1
 
     def broadcast(self, message):
-        sockets = network_tuple[0]  # List of client we need to broadcast to
+        # Helper function to broadcast a given message to the network.
+        # Returns nothing.
+
+        sockets = network_tuple[0]  # List of clients to send to.
         for server in sockets:
-            self.send(server, message, signing=False)  # For each of them send the given message( = Broadcast)
+            self.send(server, message, signing=False)  # For each of them send the given message(i.e broadcast)
 
     @staticmethod
-    def run_external_command(command):  # Important: To be run in external thread/process only!!!!
+    def run_external_command(command):
+        # Given a string containing a UNIX command, execute it.
+        # Returns 0 -> int (duh)
+
         os.system(command)
         return 0
 
     def respond(self, in_sock, msg):
+        # We received a message, reply with an appropriate response.
+        # Doesn't return anything.
+
         global message_list
         global ballet_tuple
         global cluster_rep
@@ -167,27 +210,41 @@ class Client:
         full_message = str(msg)
         sig = msg[:16]
         message = msg[17:]
+
+        # Don't respond to messages we've already responded to.
         if sig in message_list:
             print("Client -> Not responding to "+sig)
+
+        # Do respond to messages we have yet to respond to.
         else:
+
+            # Append signature(hash) to the message list, or in the case of sig=no_prop, do nothing.
             if sig != no_prop:
-                message_list.append(sig)  # Note this location. Race conditions occur if this is placed later-on...
+                message_list.append(sig)
+
+            # Find the address of the socket we're receiving from...
             index = network_tuple[0].index(in_sock)
-            address = network_tuple[1][index]  # Find the address of the socket we're receiving from...
+            address = network_tuple[1][index]
             print('Client -> Received: ' + message + " (" + sig + ")" + "from: " + address)
 
+            # Simple connection test mechanism.
             if message == "echo":
                 # Check if Client/Server communication is intact
                 print("Client -> echoing...")
                 self.send(in_sock, no_prop+':'+message, signing=False)  # If received, send back
 
+            # Easy way to instruct all nodes to disconnect from each other and exit cleanly.
             if message == "stop":
                 self.terminate()
 
+            # If we received a foreign address, connect to it. This is address propagation.
             if message.startswith("ConnectTo:"):
                 address = message[10:]
+
+                # The address is foreign, connect to it.
                 if address not in network_tuple[1]:
 
+                    # Don't re-connect to localhost. All kinds of bad things happen if you do.
                     if address == self.get_local_ip() or address == "127.0.0.1":
                         print("Not connecting to", address + ";", "That's localhost :P")
 
@@ -195,23 +252,31 @@ class Client:
                         sock = socket.socket()
                         self.connect(sock, address, PORT)
                         self.listen(sock)
+
+                # The address isn't foreign, don't re-connect to it.
                 else:
-                    print("\n\n"+str(network_tuple)+"\n\n")
                     print("Not connecting to", address+";", "We're already connected.")
 
             if message.startswith('exec:'):
+                # Assuming allow_command_execution is set, execute arbitrary UNIX commands in their own threads.
                 if allow_command_execution:
                     command = message[5:]
                     print("executing: "+command)
+
                     # Warning: This is about to execute some arbitrary UNIX command in it's own nice little
-                    # non-isolated fork of a process. Use as your own risk, and please secure your subnet.
+                    # non-isolated fork of a process.
                     command_process = multiprocessing.Process(target=self.run_external_command,
                                                               args=(command,), name='Cmd_Thread')
                     command_process.start()
 
+                # allow_command_execution is not set, don't execute arbitrary UNIX commands from the network.
                 else:
-
                     print("Not executing command: ", message[5:])
+
+            ''' Very oversimplified method of breaking the symmetry between nodes and choosing one to 'elect' as
+            representative for whatever task is at hand. Each node generates a 16-digit random number with a
+            Cryptographically Secure Pseudo-Random Number Generator; Whichever node generates the greatest number
+            'wins' the election for representative of whatever task it at hand. '''
 
             if message == "vote":
                 ballet_tuple = ([], [])  # Clear the ballet before initiating the vote
@@ -224,44 +289,56 @@ class Client:
                 while len(uid_str) != 16:  # Make sure that uid_str is <i>really</i> a 16-digit integer
                     uid_str = uid_str[:-1]
 
-                elect_msg += self.get_local_ip()
-                elect_msg += ":"
-                elect_msg += uid_str
-                print(len(uid_str))
+                elect_msg += self.get_local_ip() + ":" + uid_str  # e.x elect:10.1.10.7:9739273648719283
+
                 print("Contributing to the election: "+elect_msg)
                 self.broadcast(self.prepare(elect_msg))
-                del elect_msg
+                del elect_msg  # we don't need that anymore.
 
             if message.startswith('elect:'):
-                print("\n"+str(network_tuple)+"\n")
-                info = message[6:]
-                number = info[-16:]
-                address = info[:-17]
-                print(number, address)
-                ballet_tuple[0].append(number)
-                ballet_tuple[1].append(address)
+                info = message[6:]  # the whole string minus the 'elect:' part
+                number = info[-16:]  # e.x 9739273648719283
+                address = info[:-17]  # e.x 10.1.10.7
 
+                ballet_tuple[0].append(number)
+                ballet_tuple[1].append(address)  # Append number/address to the ballet tuple.
+
+                # We received a vote from every node, and nothing went catastrophically wrong with the network. Cool!
                 if len(ballet_tuple[0]) == len(network_tuple[0]) and len(ballet_tuple[0]) != 0:
+
+                    # The numbers we receive from the nodes are stored as strings. We need integers to evaluate their
+                    # relative sizes.
                     int_ballet_tuple = [int(i) for i in ballet_tuple[0]]
 
+                    # Be verbose
                     index = int_ballet_tuple.index(max(int_ballet_tuple))
                     print("\n--- " + ballet_tuple[0][index])   # we actually want the string here, not the int.
                     print("--- " + ballet_tuple[1][index] + " won the election for cluster representative\n")
+
+                    # Set this so we can check it later on.
                     cluster_rep = ballet_tuple[1][index]
 
+            # Eventually we'll be able to distribute shared
+            # retrievable information, like public keys, across the network.
             if message.startswith("file:"):
                 info = message[5:]
                 file_hash = info[:16]
                 file_length = info[-4:]
-                print("\n Client -> Store segment of file: "+file_hash+" of length:"+file_length+"?")
+                print("\n Client -> Store segment of file: "+file_hash+" of length: "+file_length+"?")
 
+            # Remove the specified node from the network (i.e disconnect from it)
             if message.startswith("remove:"):
 
                 address_to_remove = message[7:]
 
                 try:
+
+                    # Don't disconnect from localhost. That's what self.terminate is for.
                     if address_to_remove != self.get_local_ip() and address_to_remove != "127.0.0.1":
+
                         print("Client -> Remove -> Disconnecting from " + address_to_remove)
+
+                        # lookup the socket of the address we want to remove
                         index = network_tuple[1].index(address_to_remove)
                         sock = network_tuple[0][index]
 
@@ -271,10 +348,12 @@ class Client:
                         network_tuple[0].pop(index)
                         network_tuple[1].pop(index)  # self.disconnect() has an attitude again...
 
-                        print("\n Client -> Remove -> TODO: close the following socket: ")
+                        print("\n Client -> Remove -> Closing the following socket: ")
                         print(sock)
-                        print("("+address_to_remove+")")
+                        print("with address: "+address_to_remove+"")
                         print("\n")
+
+                        # Try to shutdown gracefully. IF that doesn't work, just close the socket the normal way.
                         try:
                             sock.shutdown(socket.SHUT_RDWR)
                         except OSError:  # Endpoint isn't connected
@@ -284,17 +363,23 @@ class Client:
                         print("Client -> Not disconnecting from localhost, dimwit.")
 
                 except (ValueError, TypeError):
+                    # Either the address we're looking for doesn't exist, or we're not connected it it.
                     print("Server -> Sorry, we're not connected to " + address_to_remove)
                     pass
 
             # End of respond()
+            # Propagate the message to the rest of the network.
             print('Client -> broadcasting: '+full_message)
             self.broadcast(full_message)
 
     def listen(self, in_socket):
+        # Listen for incoming messages and call self.respond() to respond to them.
+        # Also, deal with disconnections as they are most likely to throw errors here.
+        # Returns nothing.
+
         def listener_thread(in_sock):
             global terminated
-            listener_terminated = False
+            listener_terminated = False  # When set, this specific instance of listener_thread is stopped.
 
             while not listener_terminated or terminated:
                 incoming = self.receive(in_sock)
@@ -309,17 +394,21 @@ class Client:
 
                     self.disconnect(in_sock)
                     listener_terminated = True
+
                 if incoming == 1:
                     print("Connection to " + str(in_sock) + "doesn't exist, terminating listener_thread()")
-                    print(network_tuple)
                     listener_terminated = True
 
         # Start listener in a new thread
         threading.Thread(target=listener_thread, args=(in_socket,), name='listener_thread').start()
 
     def terminate(self):
+        # Disconnect from the network and exit the client cleanly.
+        # Returns 0 -> int (duh)
+
         global terminated
         print("Client -> Safely terminating our connections...")
+
         index = 0
         sock = network_tuple[0]
         addresses = network_tuple[1]
@@ -328,11 +417,14 @@ class Client:
             print("Client -> Terminating connection to", addresses[index])
             self.disconnect(device, disallow_local_disconnect=False)
             index += 1
+
         terminated = True
         return 0
 
-    def initialize(self, port=3705, network_architecture="Complete", remote_addresses=None,
-                   command_execution=False):
+    def initialize(self, port=3705, network_architecture="Complete",
+                   remote_addresses=None, command_execution=False):
+        # Initialize the client, set any global variable that need to be set, etc.
+
         global allow_command_execution
         global localhost
         global PORT
@@ -352,16 +444,21 @@ class Client:
             self.listen(localhost)
 
         except ConnectionRefusedError:
-            print("Failed")
-            print("Client -> Connection to local server was not successful; check that your server is "
+
+            print("Client -> Connection to localhost was not successful; check that your server is "
                   "up, and try again later.")
+            quit(1)
 
         print("Client -> Attempting to connect to remote server... (Initiating stage 1)")
+
         # Stage 1
         if network_architecture == "Complete":
+
             if remote_addresses:
+
                 for i in remote_addresses:
                     sock = socket.socket()
+
                     try:
                         self.connect(sock, i, port)
 
@@ -369,6 +466,7 @@ class Client:
                         self.listen(sock)
 
                         self.send(sock, "echo")
+
                     except ConnectionRefusedError:
                         print("Client -> Unable to connect to remove server; Failed to bootstrap.")
             else:
