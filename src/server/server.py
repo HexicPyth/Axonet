@@ -63,6 +63,25 @@ class Server:
         out += message
         return out
 
+    @staticmethod
+    def lookup_socket(address):  # TODO: optimize me
+        # Do a brute force search for a specific socket.
+        # Maybe this can be optimized by caching the indexes of commonly-used connections?
+
+        for item in network_tuple:
+            discovered_address = item[1]
+            if address == discovered_address:
+                return item[1]
+
+    @staticmethod
+    def lookup_address(in_sock):  # TODO: optimize me
+        # Do a brute force search for a specific address.
+        # Maybe this can be optimized by caching the indexes of commonly-used connections?
+        for item in network_tuple:
+            discovered_socket = item[0]
+            if in_sock == discovered_socket:
+                return item[0]
+
     ''' The three functions below were written by StackOverflow user 
     Adam Rosenfield and modified by me, HexicPyth.
     https://stackoverflow.com/a/17668009
@@ -292,8 +311,7 @@ class Server:
                                 print("\n TODO: Server -> Disconnect from: " + injector_return_value)
 
                                 # Find the address of the disconnected or otherwise faulty node.
-                                index = network_tuple[1].index(injector_return_value)
-                                sock = network_tuple[0][index]
+                                sock = self.lookup_socket(injector_return_value)
 
                                 print("----")
                                 print(sock)  # Useful for debugging purposes.
