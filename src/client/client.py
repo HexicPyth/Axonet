@@ -11,7 +11,7 @@ from hashlib import sha3_224
 # Globals
 localhost = socket.socket()
 PORT = 3705
-network_tuple = ([], [])  # (socket, address)
+network_tuple = ()  # (socket, address)
 ballet_tuple = ([], [])  # (value, address)
 message_list = []
 
@@ -59,37 +59,73 @@ class Client:
         return out
 
     @staticmethod
-    def append(sock, address):
-        # Append a connection(address and socket) to the network tuple.
-        # Returns nothing.
-        network_tuple[0].append(sock)
-        network_tuple[1].append(address)
+    def lookup_socket(address):  # TODO: optimize me
+        for item in network_tuple:
+            discovered_address = item[1]
+            if address == discovered_address:
+                return item[1]
 
-    def connect(self, in_socket, address, port, local=False):
+    @staticmethod
+    def lookup_address(in_sock):  # TODO: optimize me
+        for item in network_tuple:
+            discovered_socket = item[0]
+            if in_sock == discovered_socket:
+                return item[0]
+
+    @staticmethod
+    # Add a connection to the network_tuple
+    def append(in_socket, address):
+        global network_tuple
+
+        # Tuples are immutable; convert it to a list.
+        network_list = list(network_tuple)
+
+        connection = (in_socket, address)
+        network_list.append(connection)
+
+        # (Again) tuples are immutable; replace the old one with the new one
+        network_tuple = tuple(network_list)
+
+    @staticmethod
+    # Remove a connection from the network_tuple
+    def remove(connection):
+        global network_tuple
+
+        # Tuples are immutable; convert it to a list.
+        network_list = list(network_tuple)
+
+        # Identify and remove said connection
+        index = network_list.index(connection)
+        network_list.pop(index)
+
+        # (Again) tuples are immutable; replace the old one with the new one
+        network_tuple = tuple(network_list)
+
+    def connect(self, connection, address, port, local=False):
         # Connect to a remote server and handle the connection(i.e append it).
         # Returns nothing.
+        sock = connection[0]
 
         if local:
             print("Client -> Connecting to localhost server...", end='')
-            in_socket.connect((address, port))
-            self.append(in_socket, address)
+            sock.connect((address, port))
+            self.append(sock, address)
             print("success!")
             print("Client -> Connected.")
 
         if not local:
             print("Client -> Connecting to ", address, sep='')
-            in_socket.connect((address, port))
-            self.append(in_socket, address)
+            sock.connect((address, port))
+            self.append(sock, address)
             print("Client -> Success")
 
-    def disconnect(self, in_sock, disallow_local_disconnect=True):
+    def disconnect(self, connection, disallow_local_disconnect=True):
         # Try to disconnect from a remote server and remove it from the network tuple.
         # Returns None if you try to do something stupid. otherwise returns nothing at all.
+        sock = connection[0]
+        address = connection[1]
 
         try:
-            index = network_tuple[0].index(in_sock)  # Find the address of the socket we're disconnecting from.
-            address = network_tuple[1][index]
-
             # Don't disconnect from localhost. That's done with self.terminate().
             if disallow_local_disconnect:
 
@@ -98,10 +134,10 @@ class Client:
 
             # Do disconnect from remote nodes. That actually makes sense.
             else:
-                print("\nDisconnecting from " + str(in_sock))  # Print the socket we're disconnecting from
-                print("Disconnecting from ", network_tuple[1][index])  # Print the address we're disconnecting from
+                print("\nDisconnecting from " + str(sock))  # Print the socket we're disconnecting from
+                print("Disconnecting from ", address)  # Print the address we're disconnecting from
 
-                self.disconnect(in_sock)
+                self.disconnect(sock)
 
                 print("Client -> Successfully disconnected.")
 
@@ -115,9 +151,10 @@ class Client:
     https://stackoverflow.com/a/17668009
     https://stackoverflow.com/users/9530/adam-rosenfield '''
 
-    def send(self, sock, message, signing=True):
+    def send(self, connection, message, signing=True):
         # Helper function to encode a given message and send it to a given server.
         # Returns nothing.
+        sock = connection[0]
 
         if signing:
             msg = self.prepare(message).encode('utf-8')
@@ -167,29 +204,26 @@ class Client:
                 data += packet
         return data.encode()
 
-    def receive(self, in_sock):
+    def receive(self, connection):
         # Read message length and unpack it into an integer
         # Returns None if self.receiveall fails, or nothing at all otherwise.
+        sock = connection[0]
         try:
-            raw_msglen = self.receiveall(in_sock, 4)
+            raw_msglen = self.receiveall(sock, 4)
 
             if not raw_msglen:
                 return None
 
             msglen = struct.unpack('>I', raw_msglen)[0]
-            return self.receiveall(in_sock, msglen).decode()
+            return self.receiveall(sock, msglen).decode()
 
         # This socket disconnected. Return 1 so the calling function(probably the listener) knows what happened.
         except ValueError:
             return 1
 
     def broadcast(self, message):
-        # Helper function to broadcast a given message to the network.
-        # Returns nothing.
-
-        sockets = network_tuple[0]  # List of clients to send to.
-        for server in sockets:
-            self.send(server, message, signing=False)  # For each of them send the given message(i.e broadcast)
+        for connection in network_tuple:
+            self.send(connection, message, signing=False)  # For each of them send the given message( = Broadcast)
 
     @staticmethod
     def run_external_command(command):
@@ -199,7 +233,7 @@ class Client:
         os.system(command)
         return 0
 
-    def respond(self, in_sock, msg):
+    def respond(self, connection, msg):
         # We received a message, reply with an appropriate response.
         # Doesn't return anything.
 
@@ -210,6 +244,8 @@ class Client:
         full_message = str(msg)
         sig = msg[:16]
         message = msg[17:]
+        sock = connection[0]
+        address = connection[1]
 
         # Don't respond to messages we've already responded to.
         if sig in message_list:
@@ -223,15 +259,13 @@ class Client:
                 message_list.append(sig)
 
             # Find the address of the socket we're receiving from...
-            index = network_tuple[0].index(in_sock)
-            address = network_tuple[1][index]
             print('Client -> Received: ' + message + " (" + sig + ")" + "from: " + address)
 
             # Simple connection test mechanism.
             if message == "echo":
                 # Check if Client/Server communication is intact
                 print("Client -> echoing...")
-                self.send(in_sock, no_prop+':'+message, signing=False)  # If received, send back
+                self.send(connection, no_prop+':'+message, signing=False)  # If received, send back
 
             # Easy way to instruct all nodes to disconnect from each other and exit cleanly.
             if message == "stop":
@@ -239,19 +273,19 @@ class Client:
 
             # If we received a foreign address, connect to it. This is address propagation.
             if message.startswith("ConnectTo:"):
-                address = message[10:]
+                connect_to_address = message[10:]
 
                 # The address is foreign, connect to it.
-                if address not in network_tuple[1]:
+                if not self.lookup_socket(connect_to_address):
 
                     # Don't re-connect to localhost. All kinds of bad things happen if you do.
                     if address == self.get_local_ip() or address == "127.0.0.1":
                         print("Not connecting to", address + ";", "That's localhost :P")
 
                     else:
-                        sock = socket.socket()
-                        self.connect(sock, address, PORT)
-                        self.listen(sock)
+                        new_socket = socket.socket()
+                        self.connect(new_socket, address, PORT)
+                        self.listen(new_socket)
 
                 # The address isn't foreign, don't re-connect to it.
                 else:
@@ -304,7 +338,7 @@ class Client:
                 ballet_tuple[1].append(address)  # Append number/address to the ballet tuple.
 
                 # We received a vote from every node, and nothing went catastrophically wrong with the network. Cool!
-                if len(ballet_tuple[0]) == len(network_tuple[0]) and len(ballet_tuple[0]) != 0:
+                if len(ballet_tuple[0]) == len(network_tuple) and len(ballet_tuple[0]) != 0:
 
                     # The numbers we receive from the nodes are stored as strings. We need integers to evaluate their
                     # relative sizes.
@@ -339,14 +373,13 @@ class Client:
                         print("Client -> Remove -> Disconnecting from " + address_to_remove)
 
                         # lookup the socket of the address we want to remove
-                        index = network_tuple[1].index(address_to_remove)
-                        sock = network_tuple[0][index]
+                        sock = self.lookup_socket(address_to_remove)
 
                         print('\n', address_to_remove, '=', sock, '\n')
                         print("Client -> Remove -> popping from network tuple")
 
-                        network_tuple[0].pop(index)
-                        network_tuple[1].pop(index)  # self.disconnect() has an attitude again...
+                        connection_to_remove = (sock, address_to_remove)
+                        self.remove(connection_to_remove)
 
                         print("\n Client -> Remove -> Closing the following socket: ")
                         print(sock)
@@ -407,15 +440,15 @@ class Client:
         # Returns 0 -> int (duh)
 
         global terminated
+        global network_tuple
         print("Client -> Safely terminating our connections...")
 
         index = 0
-        sock = network_tuple[0]
-        addresses = network_tuple[1]
-
-        for device in sock:
-            print("Client -> Terminating connection to", addresses[index])
-            self.disconnect(device, disallow_local_disconnect=False)
+        for connection in network_tuple:
+            server = connection[0]
+            address = connection[1]
+            print("Client -> Terminating connection to", address)
+            self.disconnect(server, disallow_local_disconnect=False)
             index += 1
 
         terminated = True
@@ -434,14 +467,15 @@ class Client:
 
         # Stage 0
         print("Client -> Initializing...")
+        localhost_connection = (localhost, '127.0.0.1')
 
         try:
-            self.connect(localhost, 'localhost', port, local=True)
+            self.connect(localhost_connection, 'localhost', port, local=True)
 
             print("Client -> Connection to localhost successful")
             print("Client -> Starting listener on localhost...")
 
-            self.listen(localhost)
+            self.listen(localhost_connection)
 
         except ConnectionRefusedError:
 
@@ -456,16 +490,18 @@ class Client:
 
             if remote_addresses:
 
-                for i in remote_addresses:
+                for remote_address in remote_addresses:
                     sock = socket.socket()
 
                     try:
-                        self.connect(sock, i, port)
+                        connection = (sock, remote_address)
 
-                        print("Starting listener on", i)
+                        self.connect(connection, remote_address, port)
+
+                        print("Starting listener on", remote_address)
                         self.listen(sock)
 
-                        self.send(sock, "echo")
+                        self.send(connection, "echo")
 
                     except ConnectionRefusedError:
                         print("Client -> Unable to connect to remove server; Failed to bootstrap.")
