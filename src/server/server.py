@@ -274,7 +274,7 @@ class Server:
                             print("Server -> Something happened with localhost; not disconnecting")
                         else:
                             try:
-                                self.disconnect(client)
+                                self.disconnect(conn)
                             except ValueError:
                                 print("Server -> Socket closed")
                             finally:
