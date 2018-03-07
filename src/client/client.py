@@ -184,7 +184,7 @@ class Client:
         # Socket probably disconnected, let's do the same and remove it
         # from the network tuple so it can't cause issues.
         except OSError:
-            self.disconnect(sock)
+            self.disconnect(connection)
 
     def receiveall(self, sock, n):
         # Helper function to receive n bytes.
@@ -199,10 +199,6 @@ class Client:
             except OSError:
                 print("Client -> Connection probably down or terminated (OSError: receiveall()")
                 print("Client -> Disconnecting from "+str(sock))
-                try:
-                    self.disconnect(sock)
-                except ValueError:
-                    raise ValueError
                 raise ValueError
 
             # Something corrupted in transit. Let's just ignore the bad pieces for now.
@@ -232,6 +228,7 @@ class Client:
 
         # This socket disconnected. Return 1 so the calling function(probably the listener) knows what happened.
         except ValueError:
+            self.disconnect(connection)
             return 1
 
     def broadcast(self, message):
