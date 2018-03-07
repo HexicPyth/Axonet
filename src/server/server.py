@@ -13,7 +13,7 @@ localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes 
 
 injector = inject.NetworkInjector()
 
-network_tuple = ([], [])  # Global lookup of (sockets, addresses)
+network_tuple = ()  # Global lookup of (sockets, addresses)
 
 message_list = []   # List of message hashes
 no_prop = "ffffffffffffffff"  # a message with a true hash indicates that no message propagation is needed.
@@ -68,7 +68,10 @@ class Server:
     https://stackoverflow.com/a/17668009
     https://stackoverflow.com/users/9530/adam-rosenfield '''
 
-    def send(self, sock, message, signing=True):
+    def send(self, connection, message, signing=True):
+        sock = connection[0]
+        address = connection[1]
+
         if signing:
             msg = self.prepare(message).encode('utf-8')
         else:
@@ -81,13 +84,10 @@ class Server:
             sock.sendall(msg)
 
         except BrokenPipeError:
-            index = network_tuple[0].index(sock)
-            address = network_tuple[1][index]
             if address != self.get_local_ip() and address != "127.0.0.1":
                 print("Server -> Something happened sending to "+address)
                 print("Server -> Disconnecting from "+address)
-                network_tuple[0].pop(index)
-                network_tuple[1].pop(index)  # self.disconnect() doesn't like broken sockets
+                self.remove(connection)
                 self.broadcast(self.prepare("remove:" + address))
                 sock.close()
 
@@ -102,7 +102,8 @@ class Server:
             data += packet
         return data.encode()
 
-    def receive(self, in_sock):
+    def receive(self, connection):
+        in_sock = connection[0]
         # Read message length and unpack it into an integer
         # Returns: (message) -> str
 
@@ -115,47 +116,68 @@ class Server:
         return self.receiveall(in_sock, msglen).decode()
 
     def broadcast(self, message):
-        sockets = network_tuple[0]
-        for client in sockets:
+        for connection in network_tuple:
+            address = connection[1]
             # Lookup address of client from the network_tuple
-            index = network_tuple[0].index(client)
-            address = network_tuple[1][index]
 
             print("Server -> Sending to: "+address)
-            self.send(client, message, signing=False)  # For each of them send the given message( = Broadcast)
+            self.send(connection, message, signing=False)  # For each of them send the given message( = Broadcast)
 
     @staticmethod
+    # Add a connection to the network_tuple
     def append(in_socket, address):
-        # Add single address/socket tuple to the (global) network tuple.
-        global network_tuple  # (sockets, addresses)
+        global network_tuple
 
-        network_tuple[0].append(in_socket)  # Append socket to network tuple
-        network_tuple[1].append(address)  # Append address to network tuple
+        # Tuples are immutable; convert it to a list.
+        network_list = list(network_tuple)
+
+        connection = (in_socket, address)
+        network_list.append(connection)
+
+        # (Again) tuples are immutable; replace the old one with the new one
+        network_tuple = tuple(network_list)
+
+    @staticmethod
+    # Remove a connection from the network_tuple
+    def remove(connection):
+        global network_tuple
+
+        # Tuples are immutable; convert it to a list.
+        network_list = list(network_tuple)
+
+        # Identify and remove said connection
+        index = network_list.index(connection)
+        network_list.pop(index)
+
+        # (Again) tuples are immutable; replace the old one with the new one
+        network_tuple = tuple(network_list)
 
     def stop(self):
         # Try to gracefully disconnect & disassociate from the network
         print("Client -> stop() -> Trying to gracefully disconnect and disassociate.")
 
-        for connection in network_tuple[0]:
-            print("Trying to disconnect from socket: " + str(connection))
+        for connection in network_tuple:
+            print("Trying to disconnect from socket: " + str(connection[0]))
 
             try:
                 self.disconnect(connection, disallow_local_disconnect=True)
                 print("Successfully disconnected")
 
             except OSError:
-                print("Failed to disconnect from socket: "+str(connection))
+                print("Failed to disconnect from socket: "+str(connection[0]))
 
         localhost.close()
         print("Server -> Stop() -> Exiting cleanly.")
         quit(0)
 
-    def respond(self, msg, in_sock):
+    def respond(self, msg, connection):
         # We received a message, reply with an appropriate response.
         # Doesn't return anything.
 
         global no_prop  # 0xffffffffffffffff
         global message_list
+
+        address = connection[1]
 
         full_message = str(msg)
         sig = msg[:16]
@@ -164,14 +186,11 @@ class Server:
         if sig not in message_list:
             print('Server -> Received: ' + message + " (" + sig + ")")  # e.x Server -> Received echo (ffffffffffffffff)
 
-            index = network_tuple[0].index(in_sock)
-            address = network_tuple[1][index]
-
             if message == "echo":
                 # If received, two-way communication is functional
                 print("Server -> Note: Two-Way communication with", address, "established and/or tested functional")
 
-                self.send(in_sock, no_prop+":continue", signing=False)
+                self.send(connection, no_prop+":continue", signing=False)
 
             # We only broadcast messages with hashes we haven't already documented. That way the network doesn't
             # loop indefinitely broadcasting the same message. Also, Don't append no_prop to message_list.
@@ -182,65 +201,65 @@ class Server:
                 print("Server -> Broadcasting "+full_message)
                 self.broadcast(full_message)
 
-    def disconnect(self, in_sock, disallow_local_disconnect=True):
+    def disconnect(self, connection, disallow_local_disconnect=True):
         # Try our best to cleanly disconnect from a socket.
         # Doesn't return anything.
+        sock = connection[0]
+        address = connection[1]
 
         try:
-            index = network_tuple[0].index(in_sock)  # Find the index of this socket so we can find it's address
-            address = network_tuple[1][index]
             if disallow_local_disconnect:
                 if address == self.get_local_ip():
                     print("Client -> BUG -> Refusing to disconnect from localhost; that's a terrible idea.")
                     return None
             else:
-                print("\nDisconnecting from " + str(in_sock))
-                print("Disconnecting from ", network_tuple[1][index])
-                print("Server -> Removing " + str(in_sock) + " from network_tuple\n")
-                network_tuple[0].pop(index)
-                network_tuple[1].pop(index)
-                local_client = network_tuple[0][0]
-                in_sock.close()
+                print("\nDisconnecting from " + str(sock))
+                print("Disconnecting from ", address)
+                print("Server -> Removing " + str(sock) + " from network_tuple\n")
+                self.remove(connection)
+                local_connection = network_tuple[0]
+                sock.close()
                 message = no_prop+":remove:"+address
-                self.send(local_client, message, signing=False)
+                self.send(local_connection[0], message, signing=False)
                 print("Client -> Successfully disconnected.")
 
-        # Socket not in network_tuple[0]. Probably already disconnected, or the socket was [closed]
+        # Socket not in network_tuple. Probably already disconnected, or the socket was [closed]
         except IndexError:
             print("Already disconnected; passing")
             pass
 
-    def listen(self, in_sock):
+    def listen(self, connection):
         # Listen for incoming messages in one thread, manage the network injector in another.
         # Doesn't return anything.
 
         global injector_terminated  # When true, all running network injectors (should) cleanly exit.
 
-        def listener():
+        def listener(conn):
             listener_terminated = False  # When set, this thread and this thread only, is stopped.
 
             while not listener_terminated:
                 try:
-                    incoming = self.receive(in_sock)
+                    client = conn[0]
+                    incoming = self.receive(conn)
                     if incoming:
-                        self.respond(incoming, in_sock)
+                        self.respond(incoming, conn)
 
                 except (OSError, TypeError):
                     try:
-                        print(str(in_sock))
-                        index = network_tuple[0].index(in_sock)
-                        address = network_tuple[1][index]
+                        print(conn)
+                        client = conn[0]
+                        address = conn[1]
                         print(address)
 
                         if address == self.get_local_ip() or address == "127.0.0.1":
                             print("Server -> Something happened with localhost; not disconnecting")
                         else:
                             try:
-                                self.disconnect(in_sock)
+                                self.disconnect(client)
                             except ValueError:
                                 print("Server -> Socket closed")
                             finally:
-                                print("Server -> Connection to "+str(in_sock) + "probably down or terminated;")
+                                print("Server -> Connection to "+str(client) + "probably down or terminated;")
                                 listener_terminated = True
                     except ValueError:  # socket is [closed]
                         listener_terminated = True
@@ -259,10 +278,10 @@ class Server:
 
                     # The mess below handles the collect() loop that would normally be in inject.py
 
-                    current_network_size = len(network_tuple[0])
+                    current_network_size = len(network_tuple)
 
                     while 1:
-                        network_size = len(network_tuple[0])
+                        network_size = len(network_tuple)
                         if current_network_size != network_size:
                             break  # A new client connected, let's exit the injector.
 
@@ -284,8 +303,7 @@ class Server:
                                 # another mini self.disconnect snippet. Code duplication isn't good.
                                 # TODO: what will sock.close() return if it fails? Put it in a try statement
 
-                                network_tuple[0].pop(index)
-                                network_tuple[1].pop(index)
+                                self.remove(connection)
                                 print("--------------")
                                 print(network_tuple)
                                 print("\n")
@@ -293,7 +311,7 @@ class Server:
                                 print("Server -> Not disconnecting from localhost, dimwit.")
 
                         # The injector ran cleanly and we still have a multi-node network. Continue as normal.
-                        if injector_return_value == 0 and len(network_tuple[0]) >= 1:
+                        if injector_return_value == 0 and len(network_tuple) >= 1:
 
                             try:
                                 print(network_tuple)
@@ -304,12 +322,12 @@ class Server:
 
                         # Something catastrophically wrong happened and for some reason, there are zero connections
                         # whatsoever. Stop the injector loop immediately so we can deal with the issue at hand.
-                        elif len(network_tuple[0]) == 0:
+                        elif len(network_tuple) == 0:
                             break
 
                         # The size of the network_tuple changed. Either we have remote connections, or a clean
                         # disconnect just occurred. Stop the loop so we can act accordingly.
-                        elif len(network_tuple[0]) > 1 or len(network_tuple[0]) != current_network_size:
+                        elif len(network_tuple) > 1 or len(network_tuple) != current_network_size:
                             print("!!!")
                             break  # We have remote connections...
 
@@ -321,7 +339,7 @@ class Server:
 
         # Start listener in a new thread
         print('starting listener thread')
-        threading.Thread(target=listener, name='listener_thread').start()
+        threading.Thread(target=listener, name='listener_thread', args=(connection,)).start()
 
         # If applicable, start a new instance of the network injector, killing any other running ones.
         if net_injection:
@@ -332,6 +350,7 @@ class Server:
 
     def initialize(self, port=3704, listening=True, method="socket", network_injection=False,
                    network_architecture="complete"):
+
         if method == "socket":
             global injector
             global localhost
@@ -364,21 +383,24 @@ class Server:
                     localhost.listen(5)
                     client, address_tuple = localhost.accept()
                     address = address_tuple[0]
+
                     self.append(client, address)
+                    connection = (client, address)
 
                     # Our localhost connected, do localhost stuff;
                     if address == self.get_local_ip() or address == "127.0.0.1":
                         print("Server -> localhost has connected.")
-                        self.send(client, "echo")
-                        self.listen(client)
+                        self.send(connection, "echo")
+                        self.listen(connection)
                         print("Server -> Listening on localhost...")
 
                     # A remote client connected, handle them and send an echo, because why not?
                     else:
+
                         print("Server -> ", address, " has connected.", sep='')
                         print("Server -> Listening on ", address, sep='')
-                        self.listen(client)
-                        self.send(client, "echo")  # TODO: is this necessary?
+                        self.listen(connection)
+                        self.send(connection, "echo")  # TODO: is this necessary?
 
                     if network_architecture == "complete":
                         # In a 'complete' network, every node is connected to every other node for redundancy.

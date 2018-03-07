@@ -1,6 +1,4 @@
 import multiprocessing
-import sys
-import os
 import struct
 import datetime
 from hashlib import sha3_224
@@ -22,7 +20,9 @@ class NetworkInjector(multiprocessing.Process):
         out += message
         return out
 
-    def send(self, sock, msg, network_tuple, signing=True):
+    def send(self, connection, msg, network_tuple, signing=True):
+        sock = connection[0]
+        address = connection[1]
         global current_message
         if signing:
             msg = self.prepare(msg).encode('utf-8')
@@ -44,22 +44,17 @@ class NetworkInjector(multiprocessing.Process):
             try:
                 sock.sendall(current_message)
             except BrokenPipeError:
-                index = network_tuple[0].index(sock)
-                socket_to_disconnect = network_tuple[0][index]
-                address = network_tuple[1][index]
                 return address
 
     def broadcast(self, message, network_tuple):
         global current_message
-        sockets = network_tuple[0]  # List of clients we need to broadcast to
         return_code = 0
-        for client in sockets:
+        for connection in network_tuple:
 
-            index = network_tuple[0].index(client)
-            address = network_tuple[1][index]  # Find the address of the socket we're sending to
-
+            client = connection[0]
+            address = connection[1]
             print("Sending: "+"'"+message+"'"+" to "+address)  # print("Sending: '(message)' to (address)")
-            y = self.send(client, message, network_tuple)  # For each of them send the given message
+            y = self.send(connection, message, network_tuple)  # For each of them send the given message
             if type(y) == str:
                 return_code = y
 
@@ -72,10 +67,7 @@ class NetworkInjector(multiprocessing.Process):
         return
 
     def init(self, network_tuple):
-        #fn = sys.stdin.fileno()
-        #sys.stdin = os.fdopen(fn)
+
         msg = str(input("Please enter flag to inject into network:  "))
         print("Server/Injector -> Broadcasting", msg, "to the network")
         return self.broadcast(msg, network_tuple)
-        #injector = multiprocessing.Process(target=self.collect, args=(network_tuple, fn,), name='Injector')
-        #injector.start()
