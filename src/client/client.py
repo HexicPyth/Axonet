@@ -122,8 +122,14 @@ class Client:
     def disconnect(self, connection, disallow_local_disconnect=True):
         # Try to disconnect from a remote server and remove it from the network tuple.
         # Returns None if you try to do something stupid. otherwise returns nothing at all.
-        sock = connection[0]
-        address = connection[1]
+
+        try:
+            sock = connection[0]
+            address = connection[1]
+        except TypeError:
+            print("Warning: Expected a connection tuple, got something else... Returning..."
+                  "(TypeError -> self.disconnect())")
+            return None
 
         try:
             # Don't disconnect from localhost. That's done with self.terminate().
@@ -137,9 +143,16 @@ class Client:
                 print("\nDisconnecting from " + str(sock))  # Print the socket we're disconnecting from
                 print("Disconnecting from ", address)  # Print the address we're disconnecting from
 
-                self.disconnect(sock)
+                self.remove(connection)
 
-                print("Client -> Successfully disconnected.")
+                try:
+                    sock.close()
+
+                except OSError:
+                    print("Failed to close the socket of "+address + " -> OSError -> self.disconnect()")
+
+                finally:
+                    print("Client -> Successfully disconnected.")
 
         # Either the socket in question doesn't exist, or  the socket is probably [closed].
         except (IndexError, ValueError):
@@ -284,8 +297,9 @@ class Client:
 
                     else:
                         new_socket = socket.socket()
-                        self.connect(new_socket, address, PORT)
-                        self.listen(new_socket)
+                        new_connection = (new_socket, address)
+                        self.connect(new_connection, address, PORT)
+                        self.listen(new_connection)
 
                 # The address isn't foreign, don't re-connect to it.
                 else:
@@ -405,10 +419,11 @@ class Client:
             print('Client -> broadcasting: '+full_message)
             self.broadcast(full_message)
 
-    def listen(self, in_socket):
+    def listen(self, connection):
         # Listen for incoming messages and call self.respond() to respond to them.
         # Also, deal with disconnections as they are most likely to throw errors here.
         # Returns nothing.
+        socket_to_listen = connection[0]
 
         def listener_thread(in_sock):
             global terminated
@@ -433,7 +448,7 @@ class Client:
                     listener_terminated = True
 
         # Start listener in a new thread
-        threading.Thread(target=listener_thread, args=(in_socket,), name='listener_thread').start()
+        threading.Thread(target=listener_thread, args=(socket_to_listen,), name='listener_thread').start()
 
     def terminate(self):
         # Disconnect from the network and exit the client cleanly.
@@ -495,11 +510,10 @@ class Client:
 
                     try:
                         connection = (sock, remote_address)
-
                         self.connect(connection, remote_address, port)
 
                         print("Starting listener on", remote_address)
-                        self.listen(sock)
+                        self.listen(connection)
 
                         self.send(connection, "echo")
 
