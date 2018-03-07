@@ -297,8 +297,8 @@ class Client:
 
                     else:
                         new_socket = socket.socket()
-                        new_connection = (new_socket, address)
-                        self.connect(new_connection, address, PORT)
+                        new_connection = (new_socket, connect_to_address)
+                        self.connect(new_connection, connect_to_address, PORT)
                         self.listen(new_connection)
 
                 # The address isn't foreign, don't re-connect to it.
