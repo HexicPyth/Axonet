@@ -63,14 +63,14 @@ class Client:
         for item in network_tuple:
             discovered_address = item[1]
             if address == discovered_address:
-                return item[1]
+                return item[0]
 
     @staticmethod
     def lookup_address(in_sock):  # TODO: optimize me
         for item in network_tuple:
             discovered_socket = item[0]
             if in_sock == discovered_socket:
-                return item[0]
+                return item[1]
 
     @staticmethod
     # Add a connection to the network_tuple
@@ -105,19 +105,23 @@ class Client:
         # Connect to a remote server and handle the connection(i.e append it).
         # Returns nothing.
         sock = connection[0]
+        if connection in network_tuple:
+            print("Client -> Not connection to "+connection[1], "We're already connected.")
 
-        if local:
-            print("Client -> Connecting to localhost server...", end='')
-            sock.connect((address, port))
-            self.append(sock, address)
-            print("success!")
-            print("Client -> Connected.")
+        else:
 
-        if not local:
-            print("Client -> Connecting to ", address, sep='')
-            sock.connect((address, port))
-            self.append(sock, address)
-            print("Client -> Success")
+            if local:
+                print("Client -> Connecting to localhost server...", end='')
+                sock.connect((address, port))
+                self.append(sock, address)
+                print("success!")
+                print("Client -> Connected.")
+
+            if not local:
+                print("Client -> Connecting to ", address, sep='')
+                sock.connect((address, port))
+                self.append(sock, address)
+                print("Client -> Success")
 
     def disconnect(self, connection, disallow_local_disconnect=True):
         # Try to disconnect from a remote server and remove it from the network tuple.
@@ -186,7 +190,8 @@ class Client:
         except OSError:
             self.disconnect(connection)
 
-    def receiveall(self, sock, n):
+    @staticmethod
+    def receiveall(sock, n):
         # Helper function to receive n bytes.
         # returns None if EOF is hit
 
@@ -254,7 +259,6 @@ class Client:
         full_message = str(msg)
         sig = msg[:16]
         message = msg[17:]
-        sock = connection[0]
         address = connection[1]
 
         # Don't respond to messages we've already responded to.
@@ -409,7 +413,6 @@ class Client:
 
         def listener_thread(conn):
             in_sock = conn[0]
-            address = conn[1]
             global terminated
             listener_terminated = False  # When set, this specific instance of listener_thread is stopped.
 
