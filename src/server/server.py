@@ -223,23 +223,23 @@ class Server:
         # Doesn't return anything.
         sock = connection[0]
         address = connection[1]
-
         try:
             if disallow_local_disconnect:
                 if address == self.get_local_ip():
-                    print("Client -> BUG -> Refusing to disconnect from localhost; that's a terrible idea.")
+                    print("Server -> BUG -> Refusing to disconnect from localhost; that's a terrible idea.")
                     return None
-            else:
-                print("\nDisconnecting from " + str(sock))
-                print("Disconnecting from ", address)
-                print("Server -> Removing " + str(sock) + " from network_tuple\n")
-                self.remove(connection)
-                local_connection = network_tuple[0]
-                sock.close()
-                message = no_prop+":remove:"+address
-                self.send(local_connection[0], message, signing=False)
-                self.broadcast(self.prepare("remove:" + address))
-                print("Client -> Successfully disconnected.")
+                else:
+                    print("\n\n\tSelf.disconnect() called!\t\n\n")
+                    print("\nDisconnecting from " + str(sock))
+                    print("Disconnecting from ", address)
+                    print("Server -> Removing " + str(sock) + " from network_tuple\n")
+                    self.remove(connection)
+                    local_connection = network_tuple[0]
+                    sock.close()
+                    message = no_prop+":remove:"+address
+                    self.send(local_connection, message, signing=False)
+                    self.broadcast(self.prepare("remove:" + address))
+                    print("Client -> Successfully disconnected.")
 
         # Socket not in network_tuple. Probably already disconnected, or the socket was [closed]
         except IndexError:
