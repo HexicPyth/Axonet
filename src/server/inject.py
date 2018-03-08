@@ -35,16 +35,21 @@ class NetworkInjector(multiprocessing.Process):
 
         if not current_message:
             current_message = msg
-
         try:
             print("Server -> Injector -> Broadcast: " + current_message.decode() + " to the network.")
+
         except UnicodeDecodeError:
             print("Server -> Injector -> Broadcast (unable to decode) to the network")
+
         finally:
             try:
                 sock.sendall(current_message)
+
             except BrokenPipeError:
                 return address
+
+            except OSError:
+                print("Injector -> Something went wrong with "+address)
 
     def broadcast(self, message, network_tuple):
         global current_message
@@ -54,7 +59,12 @@ class NetworkInjector(multiprocessing.Process):
             client = connection[0]
             address = connection[1]
             print("Sending: "+"'"+message+"'"+" to "+address)  # print("Sending: '(message)' to (address)")
-            y = self.send(connection, message, network_tuple)  # For each of them send the given message
+            try:
+                y = self.send(connection, message, network_tuple)  # For each of them send the given message
+
+            except OSError:  # Probably Bad file descriptor
+                y = None
+                
             if type(y) == str:
                 return_code = y
 
