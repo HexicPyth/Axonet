@@ -163,8 +163,13 @@ class Server:
         network_list = list(network_tuple)
 
         # Identify and remove said connection
-        index = network_list.index(connection)
-        network_list.pop(index)
+        try:
+            index = network_list.index(connection)
+            network_list.pop(index)
+
+        # Connection not in network tuple, or socket is [closed]
+        except ValueError:
+            print("Server -> Not removing non-existent connection: "+connection)
 
         # (Again) tuples are immutable; replace the old one with the new one
         network_tuple = tuple(network_list)
