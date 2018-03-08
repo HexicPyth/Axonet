@@ -71,7 +71,7 @@ class Server:
         for item in network_tuple:
             discovered_address = item[1]
             if address == discovered_address:
-                return item[1]
+                return item[0]
 
     @staticmethod
     def lookup_address(in_sock):  # TODO: optimize me
@@ -80,7 +80,7 @@ class Server:
         for item in network_tuple:
             discovered_socket = item[0]
             if in_sock == discovered_socket:
-                return item[0]
+                return item[1]
 
     ''' The three functions below were written by StackOverflow user 
     Adam Rosenfield and modified by me, HexicPyth.
@@ -106,9 +106,7 @@ class Server:
             if address != self.get_local_ip() and address != "127.0.0.1":
                 print("Server -> Something happened sending to "+address)
                 print("Server -> Disconnecting from "+address)
-                self.remove(connection)
-                self.broadcast(self.prepare("remove:" + address))
-                sock.close()
+                self.disconnect(connection)
 
     @staticmethod
     def receiveall(sock, n):
@@ -240,6 +238,7 @@ class Server:
                 sock.close()
                 message = no_prop+":remove:"+address
                 self.send(local_connection[0], message, signing=False)
+                self.broadcast(self.prepare("remove:" + address))
                 print("Client -> Successfully disconnected.")
 
         # Socket not in network_tuple. Probably already disconnected, or the socket was [closed]
@@ -258,7 +257,6 @@ class Server:
 
             while not listener_terminated:
                 try:
-                    client = conn[0]
                     incoming = self.receive(conn)
                     if incoming:
                         self.respond(incoming, conn)
@@ -308,23 +306,21 @@ class Server:
 
                             if injector_return_value != self.get_local_ip() and injector_return_value != "127.0.0.1":
 
-                                print("\n TODO: Server -> Disconnect from: " + injector_return_value)
+                                print("Server -> Disconnect from faulty connection: " + injector_return_value)
 
                                 # Find the address of the disconnected or otherwise faulty node.
                                 sock = self.lookup_socket(injector_return_value)
+                                print("\n----")
+                                print("\tLooking up socket for "+injector_return_value)
+                                print("Found socket: " + str(sock))
 
-                                print("----")
-                                print(sock)  # Useful for debugging purposes.
-                                print("----")
+                                if sock:
+                                    connection_to_disconnect = (sock, injector_return_value)
+                                    print("As part of connection: "+str(connection_to_disconnect))
+                                    print("Trying to disconnect from: "+str(connection_to_disconnect))
+                                    self.disconnect(connection_to_disconnect)
+                                    print("----\n")
 
-                                # At the time of writing the below code, self.disconnect() was being fussy, so I wrote
-                                # another mini self.disconnect snippet. Code duplication isn't good.
-                                # TODO: what will sock.close() return if it fails? Put it in a try statement
-
-                                self.remove(connection)
-                                print("--------------")
-                                print(network_tuple)
-                                print("\n")
                             else:
                                 print("Server -> Not disconnecting from localhost, dimwit.")
 
