@@ -299,8 +299,8 @@ class Client:
                 if not self.lookup_socket(connect_to_address):
 
                     # Don't re-connect to localhost. All kinds of bad things happen if you do.
-                    if address == self.get_local_ip() or address == "127.0.0.1":
-                        print("Client -> Not connecting to", address + ";", "That's localhost :P")
+                    if connect_to_address == self.get_local_ip() or connect_to_address == "127.0.0.1":
+                        print("Client -> Not connecting to", connect_to_address + ";", "That's localhost :P")
 
                     else:
                         local_address = self.get_local_ip()
@@ -312,7 +312,7 @@ class Client:
 
                 # The address isn't foreign, don't re-connect to it.
                 else:
-                    print("Not connecting to", address+";", "We're already connected.")
+                    print("Not connecting to", connect_to_address+";", "We're already connected.")
 
             if message.startswith('exec:'):
                 # Assuming allow_command_execution is set, execute arbitrary UNIX commands in their own threads.
