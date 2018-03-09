@@ -169,7 +169,7 @@ class Server:
 
         # Connection not in network tuple, or socket is [closed]
         except ValueError:
-            print("Server -> Not removing non-existent connection: "+connection)
+            print("Server -> Not removing non-existent connection: "+str(connection))
 
         # (Again) tuples are immutable; replace the old one with the new one
         network_tuple = tuple(network_list)
@@ -196,7 +196,7 @@ class Server:
         # We received a message, reply with an appropriate response.
         # Doesn't return anything.
 
-        global no_prop  # 0xffffffffffffffff
+        global no_prop  # default: 0xffffffffffffffff
         global message_list
 
         address = connection[1]
@@ -211,8 +211,6 @@ class Server:
             if message == "echo":
                 # If received, two-way communication is functional
                 print("Server -> Note: Two-Way communication with", address, "established and/or tested functional")
-
-                self.send(connection, no_prop+":continue", signing=False)
 
             # We only broadcast messages with hashes we haven't already documented. That way the network doesn't
             # loop indefinitely broadcasting the same message. Also, Don't append no_prop to message_list.
