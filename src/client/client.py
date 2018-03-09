@@ -361,6 +361,8 @@ class Client:
                 ballet_tuple[1].append(address)  # Append number/address to the ballet tuple.
 
                 # We received a vote from every node, and nothing went catastrophically wrong with the network. Cool!
+                print("\tLength of ballet tuple: "+str(len(ballet_tuple[0])))
+                print("\tLength of network tuple: "+str(len(network_tuple)))
                 if len(ballet_tuple[0]) == len(network_tuple) and len(ballet_tuple[0]) != 0:
 
                     # The numbers we receive from the nodes are stored as strings. We need integers to evaluate their
