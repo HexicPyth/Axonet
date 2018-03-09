@@ -460,7 +460,7 @@ class Client:
             server = connection[0]
             address = connection[1]
             print("Client -> Terminating connection to", address)
-            self.disconnect(server, disallow_local_disconnect=False)
+            self.disconnect(connection, disallow_local_disconnect=False)
             index += 1
 
         terminated = True
