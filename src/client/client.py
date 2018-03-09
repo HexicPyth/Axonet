@@ -102,6 +102,7 @@ class Client:
         # Connection not in network tuple, or socket is [closed]
         except ValueError:
             print("Client -> Not removing non-existent connection: "+connection)
+            return None
 
         # (Again) tuples are immutable; replace the old one with the new one
         network_tuple = tuple(network_list)
@@ -299,7 +300,9 @@ class Client:
 
                     # Don't re-connect to localhost. All kinds of bad things happen if you do.
                     if address == self.get_local_ip() or address == "127.0.0.1":
-                        print("Not connecting to", address + ";", "That's localhost :P")
+                        local_address = self.get_local_ip()
+                        print("Client -> self.get_local_ip() indicates that localhost = "+local_address)
+                        print("Client -> Not connecting to", address + ";", "That's localhost :P")
 
                     else:
                         new_socket = socket.socket()
