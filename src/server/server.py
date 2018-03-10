@@ -237,11 +237,10 @@ class Server:
                     print("Disconnecting from ", address)
                     print("Server -> Removing " + str(sock) + " from network_tuple\n")
                     self.remove(connection)
-                    local_connection = network_tuple[0]
                     sock.close()
 
                     message = no_prop+":remove:"+address
-                    self.send(local_connection, message, signing=False)
+                    # ??? self.send(local_connection, message, signing=False)
                     self.broadcast(self.prepare("remove:" + address))
                     print("Client -> Successfully disconnected.")
 

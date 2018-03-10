@@ -132,7 +132,7 @@ class Client:
     def disconnect(self, connection, disallow_local_disconnect=True):
         # Try to disconnect from a remote server and remove it from the network tuple.
         # Returns None if you try to do something stupid. otherwise returns nothing at all.
-        print("\n\t\self.disconnect() called!\t\n")
+        print("\n\tClient -> self.disconnect() called!\t\n")
 
         try:
             sock = connection[0]
@@ -142,11 +142,7 @@ class Client:
             print(str(connection))
             return None
 
-        print("\n\t\self.disconnect() Passed first exception\t\n")
-
         try:
-            print("\n\t\self.disconnect() initialized second exception\t\n")
-
             # Don't disconnect from localhost. That's done with self.terminate().
             if disallow_local_disconnect:
                 if address_to_disconnect == self.get_local_ip() or address_to_disconnect == "127.0.0.1":
