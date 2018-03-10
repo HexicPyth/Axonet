@@ -101,7 +101,7 @@ class Client:
 
         # Connection not in network tuple, or socket is [closed]
         except ValueError:
-            print("Client -> Not removing non-existent connection: "+connection)
+            print("Client -> Not removing non-existent connection: "+str(connection))
             return None
 
         # (Again) tuples are immutable; replace the old one with the new one
@@ -132,6 +132,7 @@ class Client:
     def disconnect(self, connection, disallow_local_disconnect=True):
         # Try to disconnect from a remote server and remove it from the network tuple.
         # Returns None if you try to do something stupid. otherwise returns nothing at all.
+        print("\n\t\self.disconnect() called!\t\n")
 
         try:
             sock = connection[0]
@@ -141,30 +142,31 @@ class Client:
             print(str(connection))
             return None
 
+        print("\n\t\self.disconnect() Passed first exception\t\n")
+
         try:
-            print("\n\t\Disconnect() called\t\n")
+            print("\n\t\self.disconnect() initialized second exception\t\n")
+
             # Don't disconnect from localhost. That's done with self.terminate().
             if disallow_local_disconnect:
-
                 if address_to_disconnect == self.get_local_ip() or address_to_disconnect == "127.0.0.1":
                     print("Client -> Not disconnecting from localhost, dimwit.")
-                    return None
 
-            # Do disconnect from remote nodes. That actually makes sense.
-            else:
-                print("\nDisconnecting from " + str(sock))  # Print the socket we're disconnecting from
-                print("Disconnecting from ", address_to_disconnect)  # Print the address we're disconnecting from
+                # Do disconnect from remote nodes. That actually makes sense.
+                else:
+                    print("\nDisconnecting from " + str(sock))  # Print the socket we're disconnecting from
+                    print("Disconnecting from ", address_to_disconnect)  # Print the address we're disconnecting from
 
-                self.remove(connection)
+                    self.remove(connection)
 
-                try:
-                    sock.close()
+                    try:
+                        sock.close()
 
-                except OSError:
-                    print("Failed to close the socket of "+address_to_disconnect + " -> OSError -> self.disconnect()")
+                    except (OSError, AttributeError):
+                        print("Failed to close the socket of "+address_to_disconnect + " -> OSError -> disconnect()")
 
-                finally:
-                    print("Client -> Successfully disconnected.")
+                    finally:
+                        print("Client -> Successfully disconnected.")
 
         # Either the socket in question doesn't exist, or the socket is probably [closed].
         except (IndexError, ValueError):

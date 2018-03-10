@@ -229,17 +229,19 @@ class Server:
         try:
             if disallow_local_disconnect:
                 if address == self.get_local_ip():
-                    print("Server -> Warning -> Refusing to disconnect from localhost; that's a terrible idea.")
+                    print("Server -> BUG -> Refusing to disconnect from localhost; that's a terrible idea.")
                     return None
                 else:
-                    self.remove(connection)
                     print("\n\n\tSelf.disconnect() called!\t\n\n")
                     print("\nDisconnecting from " + str(sock))
                     print("Disconnecting from ", address)
                     print("Server -> Removing " + str(sock) + " from network_tuple\n")
+                    self.remove(connection)
+                    local_connection = network_tuple[0]
                     sock.close()
 
                     message = no_prop+":remove:"+address
+                    self.send(local_connection, message, signing=False)
                     self.broadcast(self.prepare("remove:" + address))
                     print("Client -> Successfully disconnected.")
 
