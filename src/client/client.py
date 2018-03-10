@@ -137,8 +137,8 @@ class Client:
             sock = connection[0]
             address = connection[1]
         except TypeError:
-            print("Warning: Expected a connection tuple, got something else... Returning..."
-                  "(TypeError -> self.disconnect())")
+            print("Warning: Expected a connection tuple, got:")
+            print(str(connection))
             return None
 
         try:
@@ -457,7 +457,6 @@ class Client:
 
         index = 0
         for connection in network_tuple:
-            server = connection[0]
             address = connection[1]
             print("Client -> Terminating connection to", address)
             self.disconnect(connection, disallow_local_disconnect=False)

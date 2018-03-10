@@ -55,14 +55,13 @@ class NetworkInjector(multiprocessing.Process):
         global current_message
         return_code = 0
         for connection in network_tuple:
-
-            client = connection[0]
             address = connection[1]
             print("Sending: "+"'"+message+"'"+" to "+address)  # print("Sending: '(message)' to (address)")
             try:
                 y = self.send(connection, message, network_tuple)  # For each of them send the given message
 
             except OSError:  # Probably Bad file descriptor
+                print("Server/Injector -> Warning: errors occurred sending to: "+str(connection))
                 y = None
                 
             if type(y) == str:
