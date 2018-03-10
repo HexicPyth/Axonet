@@ -253,6 +253,8 @@ class Client:
             return 1
 
     def broadcast(self, message):
+        print("Client -> Permuting the network tuple")
+        self.permute_network_tuple()
         for connection in network_tuple:
             self.send(connection, message, signing=False)  # For each of them send the given message( = Broadcast)
 
@@ -424,8 +426,6 @@ class Client:
             # End of respond()
             # Propagate the message to the rest of the network.
             print('Client -> broadcasting: '+full_message)
-            print("Client -> Permuting the network tuple")
-            self.permute_network_tuple()
             self.broadcast(full_message)
 
     def listen(self, connection):

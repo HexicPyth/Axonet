@@ -146,6 +146,9 @@ class Server:
         return self.receiveall(in_sock, msglen).decode()
 
     def broadcast(self, message):
+        print("Server -> Permuting the network tuple")
+        self.permute_network_tuple()
+
         for connection in network_tuple:
             address = connection[1]
             # Lookup address of client from the network_tuple
@@ -233,8 +236,6 @@ class Server:
 
                 print("Server -> Broadcasting "+full_message)
                 self.broadcast(full_message)
-                print("Server -> Permuting the network tuple")
-                self.permute_network_tuple()
 
     def disconnect(self, connection, disallow_local_disconnect=True):
         # Try our best to cleanly disconnect from a socket.
