@@ -441,7 +441,8 @@ class Server:
                         # In a 'complete' network, every node is connected to every other node for redundancy.
                         # Hence, when a new node connects, we broadcast it's address to the  entire network so
                         # every other node can try to connect to it (i.e 'complete' the network).
-                        self.broadcast(self.prepare('ConnectTo:' + address))
+                        localhost_connection = self.lookup_socket("127.0.0.1")
+                        self.send(localhost_connection, self.prepare('ConnectTo:' + address))
 
                 except ConnectionResetError:
                     print("Server -> localhost has disconnected")
