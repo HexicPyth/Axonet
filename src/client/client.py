@@ -135,23 +135,25 @@ class Client:
 
         try:
             sock = connection[0]
-            address = connection[1]
+            address_to_disconnect = connection[1]
         except TypeError:
             print("Warning: Expected a connection tuple, got:")
             print(str(connection))
             return None
 
         try:
+            print("\n\t\Disconnect() called\t\n")
             # Don't disconnect from localhost. That's done with self.terminate().
             if disallow_local_disconnect:
 
-                if address == self.get_local_ip() or address == "127.0.0.1":
+                if address_to_disconnect == self.get_local_ip() or address_to_disconnect == "127.0.0.1":
+                    print("Client -> Not disconnecting from localhost, dimwit.")
                     return None
 
             # Do disconnect from remote nodes. That actually makes sense.
             else:
                 print("\nDisconnecting from " + str(sock))  # Print the socket we're disconnecting from
-                print("Disconnecting from ", address)  # Print the address we're disconnecting from
+                print("Disconnecting from ", address_to_disconnect)  # Print the address we're disconnecting from
 
                 self.remove(connection)
 
@@ -159,12 +161,12 @@ class Client:
                     sock.close()
 
                 except OSError:
-                    print("Failed to close the socket of "+address + " -> OSError -> self.disconnect()")
+                    print("Failed to close the socket of "+address_to_disconnect + " -> OSError -> self.disconnect()")
 
                 finally:
                     print("Client -> Successfully disconnected.")
 
-        # Either the socket in question doesn't exist, or  the socket is probably [closed].
+        # Either the socket in question doesn't exist, or the socket is probably [closed].
         except (IndexError, ValueError):
             print("Already disconnected; passing")
             pass
@@ -209,7 +211,6 @@ class Client:
 
             except OSError:
                 print("Client -> Connection probably down or terminated (OSError: receiveall()")
-                print("Client -> Disconnecting from "+str(sock))
                 raise ValueError
 
             # Something corrupted in transit. Let's just ignore the bad pieces for now.
@@ -239,7 +240,6 @@ class Client:
 
         # This socket disconnected. Return 1 so the calling function(probably the listener) knows what happened.
         except ValueError:
-            self.disconnect(connection)
             return 1
 
     def broadcast(self, message):
@@ -399,8 +399,8 @@ class Client:
 
                         # lookup the socket of the address we want to remove
                         sock = self.lookup_socket(address_to_remove)
-
                         connection_to_remove = (sock, address_to_remove)
+                        print("Client -> Disconnecting from "+str(connection_to_remove))
                         self.disconnect(connection_to_remove)
 
                     else:
@@ -441,6 +441,7 @@ class Client:
                     listener_terminated = True
 
                 if incoming == 1:
+                    self.disconnect(conn)
                     print("Connection to " + str(in_sock) + "doesn't exist, terminating listener_thread()")
                     listener_terminated = True
 
