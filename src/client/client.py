@@ -73,6 +73,18 @@ class Client:
                 return item[1]
 
     @staticmethod
+    def permute_network_tuple():
+        # Permute the network tuple in place
+        # Returns nothing (network_tuple is a global variable)
+        cs_prng = random.SystemRandom()
+        global network_tuple
+
+        network_list = list(network_tuple)
+        cs_prng.shuffle(network_list)
+        new_network_tuple = tuple(network_list)
+        network_tuple = new_network_tuple
+
+    @staticmethod
     # Add a connection to the network_tuple
     def append(in_socket, address):
         global network_tuple
@@ -412,6 +424,8 @@ class Client:
             # End of respond()
             # Propagate the message to the rest of the network.
             print('Client -> broadcasting: '+full_message)
+            print("Client -> Permuting the network tuple")
+            self.permute_network_tuple()
             self.broadcast(full_message)
 
     def listen(self, connection):

@@ -4,6 +4,7 @@ import struct
 import inject
 import threading
 import datetime
+import random
 from hashlib import sha3_224
 
 
@@ -62,6 +63,18 @@ class Server:
         out += ":"
         out += message
         return out
+
+    @staticmethod
+    def permute_network_tuple():
+        # Permute the network tuple in place
+        # Returns nothing (network_tuple is a global variable)
+        cs_prng = random.SystemRandom()
+        global network_tuple
+
+        network_list = list(network_tuple)
+        cs_prng.shuffle(network_list)
+        new_network_tuple = tuple(network_list)
+        network_tuple = new_network_tuple
 
     @staticmethod
     def lookup_socket(address):  # TODO: optimize me
@@ -220,6 +233,8 @@ class Server:
 
                 print("Server -> Broadcasting "+full_message)
                 self.broadcast(full_message)
+                print("Server -> Permuting the network tuple")
+                self.permute_network_tuple()
 
     def disconnect(self, connection, disallow_local_disconnect=True):
         # Try our best to cleanly disconnect from a socket.
@@ -239,8 +254,7 @@ class Server:
                     self.remove(connection)
                     sock.close()
 
-                    message = no_prop+":remove:"+address
-                    # ??? self.send(local_connection, message, signing=False)
+                    # Inform the network about this removal
                     self.broadcast(self.prepare("remove:" + address))
                     print("Client -> Successfully disconnected.")
 
@@ -332,6 +346,9 @@ class Server:
 
                             try:
                                 print(network_tuple)
+                                print("Server/Injector -> Permuting the network tuple")
+                                print(network_tuple)
+
                                 injector_return_value = injector.init(network_tuple)  # Eww nested loops.
 
                             except BrokenPipeError:
