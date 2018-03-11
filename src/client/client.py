@@ -353,65 +353,9 @@ class Client:
                 else:
                     print("Not executing command: ", message[5:])
 
-            ''' Very oversimplified method of breaking the symmetry between nodes and choosing one to 'elect' as
-            representative for whatever task is at hand. Each node generates a 16-digit random number with a
-            Cryptographically Secure Pseudo-Random Number Generator; Whichever node generates the greatest number
-            'wins' the election for representative of whatever task it at hand. '''
-
-            if message == "vote":
-                if ongoing_election:
-                    pass
-
-                else:
-                    ongoing_election = True  # Don't get interrupted by another 'vote' flag.
-
-                    ballet_tuple = ([], [])  # Clear the ballet before initiating the vote
-                    elect_msg = "elect:"
-
-                    uid_str = ""  # <-- Will be a random 16-digit number(zeroes included)
-                    for i in range(0, 16):
-                        uid_str += str(random.SystemRandom().randint(0, 9))
-
-                    while len(uid_str) != 16:  # Make sure that uid_str is <i>really</i> a 16-digit integer
-                        uid_str = uid_str[:-1]
-
-                    elect_msg += self.get_local_ip() + ":" + uid_str  # e.x elect:10.1.10.7:9739273648719283
-
-                    print("Contributing to the election: "+elect_msg)
-                    self.broadcast(self.prepare(elect_msg))
-                    del elect_msg  # we don't need that anymore.
-
-            if message.startswith('elect:'):
-                print(ongoing_election)
-                info = message[6:]  # the whole string minus the 'elect:' part
-                number = info[-16:]  # e.x 9739273648719283
-                address = info[:-17]  # e.x 10.1.10.7
-
-                ballet_tuple[0].append(number)
-                ballet_tuple[1].append(address)  # Append number/address to the ballet tuple.
-
-                # We received a vote from every node, and nothing went catastrophically wrong with
-                # the network. Cool!
-                print("\tLength of ballet tuple: "+str(len(ballet_tuple[0])))
-                print("\tLength of network tuple: "+str(len(network_tuple)))
-                if len(ballet_tuple[0]) == len(network_tuple) and len(ballet_tuple[0]) != 0:
-
-                    # The numbers we receive from the nodes are stored as strings. We need
-                    # integers to evaluate their relative sizes.
-                    int_ballet_tuple = [int(i) for i in ballet_tuple[0]]
-
-                    # Be verbose
-                    index = int_ballet_tuple.index(max(int_ballet_tuple))
-                    print("\n--- " + ballet_tuple[0][index])   # we actually want the string here, not the int.
-                    print("--- " + ballet_tuple[1][index] + " won the election for cluster representative\n")
-
-                    # Set this so we can check it later on.
-                    ongoing_election = False
-                    cluster_rep = ballet_tuple[1][index]
-
-            # Eventually we'll be able to distribute shared
-            # retrievable information, like public keys, across the network.
             if message.startswith("file:"):
+                # Eventually we'll be able to distribute shared
+                # retrievable information, like public keys, across the network.
                 info = message[5:]
                 file_hash = info[:16]
                 file_length = info[-4:]
