@@ -18,7 +18,7 @@ message_list = []
 cluster_rep = None  # type -> bool
 terminated = False  # If true: the client has instructed to terminate; inform our functions and exit cleanly.
 allow_command_execution = False  # Don't execute arbitrary UNIX commands when casually asked, that's bad :]
-
+ongoing_election = False
 no_prop = "ffffffffffffffff"  # ffffffffffffffff:[message] = No message propagation.
 
 
@@ -271,6 +271,7 @@ class Client:
         # Doesn't return anything.
 
         global message_list
+        global ongoing_election
         global ballet_tuple
         global cluster_rep
 
@@ -285,10 +286,6 @@ class Client:
 
         # Do respond to messages we have yet to respond to.
         else:
-
-            # Append signature(hash) to the message list, or in the case of sig=no_prop, do nothing.
-            if sig != no_prop:
-                message_list.append(sig)
 
             # Find the address of the socket we're receiving from...
             print('Client -> Received: ' + message + " (" + sig + ")" + "from: " + address)
@@ -305,10 +302,16 @@ class Client:
 
             # If we received a foreign address, connect to it. This is address propagation.
             if message.startswith("ConnectTo:"):
-                connect_to_address = message[10:]
+                connect_to_address = message[10:]  # len("ConnectTo:") = 10
 
                 # The address is foreign, connect to it.
-                if not self.lookup_socket(connect_to_address):
+
+                # Will return None if no socket is found(i.e we're not connected)
+                connection_status = self.lookup_socket(connect_to_address)
+
+                # If we're not already connected
+                if not connection_status:
+                    print(connection_status)
 
                     # Don't re-connect to localhost. All kinds of bad things happen if you do.
                     if connect_to_address == self.get_local_ip() or connect_to_address == "127.0.0.1":
@@ -318,13 +321,18 @@ class Client:
                         local_address = self.get_local_ip()
                         print("Client -> self.get_local_ip() indicates that localhost = "+local_address)
                         new_socket = socket.socket()
+
                         new_connection = (new_socket, connect_to_address)
-                        self.connect(new_connection, connect_to_address, PORT)
-                        self.listen(new_connection)
+                        if not connection_status:
+                            self.connect(new_connection, connect_to_address, PORT)
+                            self.listen(new_connection)
+
+                    del connection_status
 
                 # The address isn't foreign, don't re-connect to it.
                 else:
                     print("Not connecting to", connect_to_address+";", "We're already connected.")
+                    del connection_status
 
             if message.startswith('exec:'):
                 # Assuming allow_command_execution is set, execute arbitrary UNIX commands in their own threads.
@@ -348,23 +356,30 @@ class Client:
             'wins' the election for representative of whatever task it at hand. '''
 
             if message == "vote":
-                ballet_tuple = ([], [])  # Clear the ballet before initiating the vote
-                elect_msg = "elect:"
+                if ongoing_election:
+                    pass
 
-                uid_str = ""  # <-- Will be a random 16-digit number(zeroes included)
-                for i in range(0, 16):
-                    uid_str += str(random.SystemRandom().randint(0, 9))
+                else:
+                    ongoing_election = True  # Don't get interrupted by another 'vote' flag.
 
-                while len(uid_str) != 16:  # Make sure that uid_str is <i>really</i> a 16-digit integer
-                    uid_str = uid_str[:-1]
+                    ballet_tuple = ([], [])  # Clear the ballet before initiating the vote
+                    elect_msg = "elect:"
 
-                elect_msg += self.get_local_ip() + ":" + uid_str  # e.x elect:10.1.10.7:9739273648719283
+                    uid_str = ""  # <-- Will be a random 16-digit number(zeroes included)
+                    for i in range(0, 16):
+                        uid_str += str(random.SystemRandom().randint(0, 9))
 
-                print("Contributing to the election: "+elect_msg)
-                self.broadcast(self.prepare(elect_msg))
-                del elect_msg  # we don't need that anymore.
+                    while len(uid_str) != 16:  # Make sure that uid_str is <i>really</i> a 16-digit integer
+                        uid_str = uid_str[:-1]
+
+                    elect_msg += self.get_local_ip() + ":" + uid_str  # e.x elect:10.1.10.7:9739273648719283
+
+                    print("Contributing to the election: "+elect_msg)
+                    self.broadcast(self.prepare(elect_msg))
+                    del elect_msg  # we don't need that anymore.
 
             if message.startswith('elect:'):
+                print(ongoing_election)
                 info = message[6:]  # the whole string minus the 'elect:' part
                 number = info[-16:]  # e.x 9739273648719283
                 address = info[:-17]  # e.x 10.1.10.7
@@ -372,13 +387,14 @@ class Client:
                 ballet_tuple[0].append(number)
                 ballet_tuple[1].append(address)  # Append number/address to the ballet tuple.
 
-                # We received a vote from every node, and nothing went catastrophically wrong with the network. Cool!
+                # We received a vote from every node, and nothing went catastrophically wrong with
+                # the network. Cool!
                 print("\tLength of ballet tuple: "+str(len(ballet_tuple[0])))
                 print("\tLength of network tuple: "+str(len(network_tuple)))
                 if len(ballet_tuple[0]) == len(network_tuple) and len(ballet_tuple[0]) != 0:
 
-                    # The numbers we receive from the nodes are stored as strings. We need integers to evaluate their
-                    # relative sizes.
+                    # The numbers we receive from the nodes are stored as strings. We need
+                    # integers to evaluate their relative sizes.
                     int_ballet_tuple = [int(i) for i in ballet_tuple[0]]
 
                     # Be verbose
@@ -387,6 +403,7 @@ class Client:
                     print("--- " + ballet_tuple[1][index] + " won the election for cluster representative\n")
 
                     # Set this so we can check it later on.
+                    ongoing_election = False
                     cluster_rep = ballet_tuple[1][index]
 
             # Eventually we'll be able to distribute shared
@@ -422,6 +439,11 @@ class Client:
                     # Either the address we're looking for doesn't exist, or we're not connected it it.
                     print("Server -> Sorry, we're not connected to " + address_to_remove)
                     pass
+
+            # Append signature(hash) to the message list, or in the case of sig=no_prop, do nothing.
+
+            if sig != no_prop:
+                message_list.append(sig)
 
             # End of respond()
             # Propagate the message to the rest of the network.
