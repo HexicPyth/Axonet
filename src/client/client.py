@@ -65,12 +65,16 @@ class Client:
             if address == discovered_address:
                 return item[0]
 
+        return 0  # Socket not found
+
     @staticmethod
     def lookup_address(in_sock):  # TODO: optimize me
         for item in network_tuple:
             discovered_socket = item[0]
             if in_sock == discovered_socket:
                 return item[1]
+
+        return 0  # Address not found
 
     @staticmethod
     def permute_network_tuple():
@@ -128,18 +132,18 @@ class Client:
 
         else:
 
-            if local:
+            if not local:
+                self.append(sock, address)
+                print("Client -> Connecting to ", address, sep='')
+                sock.connect((address, port))
+                print("Client -> Success")
+
+            elif local:
                 print("Client -> Connecting to localhost server...", end='')
                 sock.connect((address, port))
                 self.append(sock, address)
                 print("success!")
                 print("Client -> Connected.")
-
-            if not local:
-                print("Client -> Connecting to ", address, sep='')
-                sock.connect((address, port))
-                self.append(sock, address)
-                print("Client -> Success")
 
     def disconnect(self, connection, disallow_local_disconnect=True):
         # Try to disconnect from a remote server and remove it from the network tuple.
@@ -308,10 +312,10 @@ class Client:
 
                 # Will return None if no socket is found(i.e we're not connected)
                 connection_status = self.lookup_socket(connect_to_address)
+                print(network_tuple)
 
                 # If we're not already connected
-                if not connection_status:
-                    print(connection_status)
+                if connection_status == 0:
 
                     # Don't re-connect to localhost. All kinds of bad things happen if you do.
                     if connect_to_address == self.get_local_ip() or connect_to_address == "127.0.0.1":
@@ -319,6 +323,8 @@ class Client:
 
                     else:
                         local_address = self.get_local_ip()
+                        print("Client -> self.lookup_socket() indicates that"
+                              " we're not connected to "+connect_to_address)
                         print("Client -> self.get_local_ip() indicates that localhost = "+local_address)
                         new_socket = socket.socket()
 
@@ -327,12 +333,9 @@ class Client:
                             self.connect(new_connection, connect_to_address, PORT)
                             self.listen(new_connection)
 
-                    del connection_status
-
                 # The address isn't foreign, don't re-connect to it.
-                else:
-                    print("Not connecting to", connect_to_address+";", "We're already connected.")
-                    del connection_status
+                elif connection_status != 0:
+                    print("Client -> Not connecting to", connect_to_address+";", "We're already connected.")
 
             if message.startswith('exec:'):
                 # Assuming allow_command_execution is set, execute arbitrary UNIX commands in their own threads.
