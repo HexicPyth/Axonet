@@ -19,6 +19,7 @@ cluster_rep = None  # type -> bool
 terminated = False  # If true: the client has instructed to terminate; inform our functions and exit cleanly.
 allow_command_execution = False  # Don't execute arbitrary UNIX commands when casually asked, that's bad :]
 ongoing_election = False
+connecting_to_server = False
 no_prop = "ffffffffffffffff"  # ffffffffffffffff:[message] = No message propagation.
 
 
@@ -126,6 +127,7 @@ class Client:
     def connect(self, connection, address, port, local=False):
         # Connect to a remote server and handle the connection(i.e append it).
         # Returns nothing.
+        global connecting_to_server
         sock = connection[0]
 
         # * Ugh! Fucking race conditions... *
@@ -140,19 +142,23 @@ class Client:
             self.remove((sock, address))
 
         else:
+            if not connecting_to_server:
+                connecting_to_server = True
 
-            if not local:
+                if not local:
 
-                print("Client -> Connecting to ", address, sep='')
-                sock.connect((address, port))
-                print("Client -> Success")
+                    print("Client -> Connecting to ", address, sep='')
+                    sock.connect((address, port))
+                    print("Client -> Success")
+                    connecting_to_server = False
 
-            elif local:
-                self.remove((sock, address))
-                print("Client -> Connecting to localhost server...", end='')
-                sock.connect((address, port))
-                print("success!")
-                print("Client -> Connected.")
+                elif local:
+                    self.remove((sock, address))
+                    print("Client -> Connecting to localhost server...", end='')
+                    sock.connect((address, port))
+                    print("success!")
+                    print("Client -> Connected.")
+                    connecting_to_server = False
 
     def disconnect(self, connection, disallow_local_disconnect=True):
         # Try to disconnect from a remote server and remove it from the network tuple.
