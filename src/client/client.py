@@ -127,21 +127,30 @@ class Client:
         # Connect to a remote server and handle the connection(i.e append it).
         # Returns nothing.
         sock = connection[0]
-        if connection in network_tuple:
-            print("Client -> Not connection to "+connection[1], "We're already connected.")
+
+        # * Ugh! Fucking race conditions... *
+        # Append this as quickly as possible, so the following if statement
+        # will trip correctly on a decent CPU.
+
+        quasi_network_tuple = tuple(network_tuple)  # Make a copy of the network tuple to reference
+        self.append(sock, address)
+
+        if connection in quasi_network_tuple:
+            print("Client -> Not connecting to "+connection[1], "We're already connected.")
+            self.remove((sock, address))
 
         else:
 
             if not local:
-                self.append(sock, address)
+
                 print("Client -> Connecting to ", address, sep='')
                 sock.connect((address, port))
                 print("Client -> Success")
 
             elif local:
+                self.remove((sock, address))
                 print("Client -> Connecting to localhost server...", end='')
                 sock.connect((address, port))
-                self.append(sock, address)
                 print("success!")
                 print("Client -> Connected.")
 
