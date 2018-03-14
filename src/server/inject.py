@@ -1,31 +1,19 @@
 import multiprocessing
 import struct
-import datetime
-from hashlib import sha3_224
+from server import Server
 current_message = None
 
 
 class NetworkInjector(multiprocessing.Process):
 
-    @staticmethod
-    def prepare(message):  # Process our message for broadcasting (please ignore the mess :])
-        out = ""
-        timestamp = str(datetime.datetime.utcnow())
-        out += timestamp
-        out += message
-        sig = sha3_224(out.encode()).hexdigest()[:16]
-        out = ""
-        out += sig
-        out += ":"
-        out += message
-        return out
-
-    def send(self, connection, msg, network_tuple, signing=True):
+    # Send a given message to a specific node
+    # Slightly modified compared to the server's send method
+    def send(self, connection, msg, signing=True):
         sock = connection[0]
         address = connection[1]
         global current_message
         if signing:
-            msg = self.prepare(msg).encode('utf-8')
+            msg = Server.prepare(msg).encode('utf-8')
 
         else:
             msg.encode('utf-8')
@@ -45,6 +33,8 @@ class NetworkInjector(multiprocessing.Process):
             try:
                 sock.sendall(current_message)
 
+            # Something's up with the node we're interacting with.
+            # Notify the server with a return code.
             except BrokenPipeError:
                 return address
 
@@ -58,25 +48,27 @@ class NetworkInjector(multiprocessing.Process):
             address = connection[1]
             print("Sending: "+"'"+message+"'"+" to "+address)  # print("Sending: '(message)' to (address)")
             try:
-                y = self.send(connection, message, network_tuple)  # For each of them send the given message
+                send_status = self.send(connection, message, network_tuple)  # For each of them send the given message
 
             except OSError:  # Probably Bad file descriptor
                 print("Server/Injector -> Warning: errors occurred sending to: "+str(connection))
-                y = None
-                
-            if type(y) == str:
-                return_code = y
+                send_status = None
 
-        current_message = None  # reset current message
+            # The server doesn't interact directly with NetworkInjector.send();
+            # If it fails, pass it's return code to the server.
+            if type(send_status) == str:
+                return_code = send_status
+
+        current_message = None  # TODO: clarify the purpose of this variable. What does it do?
         return return_code
 
     def kill(self):
-        print("Injector -> Terminate() : Reluctantly terminating myself... * cries to the thought of SIGKILL *")
+        print("Injector -> kill() : Reluctantly terminating myself... * cries to the thought of SIGKILL *")
         self.terminate()
         return
 
     def init(self, network_tuple):
-
         msg = str(input("Please enter flag to inject into network:  "))
+
         print("Server/Injector -> Broadcasting", msg, "to the network")
         return self.broadcast(msg, network_tuple)
