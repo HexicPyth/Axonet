@@ -5,6 +5,8 @@ import inject
 import threading
 import datetime
 import random
+import os
+import sys
 from hashlib import sha3_224
 
 
@@ -21,6 +23,7 @@ no_prop = "ffffffffffffffff"  # a message with a true hash indicates that no mes
 
 net_injection = False
 injector_terminated = False
+terminated = False
 
 
 class Server:
@@ -191,8 +194,15 @@ class Server:
         network_tuple = tuple(network_list)
 
     def stop(self):
+        global terminated
+        global injector_terminated
+
         # Try to gracefully disconnect & disassociate from the network
-        print("Client -> stop() -> Trying to gracefully disconnect and disassociate.")
+
+        localhost_connection = (localhost, "127.0.0.1")
+        self.broadcast(self.prepare("stop"))
+
+        print("Server -> stop() -> Trying to gracefully disconnect and disassociate.")
 
         for connection in network_tuple:
             print("Trying to disconnect from socket: " + str(connection[0]))
@@ -204,9 +214,22 @@ class Server:
             except OSError:
                 print("Failed to disconnect from socket: "+str(connection[0]))
 
+        localhost_sock_name = localhost.getsockname()
         localhost.close()
-        print("Server -> Stop() -> Exiting cleanly.")
-        quit(0)
+        print("Server -> Stop() -> Exiting gracefully.")
+
+        terminated = True
+        injector_terminated = True
+
+        # Hack the socket.listen() loop in the init() function by connecting to it,
+        # which will force it to terminate.
+
+        temp = socket.socket()
+        temp.connect(localhost_sock_name)
+        temp.close()
+
+        # noinspection PyProtectedMember
+        os._exit(0)
 
     def respond(self, msg, connection):
         # We received a message, reply with an appropriate response.
@@ -228,6 +251,10 @@ class Server:
                 # If received, two-way communication is functional
                 print("Server -> Note: Two-Way communication with", address, "established and/or tested functional")
 
+            if message == "stop":
+                print("Server -> Exiting cleanly")
+                self.stop()
+
             # We only broadcast messages with hashes we haven't already documented. That way the network doesn't
             # loop indefinitely broadcasting the same message. Also, Don't append no_prop to message_list.
             # That would be bad.
@@ -244,7 +271,7 @@ class Server:
         address = connection[1]
         try:
             if disallow_local_disconnect:
-                if address == self.get_local_ip():
+                if address == self.get_local_ip() and not terminated:
                     print("Server -> BUG -> Refusing to disconnect from localhost; that's a terrible idea.")
                     return None
                 else:
@@ -257,7 +284,7 @@ class Server:
 
                     # Inform the network about this removal
                     self.broadcast(self.prepare("remove:" + address))
-                    print("Client -> Successfully disconnected.")
+                    print("Server -> Successfully disconnected.")
 
         # Socket not in network_tuple. Probably already disconnected, or the socket was [closed]
         except IndexError:
@@ -273,7 +300,7 @@ class Server:
         def listener(conn):
             listener_terminated = False  # When set, this thread and this thread only, is stopped.
 
-            while not listener_terminated:
+            while not listener_terminated and not terminated:
                 try:
                     incoming = self.receive(conn)
                     if incoming:
@@ -307,7 +334,7 @@ class Server:
             global net_injection
             global injector_terminated
 
-            if not injector_terminated:
+            if not injector_terminated or terminated:
                 if net_injection:
                     injector_return_value = injector.init(network_tuple)
 
@@ -315,8 +342,12 @@ class Server:
 
                     current_network_size = len(network_tuple)
 
-                    while 1:
+                    while not terminated or not injector_terminated:
                         network_size = len(network_tuple)
+                        if terminated:
+                            injector_terminated = True
+                            break
+
                         if current_network_size != network_size:
                             break  # A new client connected, let's exit the injector.
 
@@ -377,7 +408,7 @@ class Server:
         threading.Thread(target=listener, name='listener_thread', args=(connection,)).start()
 
         # If applicable, start a new instance of the network injector, killing any other running ones.
-        if net_injection:
+        if net_injection and not terminated:
             injector_terminated = True  # Kill any running network injector(s)
             injector_terminated = False
 
@@ -390,6 +421,7 @@ class Server:
             global injector
             global localhost
             global net_injection
+            global terminated
 
             address_string = self.get_local_ip()+":"+str(port)  # e.x 10.1.10.3:3705
             net_injection = network_injection  # Didn't want to shadow variable names.
@@ -415,33 +447,39 @@ class Server:
             # Listen for incoming connections.
             while listening:
                 try:
+
                     localhost.listen(5)
+
                     client, address_tuple = localhost.accept()
-                    address = address_tuple[0]
 
-                    self.append(client, address)
-                    connection = (client, address)
+                    if not terminated:
+                        address = address_tuple[0]
+                        self.append(client, address)
+                        connection = (client, address)
 
-                    # Our localhost connected, do localhost stuff;
-                    if address == self.get_local_ip() or address == "127.0.0.1":
-                        print("Server -> localhost has connected.")
-                        self.send(connection, "echo")
-                        self.listen(connection)
-                        print("Server -> Listening on localhost...")
+                        # Our localhost connected, do localhost stuff;
+                        if address == self.get_local_ip() or address == "127.0.0.1":
+                            print("Server -> localhost has connected.")
+                            self.send(connection, "echo")
+                            self.listen(connection)
+                            print("Server -> Listening on localhost...")
 
-                    # A remote client connected, handle them and send an echo, because why not?
-                    else:
+                        # A remote client connected, handle them and send an echo, because why not?
+                        else:
 
-                        print("Server -> ", address, " has connected.", sep='')
-                        print("Server -> Listening on ", address, sep='')
-                        self.listen(connection)
-                        self.send(connection, "echo")  # TODO: is this necessary?
+                            print("Server -> ", address, " has connected.", sep='')
+                            print("Server -> Listening on ", address, sep='')
+                            self.listen(connection)
+                            self.send(connection, "echo")  # TODO: is this necessary?
 
-                    if network_architecture == "complete":
-                        # In a 'complete' network, every node is connected to every other node for redundancy.
-                        # Hence, when a new node connects, we broadcast it's address to the  entire network so
-                        # every other node can try to connect to it (i.e 'complete' the network).
-                        self.broadcast(self.prepare('ConnectTo:' + address))
+                        if network_architecture == "complete":
+                            # In a 'complete' network, every node is connected to every other node for redundancy.
+                            # Hence, when a new node connects, we broadcast it's address to the  entire network so
+                            # every other node can try to connect to it (i.e 'complete' the network).
+                            self.broadcast(self.prepare('ConnectTo:' + address))
+
+                    elif terminated:
+                        sys.exit(0)
 
                 except ConnectionResetError:
                     print("Server -> localhost has disconnected")

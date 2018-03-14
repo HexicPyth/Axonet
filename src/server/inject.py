@@ -65,8 +65,6 @@ class NetworkInjector(multiprocessing.Process):
 
     def kill(self):
         print("Injector -> kill() : Reluctantly terminating myself... * cries to the thought of SIGKILL *")
-        self.terminate()
-        return
 
     @staticmethod
     def read_interaction_directory():
@@ -96,11 +94,12 @@ class NetworkInjector(multiprocessing.Process):
 
         return formatted_flags
 
-    def init(self, network_tuple):
-        msg = str(input("Please enter flag to inject into network:  "))
+    def init(self, network_tuple, msg=None):
+        if not msg:
+            msg = str(input("Please enter flag to inject into network:  "))
 
         print("Server/Injector -> Broadcasting the contents of the "
-              "interaction directory", msg, "to the network")
+              "interaction directory", "to the network")
 
         for flag in self.read_interaction_directory():
             self.broadcast(flag, network_tuple)

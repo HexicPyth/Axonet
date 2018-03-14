@@ -317,6 +317,12 @@ class Client:
 
             # Easy way to instruct all nodes to disconnect from each other and exit cleanly.
             if message == "stop":
+
+                # Inform our server to exit cleanly
+                localhost_connection = (localhost, "127.0.0.1")
+                self.send(localhost_connection, "stop")
+
+                # Do so ourselves
                 self.terminate()
 
             # If we received a foreign address, connect to it. This is address propagation.
@@ -422,7 +428,7 @@ class Client:
             global terminated
             listener_terminated = False  # When set, this specific instance of listener_thread is stopped.
 
-            while not listener_terminated or terminated:
+            while not listener_terminated and not terminated:
                 incoming = self.receive(conn)
                 msg = incoming
                 try:
