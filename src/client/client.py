@@ -317,7 +317,6 @@ class Client:
 
             # Easy way to instruct all nodes to disconnect from each other and exit cleanly.
             if message == "stop":
-
                 # Inform our server to exit cleanly
                 localhost_connection = (localhost, "127.0.0.1")
                 self.send(localhost_connection, "stop")

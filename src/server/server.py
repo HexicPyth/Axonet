@@ -199,8 +199,9 @@ class Server:
 
         # Try to gracefully disconnect & disassociate from the network
 
-        localhost_connection = (localhost, "127.0.0.1")
-        self.broadcast(self.prepare("stop"))
+        localhost_socket = self.lookup_socket("127.0.0.1")
+        localhost_connection = (localhost_socket, "127.0.0.1")
+        self.send(localhost_connection, "stop")
 
         print("Server -> stop() -> Trying to gracefully disconnect and disassociate.")
 
