@@ -433,6 +433,7 @@ class Server:
 
             # First, try to bind the server to (this address) port (port). If that doesn't work, exit cleanly.
             try:
+                localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 localhost.bind(('', port))
                 print(" success!")
             except OSError:

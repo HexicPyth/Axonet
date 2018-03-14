@@ -10,6 +10,8 @@ from hashlib import sha3_224
 
 # Globals
 localhost = socket.socket()
+localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes TIME_WAIT-ing. Add SO_REUSEADDR.
+
 PORT = 3705
 network_tuple = ()  # (socket, address)
 ballet_tuple = ([], [])  # (value, address)
