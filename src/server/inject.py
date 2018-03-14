@@ -1,6 +1,7 @@
 import multiprocessing
 import struct
-from server import Server
+import os
+import server
 current_message = None
 
 
@@ -13,7 +14,7 @@ class NetworkInjector(multiprocessing.Process):
         address = connection[1]
         global current_message
         if signing:
-            msg = Server.prepare(msg).encode('utf-8')
+            msg = server.Server.prepare(msg).encode('utf-8')
 
         else:
             msg.encode('utf-8')
@@ -67,8 +68,42 @@ class NetworkInjector(multiprocessing.Process):
         self.terminate()
         return
 
+    @staticmethod
+    def read_interaction_directory():
+        formatted_flags = []
+        this_dir = os.path.dirname(os.path.realpath(__file__))
+        os.chdir(this_dir)
+
+        # Switch to the interaction directory.
+        os.chdir("../inter/")
+
+        # Parse all files in the interaction directory for flags to broadcast.
+        for file in os.listdir('./'):
+            file_to_read = open(file, 'r+')
+            flags = file_to_read.readlines()
+
+            # the flags we get from a file with (naturally) contain newlines. Let's remove them.
+            for raw_flag in flags:
+                print(raw_flag)
+                formatted_flag = raw_flag.split('\n')[0]
+                formatted_flags.append(formatted_flag)
+                flags.remove(raw_flag)
+
+            file_to_read.seek(0)
+            file_to_read.write(''.join(flags))
+            file_to_read.truncate()
+            file_to_read.close()
+
+        return formatted_flags
+
     def init(self, network_tuple):
         msg = str(input("Please enter flag to inject into network:  "))
+
+        print("Server/Injector -> Broadcasting the contents of the "
+              "interaction directory", msg, "to the network")
+
+        for flag in self.read_interaction_directory():
+            self.broadcast(flag, network_tuple)
 
         print("Server/Injector -> Broadcasting", msg, "to the network")
         return self.broadcast(msg, network_tuple)
