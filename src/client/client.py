@@ -393,13 +393,16 @@ class Client:
                     # Don't disconnect from localhost. That's what self.terminate is for.
                     if address_to_remove != self.get_local_ip() and address_to_remove != "127.0.0.1":
 
-                        print("Client -> Remove -> Disconnecting from " + address_to_remove)
-
-                        # lookup the socket of the address we want to remove
                         sock = self.lookup_socket(address_to_remove)
-                        connection_to_remove = (sock, address_to_remove)
-                        print("Client -> Disconnecting from "+str(connection_to_remove))
-                        self.disconnect(connection_to_remove)
+                        if sock:
+                            print("Client -> Remove -> Disconnecting from " + address_to_remove)
+
+                            # lookup the socket of the address we want to remove
+                            connection_to_remove = (sock, address_to_remove)
+                            print("Client -> Disconnecting from "+str(connection_to_remove))
+                            self.disconnect(connection_to_remove)
+                        else:
+                            print("Client -> Not disconnecting from a non-existent connection")
 
                     else:
                         print("Client -> Not disconnecting from localhost, dimwit.")
