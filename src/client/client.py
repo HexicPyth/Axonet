@@ -352,8 +352,11 @@ class Client:
 
                         new_connection = (new_socket, connect_to_address)
                         if not connection_status:
-                            self.connect(new_connection, connect_to_address, PORT)
-                            self.listen(new_connection)
+                            try:
+                                self.connect(new_connection, connect_to_address, PORT)
+                                self.listen(new_connection)
+                            except OSError: # probably bad file descriptor in self.connect()
+                                print("Client -> Unable to connect to: "+str(connect_to_address))
 
                 # The address isn't foreign, don't re-connect to it.
                 elif connection_status != 0:
