@@ -2,12 +2,13 @@ import multiprocessing
 import threading
 import sys
 from time import sleep
-# Some import "magic" to import from other directories; (see issue #1)
-sys.path.insert(0, '../server/')
-sys.path.insert(0, '../client')
+import os
 
-import init_client
-import init_server
+# Some import "magic" to import from other directories; (see issue #1)
+this_dir = os.path.dirname(os.path.realpath(__file__))
+os.chdir(this_dir)
+sys.path.insert(0, '../server/')
+sys.path.insert(0, '../client')  # TODO: Directory restructure; We shouldn't have to modify PYTHON_PATH
 
 
 actions = ['server.py', 'client.py']
@@ -15,6 +16,8 @@ PORT = 3705
 
 
 def worker(action):  # Worker function
+    import init_server
+    import init_client
     print('action:', action)
     if action == 'server.py':
         print("Initializing server...")
