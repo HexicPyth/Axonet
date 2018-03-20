@@ -384,7 +384,9 @@ class Client:
                 info = message[5:]
                 file_hash = info[:16]
                 file_length = info[-4:]
-                print("\n Client -> Store segment of file: "+file_hash+" of length: "+file_length+"?")
+                new_message = str(no_prop+"affirm"+":"+sig)
+                self.broadcast(new_message)
+                print("--------")
 
             # Remove the specified node from the network (i.e disconnect from it)
             if message.startswith("remove:"):
@@ -442,7 +444,7 @@ class Client:
                     if incoming:
                         self.respond(conn, msg)
 
-                except TypeError:
+                except AssertionError:   # TypeError
                     print("Client -> Connection to "+str(in_sock) + "was severed or disconnected." +
                           "(TypeError: listen() -> listener_thread()")
 
