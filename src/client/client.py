@@ -417,10 +417,10 @@ class Client:
             if sig != no_prop:
                 message_list.append(sig)
 
-            # End of respond()
-            # Propagate the message to the rest of the network.
-            print('Client -> broadcasting: '+full_message)
-            self.broadcast(full_message)
+                # End of respond()
+                # Propagate the message to the rest of the network.
+                print('Client -> broadcasting: ' + full_message)
+                self.broadcast(full_message)
 
     def listen(self, connection):
         # Listen for incoming messages and call self.respond() to respond to them.

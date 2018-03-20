@@ -1,14 +1,14 @@
 # Python 3.6.2
-import socket
-import struct
-import inject
-import threading
-import datetime
-import random
+
 import os
 import sys
+import inject
+import random
+import socket
+import struct
+import datetime
+import threading
 from hashlib import sha3_224
-
 
 # Globals
 localhost = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
