@@ -118,7 +118,7 @@ class Server:
         try:
             sock.sendall(msg)
 
-        except BrokenPipeError:
+        except (BrokenPipeError, OSError):
             if address != self.get_local_ip() and address != "127.0.0.1":
                 print("Server -> Something happened sending to "+address)
                 print("Server -> Disconnecting from "+address)
