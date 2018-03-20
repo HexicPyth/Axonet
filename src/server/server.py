@@ -284,7 +284,7 @@ class Server:
                     sock.close()
 
                     # Inform the network about this removal
-                    self.broadcast(self.prepare("remove:" + address))
+                    # self.broadcast(self.prepare("remove:" + address))
                     print("Server -> Successfully disconnected.")
 
         # Socket not in network_tuple. Probably already disconnected, or the socket was [closed]
