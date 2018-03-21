@@ -238,18 +238,26 @@ class Server:
         # Tuples are immutable; convert it to a list.
         file_list = list(file_tuple)
 
-        file_object = (file_hash, remote_host, index)
+        file_object = [file_hash, remote_host, index]
 
         if file_tuple:
-            for item in file_tuple[0]:
-                print(item)
-                if file_hash == item:
-                    print("!")
-                    for remote_node in file_tuple[1]:
-                        print(remote_node)
-                        if remote_node == remote_host:
-                            print("Server -> Not appending duplicate node to file tuple;")
-                            return
+            try:
+                for f_object in file_tuple:
+
+                    # Avoid shadowing names
+                    f_hash = f_object[0]
+                    remote_node = f_object[1]
+                    index = f_object[2]
+
+                    if file_hash == f_hash:
+                        print("Warning:", remote_host,
+                              "is trying to claim multiple indexes; disallowing...")
+
+                    if remote_host == remote_node:
+                        print("Server -> Not appending duplicate node to file tuple;")
+                        return
+            except IndexError:
+                print("IndexError checking the file tuple; continuing...")
 
         file_list.append(file_object)
         print(file_list)
