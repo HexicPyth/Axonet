@@ -25,6 +25,7 @@ net_injection = False
 injector_terminated = False
 terminated = False
 file_tuple = ()  # (hash, remote_host, index)
+file_index = 0
 
 
 class Server:
@@ -238,10 +239,24 @@ class Server:
         file_list = list(file_tuple)
 
         file_object = (file_hash, remote_host, index)
+
+        if file_tuple:
+            for item in file_tuple[0]:
+                print(item)
+                if file_hash == item:
+                    print("!")
+                    for remote_node in file_tuple[1]:
+                        print(remote_node)
+                        if remote_node == remote_host:
+                            print("Server -> Not appending duplicate node to file tuple;")
+                            return
+
         file_list.append(file_object)
+        print(file_list)
 
         # (Again) tuples are immutable; replace the old one with the new one
         file_tuple = tuple(file_list)
+        print(file_tuple)
 
     def respond(self, msg, connection):
         # We received a message, reply with an appropriate response.
@@ -250,9 +265,9 @@ class Server:
         global no_prop  # default: 0xffffffffffffffff
         global message_list
         global file_tuple  # (hash, remote_host, node)
+        global file_index
 
         address = connection[1]
-
         full_message = str(msg)
         sig = msg[:16]
         message = msg[17:]
@@ -268,8 +283,11 @@ class Server:
                 print("Server -> Exiting cleanly")
                 self.stop()
 
-            elif message == "affirm:":
-                print("Server -> Received affirmation from", address, "in response to file:", sig)
+            elif message.startswith("affirm:"):   # Note: that space is supposed to be there.
+                file_hash = message[-16:]
+                print("Server -> Received affirmation from", address, "in response to file:", file_hash)
+                self.append_to_file_tuple(file_hash, address, file_index)
+                file_index += 1
 
             # We only broadcast messages with hashes we haven't already documented. That way the network doesn't
             # loop indefinitely broadcasting the same message. Also, Don't append no_prop to message_list.
