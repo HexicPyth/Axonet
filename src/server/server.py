@@ -24,6 +24,7 @@ no_prop = "ffffffffffffffff"  # a message with a true hash indicates that no mes
 net_injection = False
 injector_terminated = False
 terminated = False
+file_tuple = ()  # (hash, remote_host, index)
 
 
 class Server:
@@ -229,12 +230,26 @@ class Server:
         # noinspection PyProtectedMember
         os._exit(0)
 
+    @staticmethod
+    def append_to_file_tuple(file_hash, remote_host, index):
+        global file_tuple  # (hash, remote_host, data)
+
+        # Tuples are immutable; convert it to a list.
+        file_list = list(file_tuple)
+
+        file_object = (file_hash, remote_host, index)
+        file_list.append(file_object)
+
+        # (Again) tuples are immutable; replace the old one with the new one
+        file_tuple = tuple(file_list)
+
     def respond(self, msg, connection):
         # We received a message, reply with an appropriate response.
         # Doesn't return anything.
 
         global no_prop  # default: 0xffffffffffffffff
         global message_list
+        global file_tuple  # (hash, remote_host, node)
 
         address = connection[1]
 
@@ -252,6 +267,9 @@ class Server:
             if message == "stop":
                 print("Server -> Exiting cleanly")
                 self.stop()
+
+            elif message == "affirm:":
+                print("Server -> Received affirmation from", address, "in response to file:", sig)
 
             # We only broadcast messages with hashes we haven't already documented. That way the network doesn't
             # loop indefinitely broadcasting the same message. Also, Don't append no_prop to message_list.
