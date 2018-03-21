@@ -384,7 +384,7 @@ class Client:
                 info = message[5:]
                 file_hash = info[:16]
                 file_length = info[-4:]
-                new_message = str(no_prop+"affirm"+":"+sig)
+                new_message = str(no_prop+" affirm"+":"+sig)
                 self.broadcast(new_message)
                 print("--------")
 
