@@ -22,6 +22,7 @@ terminated = False  # If true: the client has instructed to terminate; inform ou
 allow_command_execution = False  # Don't execute arbitrary UNIX commands when casually asked, that's bad :]
 ongoing_election = False
 connecting_to_server = False
+allow_file_storage = True
 no_prop = "ffffffffffffffff"  # ffffffffffffffff:[message] = No message propagation.
 
 
@@ -381,12 +382,17 @@ class Client:
             if message.startswith("file:"):
                 # Eventually we'll be able to distribute shared
                 # retrievable information, like public keys, across the network.
-                info = message[5:]
-                file_hash = info[:16]
-                file_length = info[-4:]
-                new_message = str(no_prop+" affirm"+":"+sig)
-                self.broadcast(new_message)
-                print("--------")
+                if allow_file_storage:
+                    info = message[5:]
+                    file_hash = info[:16]
+                    file_length = info[-4:]
+                    new_message = str(no_prop+" affirm"+":"+file_hash)
+                    self.broadcast(new_message)
+                    print("--------")
+
+                else:
+                    print("Client - As per arguments to the "
+                          "Client.init(), not responding to requests for file storage")
 
             # Remove the specified node from the network (i.e disconnect from it)
             if message.startswith("remove:"):
@@ -478,15 +484,17 @@ class Client:
         return 0
 
     def initialize(self, port=3705, network_architecture="Complete",
-                   remote_addresses=None, command_execution=False):
+                   remote_addresses=None, command_execution=False, file_storage=True):
         # Initialize the client, set any global variable that need to be set, etc.
 
         global allow_command_execution
+        global allow_file_storage
         global localhost
         global PORT
 
         PORT = port  # Global variable assignment
         allow_command_execution = command_execution
+        allow_file_storage = file_storage
 
         # Stage 0
         print("Client -> Initializing...")
