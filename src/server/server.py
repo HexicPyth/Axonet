@@ -291,7 +291,7 @@ class Server:
                 print("Server -> Exiting cleanly")
                 self.stop()
 
-            elif message.startswith("affirm:"):   # Note: that space is supposed to be there.
+            elif message.startswith("affirm:"):
                 file_hash = message[-16:]
                 print("Server -> Received affirmation from", address, "in response to file:", file_hash)
                 self.append_to_file_tuple(file_hash, address, file_index)

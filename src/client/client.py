@@ -384,10 +384,22 @@ class Client:
                 # retrievable information, like public keys, across the network.
                 if allow_file_storage:
                     info = message[5:]
-                    file_hash = info[:16]
-                    file_length = info[-4:]
-                    new_message = str(no_prop+" affirm"+":"+file_hash)
-                    self.broadcast(new_message)
+                    file_hash = info[:15]
+                    file_length = info[16:20]
+                    origin_address = info[22::]
+                    new_message = str(no_prop+" affirm"+":"+file_hash+":"+origin_address)
+                    print("Client -> Affirming request for file: "+file_hash)
+
+                    print(origin_address)
+
+                    origin_socket = self.lookup_socket(origin_address)
+                    print(origin_socket)
+                    if origin_socket == 0:
+                        print("Apparently we are not connected to the origin of that request, passing;")
+                    else:
+                        origin_connection = (origin_socket, origin_address)
+                        self.send(origin_connection, new_message)
+
                     print("--------")
 
                 else:
