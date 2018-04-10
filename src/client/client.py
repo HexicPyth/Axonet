@@ -298,8 +298,8 @@ class Client:
         global cluster_rep
 
         full_message = str(msg)
-        sig = msg[:16]
-        message = msg[17:]
+        sig = full_message[:16]
+        message = full_message[17:]
         address = connection[1]
 
         # Don't respond to messages we've already responded to.
@@ -457,10 +457,10 @@ class Client:
 
             while not listener_terminated and not terminated:
                 incoming = self.receive(conn)
-                msg = incoming
+                raw_message = incoming
                 try:
                     if incoming:
-                        self.respond(conn, msg)
+                        self.respond(conn, raw_message)
 
                 except AssertionError:   # TypeError
                     print("Client -> Connection to "+str(in_sock) + "was severed or disconnected." +
