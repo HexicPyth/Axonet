@@ -462,7 +462,7 @@ class Client:
                     if incoming:
                         self.respond(conn, raw_message)
 
-                except AssertionError:   # TypeError
+                except TypeError:
                     print("Client -> Connection to "+str(in_sock) + "was severed or disconnected." +
                           "(TypeError: listen() -> listener_thread()")
 
