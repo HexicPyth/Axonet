@@ -387,7 +387,7 @@ class Client:
                     file_hash = info[:15]
                     file_length = info[16:20]
                     origin_address = info[22::]
-                    new_message = str(no_prop+" affirm"+":"+file_hash+":"+origin_address)
+                    new_message = str(no_prop+":affirm"+":"+file_hash+":"+origin_address)
                     print("Client -> Affirming request for file: "+file_hash)
 
                     print(origin_address)
