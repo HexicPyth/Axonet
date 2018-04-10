@@ -208,12 +208,12 @@ class Client:
     https://stackoverflow.com/a/17668009
     https://stackoverflow.com/users/9530/adam-rosenfield '''
 
-    def send(self, connection, message, signing=True):
+    def send(self, connection, message, sign=True):
         # Helper function to encode a given message and send it to a given server.
         # Returns nothing.
         sock = connection[0]
 
-        if signing:
+        if sign:
             msg = self.prepare(message).encode('utf-8')
         else:
             msg = message.encode('utf-8')
@@ -278,7 +278,7 @@ class Client:
         print("Client -> Permuting the network tuple")
         self.permute_network_tuple()
         for connection in network_tuple:
-            self.send(connection, message, signing=False)  # For each of them send the given message( = Broadcast)
+            self.send(connection, message, sign=False)  # For each of them send the given message( = Broadcast)
 
     @staticmethod
     def run_external_command(command):
@@ -316,7 +316,7 @@ class Client:
             if message == "echo":
                 # Check if Client/Server communication is intact
                 print("Client -> echoing...")
-                self.send(connection, no_prop+':'+message, signing=False)  # If received, send back
+                self.send(connection, no_prop +':' + message, sign=False)  # If received, send back
 
             # Easy way to instruct all nodes to disconnect from each other and exit cleanly.
             if message == "stop":
@@ -398,7 +398,7 @@ class Client:
                         print("Apparently we are not connected to the origin of that request, passing;")
                     else:
                         origin_connection = (origin_socket, origin_address)
-                        self.send(origin_connection, new_message)
+                        self.send(origin_connection, new_message, sign=False)
 
                     print("--------")
 
