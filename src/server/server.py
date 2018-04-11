@@ -292,7 +292,8 @@ class Server:
                 self.stop()
 
             elif message.startswith("affirm:"):
-                file_hash = message[-16:]
+                file_hash = message[7:][:16]  # Remove "affirm:" and the file hash will be the next 16 octets
+
                 print("Server -> Received affirmation from", address, "in response to file:", file_hash)
                 self.append_to_file_tuple(file_hash, address, file_index)
                 file_index += 1
