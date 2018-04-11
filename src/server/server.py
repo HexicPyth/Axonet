@@ -447,7 +447,7 @@ class Server:
                             break
             elif injector_terminated:
                 print("Terminating Injector...")
-                return 0
+                return
 
         # Start listener in a new thread
         print('starting listener thread')
@@ -507,7 +507,7 @@ class Server:
                         # Our localhost connected, do localhost stuff;
                         if address == self.get_local_ip() or address == "127.0.0.1":
                             print("Server -> localhost has connected.")
-                            self.send(connection, "echo")
+                            self.send(connection, str(no_prop+"echo"), signing=False)
                             self.listen(connection)
                             print("Server -> Listening on localhost...")
 
