@@ -279,7 +279,7 @@ class Server:
         full_message = str(msg)
         sig = msg[:16]
         message = msg[17:]
-        print("Client -> respond() -> Received raw message: "+message + "(may be duplicate)")
+        print("Client -> respond() -> Received raw message: "+message + "\t(may be duplicate)")
 
         if sig not in message_list:
             print('Server -> Received: ' + message + " (" + sig + ")")  # e.x Server -> Received echo (ffffffffffffffff)
