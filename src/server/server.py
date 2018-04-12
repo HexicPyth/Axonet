@@ -279,6 +279,7 @@ class Server:
         full_message = str(msg)
         sig = msg[:16]
         message = msg[17:]
+        print("\t\t\t"+message)
 
         if sig not in message_list:
             print('Server -> Received: ' + message + " (" + sig + ")")  # e.x Server -> Received echo (ffffffffffffffff)
@@ -292,7 +293,16 @@ class Server:
                 self.stop()
 
             elif message.startswith("affirm:"):
-                file_hash = message[7:][:16]  # Remove "affirm:" and the file hash will be the next 16 octets
+                usable_message = message[7:]  # Remove the flag ("affirm:")
+                file_hash = usable_message[:16]  # Remove "affirm:" and the file hash will be the next 16 octets
+
+                print("\n\tDEBUG INFO START")
+                print(msg)
+                print(full_message)
+                print(message)
+                print(usable_message)
+                print(file_hash)
+                print("\tDEBUG INFO END\n")
 
                 print("Server -> Received affirmation from", address, "in response to file:", file_hash)
                 self.append_to_file_tuple(file_hash, address, file_index)

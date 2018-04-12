@@ -384,7 +384,8 @@ class Client:
                 # retrievable information, like public keys, across the network.
                 if allow_file_storage:
                     info = message[5:]
-                    file_hash = info[:15]
+                    file_hash = info[:16]
+                    print("\tClient -> \n Info = "+info, "\n file_hash = "+file_hash)
                     file_length = info[16:20]
                     origin_address = info[22::]
                     new_message = str(no_prop+":affirm"+":"+file_hash+":"+origin_address)
