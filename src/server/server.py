@@ -17,21 +17,43 @@ localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes 
 injector = inject.NetworkInjector()
 
 network_tuple = ()  # Global lookup of (sockets, addresses)
-
+file_tuple = ()  # (hash, remote_host, index)
 message_list = []   # List of message hashes
 no_prop = "ffffffffffffffff"  # a message with a true hash indicates that no message propagation is needed.
+file_index = 0
 
 net_injection = False
 injector_terminated = False
 terminated = False
-file_tuple = ()  # (hash, remote_host, index)
-file_index = 0
+log_level = ""  # "Debug", "Info", or "Warning"; will be set by self.initialize()
 
 
 class Server:
 
     @staticmethod
-    def get_local_ip():
+    def log(log_message, in_log_level='Warning', subnode="Server"):
+
+        # input verification
+        levels = ["Debug", "Info", "Warning"]
+
+        allowable_levels = []
+        allow_further_levels = False  # Allow all levels after the input.
+
+        for level in levels:
+            if allow_further_levels:
+                allowable_levels.append(level)
+
+            if level == log_level:
+                allowable_levels.append(level)
+                allow_further_levels = True
+
+        if in_log_level not in levels or in_log_level not in allowable_levels:
+            pass
+
+        else:
+            print(subnode, "->", in_log_level + ":", log_message)
+
+    def get_local_ip(self):
         # Creates a temporary socket and connects to subnet, yielding our local address.
         # Returns: (local ip address) -> str
         temp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -44,7 +66,8 @@ class Server:
 
         except OSError:
             # Connect refused; there is likely no network connection.
-            print("Server -> get_local_ip() -> No network connection detected.")
+            self.log("Failed to identify local IP address; No network connection detected", in_log_level="Warning")
+
             local_ip = "127.0.0.1"
 
         finally:
@@ -122,8 +145,10 @@ class Server:
 
         except (BrokenPipeError, OSError):
             if address != self.get_local_ip() and address != "127.0.0.1":
-                print("Server -> Something happened sending to "+address)
-                print("Server -> Disconnecting from "+address)
+
+                log_msg = str("Errors occurred sending to " + address + "; Disconnecting...")
+                self.log(log_msg, in_log_level="Warning")
+
                 self.disconnect(connection)
 
     @staticmethod
@@ -155,7 +180,9 @@ class Server:
             address = connection[1]
             # Lookup address of client from the network_tuple
 
-            print("Server -> Sending to: "+address)
+            log_msg = str("Sending to: "+address)
+            self.log(log_msg, in_log_level="Debug")
+
             self.send(connection, message, signing=False)  # For each of them send the given message( = Broadcast)
 
     @staticmethod
@@ -172,9 +199,8 @@ class Server:
         # (Again) tuples are immutable; replace the old one with the new one
         network_tuple = tuple(network_list)
 
-    @staticmethod
     # Remove a connection from the network_tuple
-    def remove(connection):
+    def remove(self, connection):
         global network_tuple
 
         # Tuples are immutable; convert it to a list.
@@ -187,7 +213,8 @@ class Server:
 
         # Connection not in network tuple, or socket is [closed]
         except ValueError:
-            print("Server -> Not removing non-existent connection: "+str(connection))
+            log_msg = str("Not removing non-existent connection: "+str(connection))
+            self.log(log_msg, in_log_level="Warning")
 
         # (Again) tuples are immutable; replace the old one with the new one
         network_tuple = tuple(network_list)
@@ -202,21 +229,25 @@ class Server:
         localhost_connection = (localhost_socket, "127.0.0.1")
         self.send(localhost_connection, "stop")
 
-        print("Server -> stop() -> Trying to gracefully disconnect and disassociate.")
+        log_msg = "Attempting to gracefully disconnect and disassociate from all clients..."
+        self.log(log_msg, in_log_level="Info")
 
         for connection in network_tuple:
-            print("Trying to disconnect from socket: " + str(connection[0]))
+            log_msg = str("Trying to disconnect from socket: " + str(connection[0]))
+            self.log(log_msg, in_log_level="Debug")
 
             try:
                 self.disconnect(connection, disallow_local_disconnect=True)
-                print("Successfully disconnected")
+                self.log("Successfully disconnected", in_log_level="Debug")
 
             except OSError:
-                print("Failed to disconnect from socket: "+str(connection[0]))
+                another_log_msg = str("Failed to disconnect from socket: "+str(connection[0]))
+                self.log(another_log_msg, in_log_level="Warning")
 
         localhost_sock_name = localhost.getsockname()
         localhost.close()
-        print("Server -> Stop() -> Exiting gracefully.")
+
+        self.log("Exiting gracefully;", in_log_level="Info")
 
         terminated = True
         injector_terminated = True
@@ -231,8 +262,7 @@ class Server:
         # noinspection PyProtectedMember
         os._exit(0)
 
-    @staticmethod
-    def append_to_file_tuple(file_hash, remote_host, index):
+    def append_to_file_tuple(self, file_hash, remote_host, index):
         global file_tuple  # (hash, remote_host, data)
 
         # Tuples are immutable; convert it to a list.
@@ -247,24 +277,27 @@ class Server:
                     # Avoid shadowing names
                     f_hash = f_object[0]
                     remote_node = f_object[1]
-                    index = f_object[2]
+                    # index = f_object[2]  -- We'll come back to this later
 
                     if file_hash == f_hash:
-                        print("Warning:", remote_host,
-                              "is trying to claim multiple indexes; disallowing...")
+                        log_msg = str("Warning: " + remote_host +
+                                      " is trying to claim multiple indexes; disallowing...")
+                        self.log(log_msg, in_log_level="Warning")
 
                     if remote_host == remote_node:
-                        print("Server -> Not appending duplicate node to file tuple;")
+                        self.log("Not appending duplicate node to file tuple; ", in_log_level="Info")
                         return
+
             except IndexError:
-                print("IndexError checking the file tuple; continuing...")
+                # TODO: What does this catch?
+                self.log("IndexError(s) occurred checking to file tuple; continuing...", in_log_level="Warning")
 
         file_list.append(file_object)
-        print(file_list)
+        self.log(str(file_list), in_log_level="Debug")
 
         # (Again) tuples are immutable; replace the old one with the new one
         file_tuple = tuple(file_list)
-        print(file_tuple)
+        self.log(str(file_tuple), in_log_level="Debug")
 
     def respond(self, msg, connection):
         # We received a message, reply with an appropriate response.
@@ -279,45 +312,61 @@ class Server:
         full_message = str(msg)
         sig = msg[:16]
         message = msg[17:]
-        print("Client -> respond() -> Received raw message: "+message + "\t(may be duplicate)")
+
+        message_received_log_dbg = str("Received raw message: "+message)
+        self.log(message_received_log_dbg, in_log_level="Debug")
 
         if sig not in message_list:
-            print('Server -> Received: ' + message + " (" + sig + ")")  # e.x Server -> Received echo (ffffffffffffffff)
+            message_received_log_info = str('Server -> Received: ' + message + " (" + sig + ")")
+            self.log(message_received_log_info, in_log_level="Info")
 
             if message == "echo":
                 # If received, two-way communication is functional
-                print("Server -> Note: Two-Way communication with", address, "established and/or tested functional")
+                echo_received_log = str("Two-Way communication with " + address +
+                                        "established and/or tested functional")
+                self.log(echo_received_log, in_log_level="Info")
 
             if message == "stop":
-                print("Server -> Exiting cleanly")
+                self.log("Exiting Cleanly", in_log_level="Info")
                 self.stop()
 
             elif message.startswith("affirm:"):
                 usable_message = message[7:]  # Remove the flag ("affirm:")
-                file_hash = usable_message[:16]  # Remove "affirm:" and the file hash will be the next 16 octets
+                file_hash = usable_message[:16]
 
-                print("\n\tDEBUG INFO START")
-                print(msg)
-                print(full_message)
-                print(message)
-                print(usable_message)
-                print(file_hash)
-                print("\tDEBUG INFO END\n")
+                # Sorry for this mess :P
+                file_affirmation_debug_dump = str("Received affirmation, dumping our souls into the void"
+                                                  " (of stdout)... "+'\n\t'
+                                                  + msg + '\n\t'
+                                                  + full_message + '\n\t'
+                                                  + message + '\n\t'
+                                                  + usable_message + '\n\t'
+                                                  + file_hash + '\n\t'
+                                                  + "Reached end of soul; stopping")
 
-                print("Server -> Received affirmation from", address, "in response to file:", file_hash)
+                # Note to self: Don't turn on log_level_debug :P
+                self.log(file_affirmation_debug_dump, in_log_level="Debug")
+
+                file_affirmation_friendly_notice = str("Received affirmation from " + address
+                                                       + " in response to file:" + file_hash)
+
+                self.log(file_affirmation_friendly_notice, in_log_level="Info")
+
                 self.append_to_file_tuple(file_hash, address, file_index)
                 file_index += 1
 
             # We only broadcast messages with hashes we haven't already documented. That way the network doesn't
             # loop indefinitely broadcasting the same message. Also, Don't append no_prop to message_list.
             # That would be bad.
+
             if sig not in message_list and sig != no_prop:
                 message_list.append(sig)
 
-                print("Server -> Broadcasting "+full_message)
+                broadcast_notice = str("Broadcasting "+full_message)
+                self.log(broadcast_notice, in_log_level="Info")
                 self.broadcast(full_message)
 
-                print("Server -> Permuting the network tuple")
+                self.log("Permuting the Network Tuple", in_log_level="Info")
                 self.permute_network_tuple()
 
     def disconnect(self, connection, disallow_local_disconnect=True):
@@ -328,24 +377,35 @@ class Server:
         try:
             if disallow_local_disconnect:
                 if address == self.get_local_ip() and not terminated:
-                    print("Server -> BUG -> Refusing to disconnect from localhost; that's a terrible idea.")
+
+                    self.log("(Bug) Refusing to disconnect from localhost;"
+                             " that's a terrible idea...", in_log_level="Warning")
+
                     return None
                 else:
-                    print("\n\n\tSelf.disconnect() called!\t\n\n")
-                    print("\nDisconnecting from " + str(sock))
-                    print("Disconnecting from ", address)
-                    print("Server -> Removing " + str(sock) + " from network_tuple\n")
+
+                    self.log("\n\tSelf.disconnect() called.\n", in_log_level="Info")
+
+                    verbose_connection_msg = str("Disconnecting from " + address
+                                                 + "\n\t(  " + str(sock) + "  )")
+
+                    self.log(verbose_connection_msg, in_log_level="Info")
+
+                    conn_remove_msg = str("Server -> Removing " + str(sock) + " from network_tuple")
+                    self.log(conn_remove_msg, in_log_level="Info")
                     self.remove(connection)
                     sock.close()
 
                     # Inform the network about this removal
                     # self.broadcast(self.prepare("remove:" + address))
-                    print("Server -> Successfully disconnected.")
+                    # Scratch that; letting machines control other machines on a network in development
+                    # ends badly.
+
+                    self.log("Successfully Disconnected.", in_log_level="Info")
 
         # Socket not in network_tuple. Probably already disconnected, or the socket was [closed]
         except IndexError:
-            print("Already disconnected; passing")
-            pass
+            self.log("Already disconnected from that address; passing;", in_log_level="Warning")
 
     def listen(self, connection):
         # Listen for incoming messages in one thread, manage the network injector in another.
@@ -364,21 +424,26 @@ class Server:
 
                 except (OSError, TypeError):
                     try:
-                        print(conn)
                         client = conn[0]
                         address = conn[1]
-                        print(address)
 
                         if address == self.get_local_ip() or address == "127.0.0.1":
-                            print("Server -> Something happened with localhost; not disconnecting")
+                            self.log("Something happened to localhost; not disconnecting",
+                                     in_log_level="Warning")
                         else:
                             try:
                                 self.disconnect(conn)
                             except ValueError:
-                                print("Server -> Socket closed")
+                                self.log("Socket Closed", in_log_level="Warning")
                             finally:
-                                print("Server -> Connection to "+str(client) + "probably down or terminated;")
+                                connection_down_msg = str("Server -> Connection to " + str(client)
+                                                          + "probably down or terminated;")
+
+                                self.log(connection_down_msg, in_log_level="Warning")
+
+                                # Don't leave zombie listeners running
                                 listener_terminated = True
+
                     except ValueError:  # socket is [closed]
                         listener_terminated = True
 
@@ -411,31 +476,45 @@ class Server:
 
                             if injector_return_value != self.get_local_ip() and injector_return_value != "127.0.0.1":
 
-                                print("Server -> Disconnect from faulty connection: " + injector_return_value)
+                                faulty_conn_disconnect_msg = str("Server -> Attempting to disconnect" 
+                                                                 "from faulty connection: "
+                                                                 + injector_return_value)
+
+                                self.log(faulty_conn_disconnect_msg, in_log_level="Warning")
 
                                 # Find the address of the disconnected or otherwise faulty node.
                                 sock = self.lookup_socket(injector_return_value)
-                                print("\n----")
-                                print("\tLooking up socket for "+injector_return_value)
-                                print("Found socket: " + str(sock))
+
+                                self.log(str("\tLooking up socket for "+injector_return_value),
+                                         in_log_level="Warning")
+
+                                self.log(str("\tFound socket: " + str(sock)), in_log_level="Info")
 
                                 if sock:
+                                    # Be really verbose.
+
                                     connection_to_disconnect = (sock, injector_return_value)
-                                    print("As part of connection: "+str(connection_to_disconnect))
-                                    print("Trying to disconnect from: "+str(connection_to_disconnect))
+
+                                    found_connection_msg = str("\tAs part of connection: " +
+                                                               str(connection_to_disconnect))
+                                    self.log(found_connection_msg, in_log_level="Info")
+
+                                    disconnect_attempt_msg = str("Trying to disconnect from: " +
+                                                                 str(connection_to_disconnect))
+                                    self.log(disconnect_attempt_msg, in_log_level="Info")
+
                                     self.disconnect(connection_to_disconnect)
-                                    print("----\n")
 
                             else:
-                                print("Server -> Not disconnecting from localhost, dimwit.")
+                                self.log("Not disconnecting from localhost, dimwit.", in_log_level="Warning")
 
                         # The injector ran cleanly and we still have a multi-node network. Continue as normal.
                         if injector_return_value == 0 and len(network_tuple) >= 1:
 
                             try:
-                                print(network_tuple)
-                                print("Server/Injector -> Permuting the network tuple")
-                                print(network_tuple)
+                                self.log(str(network_tuple), in_log_level="Debug")
+                                self.log("Permuting the network tuple... ", in_log_level="Info")
+                                self.log(str(network_tuple), in_log_level="Debug")
 
                                 injector_return_value = injector.init(network_tuple)  # Eww nested loops.
 
@@ -450,17 +529,18 @@ class Server:
                         # The size of the network_tuple changed. Either we have remote connections, or a clean
                         # disconnect just occurred. Stop the loop so we can act accordingly.
                         elif len(network_tuple) > 1 or len(network_tuple) != current_network_size:
-                            print("!!!")
+                            self.log("Remote connections detected, stopping the network injector...",
+                                     in_log_level="Info")
                             break  # We have remote connections...
 
                         else:
                             break
             elif injector_terminated:
-                print("Terminating Injector...")
+                self.log("Terminating the Network Injector", in_log_level="Info")
                 return
 
         # Start listener in a new thread
-        print('starting listener thread')
+        self.log("Starting a new listener thread", in_log_level="Info")
         threading.Thread(target=listener, name='listener_thread', args=(connection,)).start()
 
         # If applicable, start a new instance of the network injector, killing any other running ones.
@@ -468,38 +548,42 @@ class Server:
             injector_terminated = True  # Kill any running network injector(s)
             injector_terminated = False
 
-            threading.Thread(target=start_injector, name='injector_thread', args=()).start()  # Start a new one
+            threading.Thread(target=start_injector, name='injector_thread', args=()).start()
 
     def initialize(self, port=3704, listening=True, method="socket", network_injection=False,
-                   network_architecture="complete"):
+                   network_architecture="complete", default_log_level='Warning'):
 
         if method == "socket":
             global injector
             global localhost
             global net_injection
             global terminated
+            global log_level
 
+            # Set parameters and global variables from their default values
             address_string = self.get_local_ip()+":"+str(port)  # e.x 10.1.10.3:3705
             net_injection = network_injection  # Didn't want to shadow variable names.
+            log_level = default_log_level
 
-            print("Server -> Initializing...")
+            self.log("Initializing... ", in_log_level="Info")
 
-            print("Server -> Binding server on: ", address_string, "...", sep='')
+            self.log(str("Server -> Binding server on: " + address_string + "..."),
+                     in_log_level="Info")
 
             # First, try to bind the server to (this address) port (port). If that doesn't work, exit cleanly.
+
             try:
                 localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 localhost.bind(('', port))
-                print(" success!")
+                self.log(str("Successfully bound server on port: " + str(port)), in_log_level="Info")
+
             except OSError:
-                print(" failed!")
-                print("Failed to bind server on", address_string, "Please try again later.")
+                self.log(str("Failed to bind server on " + address_string +
+                             "; Please try again later."), in_log_level="Info")
                 self.stop()
 
-            print("Server -> Server successfully bound on: ", address_string, sep='')
-
             if listening:
-                print("Server -> Now Listening for incoming connections...")
+                self.log("Server -> Now Listening for incoming connections...", in_log_level="Info")
 
             # Listen for incoming connections.
             while listening:
@@ -516,17 +600,20 @@ class Server:
 
                         # Our localhost connected, do localhost stuff;
                         if address == self.get_local_ip() or address == "127.0.0.1":
-                            print("Server -> localhost has connected.")
-                            self.send(connection, str(no_prop+"echo"), signing=False)
+
+                            self.log("Localhost has connected.", in_log_level="Info")
+
+                            self.send(connection, str(no_prop+':'+"echo"), signing=False)
                             self.listen(connection)
-                            print("Server -> Listening on localhost...")
+                            self.log("Listening on localhost...", in_log_level="Info")
 
                         # A remote client connected, handle them and send an echo, because why not?
                         else:
+                            self.log(str(address, " has connected."), in_log_level="Info")
 
-                            print("Server -> ", address, " has connected.", sep='')
-                            print("Server -> Listening on ", address, sep='')
+                            self.log(str("Listening on: "+address), in_log_level="Info")
                             self.listen(connection)
+
                             self.send(connection, "echo")  # TODO: is this necessary?
 
                         if network_architecture == "complete":
@@ -539,7 +626,4 @@ class Server:
                         sys.exit(0)
 
                 except ConnectionResetError:
-                    print("Server -> localhost has disconnected")
-
-        else:
-            print("TODO: implement other protocols")  # TODO: Implement other protocols
+                    self.log("Server -> localhost has disconnected", in_log_level="Warning")

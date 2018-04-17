@@ -7,7 +7,8 @@ port = 3705
 
 def init():
     x = client.Client()
-    x.initialize(port=port, network_architecture="Complete", remote_addresses=None)
+    x.initialize(port=port, network_architecture="Complete", remote_addresses=None,
+                 command_execution=True, default_log_level="Debug")
 
 
 if __name__ == "__main__":

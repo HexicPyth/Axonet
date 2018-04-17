@@ -18,18 +18,41 @@ ballet_tuple = ([], [])  # (value, address)
 message_list = []
 
 cluster_rep = None  # type -> bool
-terminated = False  # If true: the client has instructed to terminate; inform our functions and exit cleanly.
+terminated = False  # If true: the client has been instructed to terminate; inform our functions and exit cleanly.
 allow_command_execution = False  # Don't execute arbitrary UNIX commands when casually asked, that's bad :]
 ongoing_election = False
 connecting_to_server = False
 allow_file_storage = True
+log_level = ""  # "Debug", "Info", or "Warning"; To be set by init
 no_prop = "ffffffffffffffff"  # ffffffffffffffff:[message] = No message propagation.
 
 
 class Client:
 
     @staticmethod
-    def get_local_ip():
+    def log(log_message, in_log_level='Warning', subnode="Client"):
+
+        # input verification
+        levels = ["Debug", "Info", "Warning"]
+
+        allowable_levels = []
+        allow_further_levels = False  # Allow all levels after the input.
+
+        for level in levels:
+            if allow_further_levels:
+                allowable_levels.append(level)
+
+            if level == log_level:
+                allowable_levels.append(level)
+                allow_further_levels = True
+
+        if in_log_level not in levels or in_log_level not in allowable_levels:
+            pass
+
+        else:
+            print(subnode, "->", in_log_level + ":", log_message)
+
+    def get_local_ip(self):
         # Creates a temporary socket and connects to subnet, yielding our local address.
         # Returns: (local ip address) -> str
         temp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -42,7 +65,8 @@ class Client:
 
         except OSError:
             # Connect refused; there is likely no network connection.
-            print("Server -> get_local_ip() -> No network connection detected.")
+            self.log("Failed to identify local IP address. No network connection detected.",
+                     in_log_level="Warning")
             local_ip = "127.0.0.1"
 
         finally:
@@ -106,9 +130,8 @@ class Client:
         # (Again) tuples are immutable; replace the old one with the new one
         network_tuple = tuple(network_list)
 
-    @staticmethod
     # Remove a connection from the network_tuple
-    def remove(connection):
+    def remove(self, connection):
         global network_tuple
 
         # Tuples are immutable; convert it to a list.
@@ -121,7 +144,8 @@ class Client:
 
         # Connection not in network tuple, or socket is [closed]
         except ValueError:
-            print("Client -> Not removing non-existent connection: "+str(connection))
+            self.log(str("Not removing non-existent connection: "+str(connection)),
+                     in_log_level="Warning")
             return None
 
         # (Again) tuples are immutable; replace the old one with the new one
@@ -141,7 +165,10 @@ class Client:
         self.append(sock, address)
 
         if connection in quasi_network_tuple:
-            print("Client -> Not connecting to "+connection[1], "We're already connected.")
+            not_connecting_msg = str("Not connecting to "+connection[1],
+                                     "We're already connected.")
+            self.log(not_connecting_msg, "Warning")
+
             self.remove((sock, address))
 
         else:
@@ -150,42 +177,43 @@ class Client:
 
                 if not local:
 
-                    print("Client -> Connecting to ", address, sep='')
+                    self.log(str("Connecting to "+address), in_log_level="Info")
                     sock.connect((address, port))
-                    print("Client -> Success")
+                    self.log("Successfully connected.", in_log_level="Info")
                     connecting_to_server = False
 
                 elif local:
                     self.remove((sock, address))
-                    print("Client -> Connecting to localhost server...", end='')
+
+                    self.log("Connecting to localhost server...", in_log_level="Info")
                     sock.connect((address, port))
-                    print("success!")
-                    print("Client -> Connected.")
+                    self.log("Successfully connected to localhost server", in_log_level="Info")
                     connecting_to_server = False
 
     def disconnect(self, connection, disallow_local_disconnect=True):
         # Try to disconnect from a remote server and remove it from the network tuple.
         # Returns None if you try to do something stupid. otherwise returns nothing at all.
-        print("\n\tClient -> self.disconnect() called!\t\n")
 
         try:
             sock = connection[0]
             address_to_disconnect = connection[1]
+
         except TypeError:
-            print("Warning: Expected a connection tuple, got:")
-            print(str(connection))
+            self.log("Expected a connection tuple, got:", in_log_level="Warning")
+            self.log(str('\t')+str(connection), in_log_level="Warning")
             return None
 
         try:
             # Don't disconnect from localhost. That's done with self.terminate().
             if disallow_local_disconnect:
                 if address_to_disconnect == self.get_local_ip() or address_to_disconnect == "127.0.0.1":
-                    print("Client -> Not disconnecting from localhost, dimwit.")
+                    self.log("Not disconnecting from localhost dimwit.", in_log_level="Warning")
 
                 # Do disconnect from remote nodes. That actually makes sense.
                 else:
-                    print("\nDisconnecting from " + str(sock))  # Print the socket we're disconnecting from
-                    print("Disconnecting from ", address_to_disconnect)  # Print the address we're disconnecting from
+                    verbose_connection_msg = str("Disconnecting from " + address_to_disconnect
+                                                 + "\n\t(  " + str(sock) + "  )")
+                    self.log(verbose_connection_msg, in_log_level="Info")
 
                     self.remove(connection)
 
@@ -193,17 +221,20 @@ class Client:
                         sock.close()
 
                     except (OSError, AttributeError):
-                        print("Failed to close the socket of "+address_to_disconnect + " -> OSError -> disconnect()")
+                        close_fail_msg = str("Failed to close the socket of "
+                                             + address_to_disconnect
+                                             + " -> OSError -> disconnect()")
+                        self.log(close_fail_msg, in_log_level="Warning")
 
                     finally:
-                        print("Client -> Successfully disconnected.")
+                        self.log("Successfully disconnected.", in_log_level="Info")
 
         # Either the socket in question doesn't exist, or the socket is probably [closed].
         except (IndexError, ValueError):
-            print("Already disconnected; passing")
+            self.log("Already disconnected from that address, passing...", in_log_level="Warning")
             pass
 
-    ''' The following thee functions were written by StackOverflow user 
+    ''' The following three functions were written by StackOverflow user 
     Adam Rosenfield and modified by me, HexicPyth.
     https://stackoverflow.com/a/17668009
     https://stackoverflow.com/users/9530/adam-rosenfield '''
@@ -230,8 +261,7 @@ class Client:
         except OSError:
             self.disconnect(connection)
 
-    @staticmethod
-    def receiveall(sock, n):
+    def receiveall(self, sock, n):
         # Helper function to receive n bytes.
         # returns None if EOF is hit
 
@@ -242,7 +272,8 @@ class Client:
                 packet = (sock.recv(n - len(data))).decode()
 
             except OSError:
-                print("Client -> Connection probably down or terminated (OSError: receiveall()")
+                self.log("Connection probably down or terminated (OSError: receiveall()",
+                         in_log_level="Warning")
                 raise ValueError
 
             # Something corrupted in transit. Let's just ignore the bad pieces for now.
@@ -275,7 +306,7 @@ class Client:
             return 1
 
     def broadcast(self, message):
-        print("Client -> Permuting the network tuple")
+        self.log("Permuting the network tuple", in_log_level="Info")
         self.permute_network_tuple()
         for connection in network_tuple:
             self.send(connection, message, sign=False)  # For each of them send the given message( = Broadcast)
@@ -304,19 +335,24 @@ class Client:
 
         # Don't respond to messages we've already responded to.
         if sig in message_list:
-            print("Client -> Not responding to "+sig)
+            not_responding_to_msg = str("Not responding to "+sig)
+            self.log(not_responding_to_msg, in_log_level="Debug")
 
         # Do respond to messages we have yet to respond to.
         else:
 
             # Find the address of the socket we're receiving from...
-            print('Client -> Received: ' + message + " (" + sig + ")" + "from: " + address)
+
+            # e.x "Client -> Received: echo (ffffffffffffffff) from: 127.0.0.1"
+            message_received_log = str('Received: ' + message
+                                       + " (" + sig + ")" + "from: " + address)
+
+            self.log(message_received_log, in_log_level="Info")
 
             # Simple connection test mechanism.
             if message == "echo":
-                # Check if Client/Server communication is intact
-                print("Client -> echoing...")
-                self.send(connection, no_prop +':' + message, sign=False)  # If received, send back
+                self.log("echoing...", in_log_level="Info")
+                self.send(connection, no_prop + ':' + message, sign=False)  # If received, send back
 
             # Easy way to instruct all nodes to disconnect from each other and exit cleanly.
             if message == "stop":
@@ -335,39 +371,53 @@ class Client:
 
                 # Will return None if no socket is found(i.e we're not connected)
                 connection_status = self.lookup_socket(connect_to_address)
-                print(network_tuple)
+                self.log(str(network_tuple), in_log_level="Debug")
 
                 # If we're not already connected
                 if connection_status == 0:
 
                     # Don't re-connect to localhost. All kinds of bad things happen if you do.
                     if connect_to_address == self.get_local_ip() or connect_to_address == "127.0.0.1":
-                        print("Client -> Not connecting to", connect_to_address + ";", "That's localhost :P")
+                        not_connecting_msg = str("Not connecting to " + connect_to_address
+                                                 + ";" + " That's localhost :P")
+                        self.log(not_connecting_msg, in_log_level="Warning")
 
                     else:
                         local_address = self.get_local_ip()
-                        print("Client -> self.lookup_socket() indicates that"
-                              " we're not connected to "+connect_to_address)
-                        print("Client -> self.get_local_ip() indicates that localhost = "+local_address)
+                        self.log(str("self.lookup_socket() indicates that "
+                                 "we're not connected to "+connect_to_address), in_log_level="Info")
+
+                        self.log(str("self.get_local_ip() indicates that localhost "
+                                     "= " + local_address), in_log_level="Info")
+
                         new_socket = socket.socket()
 
                         new_connection = (new_socket, connect_to_address)
+
+                        # If we're not connected to said node
                         if not connection_status:
                             try:
                                 self.connect(new_connection, connect_to_address, PORT)
                                 self.listen(new_connection)
-                            except OSError: # probably bad file descriptor in self.connect()
-                                print("Client -> Unable to connect to: "+str(connect_to_address))
+
+                            # probably bad file descriptor in self.connect()
+                            except OSError:
+                                self.log(str("Unable to connect to: "+str(connect_to_address)),
+                                         in_log_level="Warning")
 
                 # The address isn't foreign, don't re-connect to it.
                 elif connection_status != 0:
-                    print("Client -> Not connecting to", connect_to_address+";", "We're already connected.")
+                    already_connected_msg = str("Not connecting to " +
+                                                connect_to_address +
+                                                ";" +
+                                                "We're already connected.")
+                    self.log(already_connected_msg, "Warning")
 
             if message.startswith('exec:'):
                 # Assuming allow_command_execution is set, execute arbitrary UNIX commands in their own threads.
                 if allow_command_execution:
                     command = message[5:]
-                    print("executing: "+command)
+                    self.log(str("executing: "+command), in_log_level="Info")
 
                     # Warning: This is about to execute some arbitrary UNIX command in it's own nice little
                     # non-isolated fork of a process.
@@ -377,7 +427,7 @@ class Client:
 
                 # allow_command_execution is not set, don't execute arbitrary UNIX commands from the network.
                 else:
-                    print("Not executing command: ", message[5:])
+                    self.log(("Not executing command: ", message[5:]), in_log_level="Info")
 
             if message.startswith("file:"):
                 # Eventually we'll be able to distribute shared
@@ -385,27 +435,29 @@ class Client:
                 if allow_file_storage:
                     info = message[5:]
                     file_hash = info[:16]
-                    print("\tClient -> \n Info = "+info, "\n file_hash = "+file_hash)
-                    file_length = info[16:20]
+                    verbose_info_dump = str("Info = " + info +
+                                            '\n File hash = ' + file_hash)
+                    self.log(verbose_info_dump, in_log_level="Info")
+
+                    # file_length = info[16:20]  Let's put this aside for now
                     origin_address = info[22::]
                     new_message = str(no_prop+":affirm"+":"+file_hash+":"+origin_address)
-                    print("Client -> Affirming request for file: "+file_hash)
+                    self.log(str("Affirming request for file: "+file_hash), in_log_level="Info")
 
                     print(origin_address)
 
                     origin_socket = self.lookup_socket(origin_address)
                     print(origin_socket)
                     if origin_socket == 0:
-                        print("Apparently we are not connected to the origin of that request, passing;")
+                        self.log("Apparently we are not connected to the origin of that request,"
+                                 " passing;", in_log_level="Info")
                     else:
                         origin_connection = (origin_socket, origin_address)
                         self.send(origin_connection, new_message, sign=False)
 
-                    print("--------")
-
                 else:
-                    print("Client - As per arguments to the "
-                          "Client.init(), not responding to requests for file storage")
+                    self.log("As per arguments to self.init(),"
+                             " not responding to requests for file storage", in_log_level="Info")
 
             # Remove the specified node from the network (i.e disconnect from it)
             if message.startswith("remove:"):
@@ -418,32 +470,37 @@ class Client:
                     if address_to_remove != self.get_local_ip() and address_to_remove != "127.0.0.1":
 
                         sock = self.lookup_socket(address_to_remove)
+
                         if sock:
-                            print("Client -> Remove -> Disconnecting from " + address_to_remove)
+                            self.log("Remove -> Disconnecting from " + address_to_remove,
+                                     in_log_level="Info")
 
                             # lookup the socket of the address we want to remove
                             connection_to_remove = (sock, address_to_remove)
-                            print("Client -> Disconnecting from "+str(connection_to_remove))
+                            self.log(str("Who's connection is: "+str(connection_to_remove)),
+                                     in_log_level="Info")
                             self.disconnect(connection_to_remove)
+
                         else:
-                            print("Client -> Not disconnecting from a non-existent connection")
+                            self.log("Not disconnecting from a non-existent connection",
+                                     in_log_level="Warning")
 
                     else:
-                        print("Client -> Not disconnecting from localhost, dimwit.")
+                        self.log("Not disconnecting from localhost, dimwit.", in_log_level="Warning")
 
                 except (ValueError, TypeError):
                     # Either the address we're looking for doesn't exist, or we're not connected it it.
-                    print("Server -> Sorry, we're not connected to " + address_to_remove)
+                    self.log(str("Sorry, we're not connected to " + address_to_remove),
+                             in_log_level="Warning")
                     pass
 
             # Append signature(hash) to the message list, or in the case of sig=no_prop, do nothing.
-
             if sig != no_prop:
                 message_list.append(sig)
 
                 # End of respond()
                 # Propagate the message to the rest of the network.
-                print('Client -> broadcasting: ' + full_message)
+                self.log(str('Broadcasting: ' + full_message), in_log_level="Debug")
                 self.broadcast(full_message)
 
     def listen(self, connection):
@@ -464,15 +521,19 @@ class Client:
                         self.respond(conn, raw_message)
 
                 except TypeError:
-                    print("Client -> Connection to "+str(in_sock) + "was severed or disconnected." +
-                          "(TypeError: listen() -> listener_thread()")
+                    conn_severed_msg = str("Connection to "+str(in_sock)
+                                           + "was severed or disconnected."
+                                           + "(TypeError: listen() -> listener_thread()")
+                    self.log(conn_severed_msg, in_log_level="Warning")
 
                     self.disconnect(conn)
                     listener_terminated = True
 
                 if incoming == 1:
                     self.disconnect(conn)
-                    print("Connection to " + str(in_sock) + "doesn't exist, terminating listener_thread()")
+                    conn_not_existent_msg = str("Connection to " + str(in_sock) +
+                                                "doesn't exist, terminating listener_thread()")
+                    self.log(conn_not_existent_msg, in_log_level="Warning")
                     listener_terminated = True
 
         # Start listener in a new thread
@@ -484,12 +545,12 @@ class Client:
 
         global terminated
         global network_tuple
-        print("Client -> Safely terminating our connections...")
+        self.log("Safely terminating our connections...", in_log_level="Warning")
 
         index = 0
         for connection in network_tuple:
             address = connection[1]
-            print("Client -> Terminating connection to", address)
+            self.log(str("Terminating connection to " + address), in_log_level="Info")
             self.disconnect(connection, disallow_local_disconnect=False)
             index += 1
 
@@ -497,37 +558,42 @@ class Client:
         return 0
 
     def initialize(self, port=3705, network_architecture="Complete",
-                   remote_addresses=None, command_execution=False, file_storage=True):
+                   remote_addresses=None, command_execution=False,
+                   file_storage=True, default_log_level="Debug"):
+
         # Initialize the client, set any global variable that need to be set, etc.
 
         global allow_command_execution
         global allow_file_storage
         global localhost
+        global log_level
         global PORT
 
         PORT = port  # Global variable assignment
         allow_command_execution = command_execution
         allow_file_storage = file_storage
+        log_level = default_log_level
 
         # Stage 0
-        print("Client -> Initializing...")
+        self.log("Initializing...", in_log_level="Info")
         localhost_connection = (localhost, '127.0.0.1')
 
         try:
             self.connect(localhost_connection, 'localhost', port, local=True)
 
-            print("Client -> Connection to localhost successful")
-            print("Client -> Starting listener on localhost...")
+            self.log("Connection to localhost successful", in_log_level="Info")
+            self.log("Starting listener on localhost...", in_log_level="Info")
 
             self.listen(localhost_connection)
 
         except ConnectionRefusedError:
 
-            print("Client -> Connection to localhost was not successful; check that your server is "
-                  "up, and try again later.")
+            self.log("Connection to localhost was not successful; check that your server is "
+                     "initialized, and try again later.", in_log_level="Warning")
             quit(1)
 
-        print("Client -> Attempting to connect to remote server... (Initiating stage 1)")
+        self.log("Attempting to connect to remote server... (Initiating stage 1)",
+                 in_log_level="Info")
 
         # Stage 1
         if network_architecture == "Complete":
@@ -541,14 +607,13 @@ class Client:
                         connection = (sock, remote_address)
                         self.connect(connection, remote_address, port)
 
-                        print("Starting listener on", remote_address)
+                        self.log(str("Starting listener on" + remote_address), in_log_level="Info")
                         self.listen(connection)
 
                         self.send(connection, "echo")
 
                     except ConnectionRefusedError:
-                        print("Client -> Unable to connect to remove server; Failed to bootstrap.")
+                        self.log("Unable to connect to remove server; Failed to bootstrap.",
+                                 in_log_level="Warning")
             else:
-                print("Client -> Initializing with no remote connections...")
-        else:
-            print("TODO: Implement other network architectures")  # TODO: implement other architectures
+                self.log("Initializing with no remote connections...", in_log_level="Info")
