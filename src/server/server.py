@@ -609,7 +609,7 @@ class Server:
 
                         # A remote client connected, handle them and send an echo, because why not?
                         else:
-                            self.log(str(address, " has connected."), in_log_level="Info")
+                            self.log(str(address + " has connected."), in_log_level="Info")
 
                             self.log(str("Listening on: "+address), in_log_level="Info")
                             self.listen(connection)
