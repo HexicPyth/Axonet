@@ -46,9 +46,9 @@ Axonet is an active <b>proof of concept</b> demonstrating the functionality, spe
 
 See also the list of [contributors](https://github.com/hexicpyth/Axonet/contributors) who participated in this project.
 
-## License
+## License 
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE) file for details
 
 ## README TODO:
 - Discuss network injection and flags
