@@ -323,7 +323,7 @@ class Server:
             if message == "echo":
                 # If received, two-way communication is functional
                 echo_received_log = str("Two-Way communication with " + address +
-                                        "established and/or tested functional")
+                                        " established and/or tested functional")
                 self.log(echo_received_log, in_log_level="Info")
 
             if message == "stop":

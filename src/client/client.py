@@ -345,7 +345,7 @@ class Client:
 
             # e.x "Client -> Received: echo (ffffffffffffffff) from: 127.0.0.1"
             message_received_log = str('Received: ' + message
-                                       + " (" + sig + ")" + "from: " + address)
+                                       + " (" + sig + ")" + " from: " + address)
 
             self.log(message_received_log, in_log_level="Info")
 
@@ -607,7 +607,7 @@ class Client:
                         connection = (sock, remote_address)
                         self.connect(connection, remote_address, port)
 
-                        self.log(str("Starting listener on" + remote_address), in_log_level="Info")
+                        self.log(str("Starting listener on " + remote_address), in_log_level="Info")
                         self.listen(connection)
 
                         self.send(connection, "echo")
