@@ -313,7 +313,7 @@ class Server:
         sig = msg[:16]
         message = msg[17:]
 
-        message_received_log_dbg = str("Received raw message: "+message)
+        message_received_log_dbg = str("Received raw message: "+full_message)
         self.log(message_received_log_dbg, in_log_level="Debug")
 
         if sig not in message_list:
