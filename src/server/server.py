@@ -238,11 +238,13 @@ class Server:
 
             try:
                 self.disconnect(connection, disallow_local_disconnect=True)
-                self.log("Successfully disconnected", in_log_level="Debug")
 
             except OSError:
                 another_log_msg = str("Failed to disconnect from socket: "+str(connection[0]))
                 self.log(another_log_msg, in_log_level="Warning")
+
+            finally:
+                self.log("Successfully disconnected", in_log_level="Debug")
 
         localhost_sock_name = localhost.getsockname()
         localhost.close()
@@ -252,7 +254,7 @@ class Server:
         terminated = True
         injector_terminated = True
 
-        # Hack the socket.listen() loop in the init() function by connecting to it,
+        # Hack the socket.listen() loop in the init() function by connecting to it(localhost),
         # which will force it to terminate.
 
         temp = socket.socket()
@@ -335,14 +337,14 @@ class Server:
                 file_hash = usable_message[:16]
 
                 # Sorry for this mess :P
-                file_affirmation_debug_dump = str("Received affirmation, dumping our souls into the void"
+                file_affirmation_debug_dump = str("Received affirmation, dumping our soul into the void"
                                                   " (of stdout)... "+'\n\t'
                                                   + msg + '\n\t'
                                                   + full_message + '\n\t'
                                                   + message + '\n\t'
                                                   + usable_message + '\n\t'
                                                   + file_hash + '\n\t'
-                                                  + "Reached end of soul; stopping")
+                                                  + "There's nothing left; stopping")
 
                 # Note to self: Don't turn on log_level_debug :P
                 self.log(file_affirmation_debug_dump, in_log_level="Debug")
