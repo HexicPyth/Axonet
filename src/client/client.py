@@ -342,7 +342,7 @@ class Client:
             self.log(not_responding_to_msg, in_log_level="Debug")
 
         # Do respond to messages we have yet to respond to.
-        else:
+        elif sig not in message_list:
 
             # Find the address of the socket we're receiving from...
 
