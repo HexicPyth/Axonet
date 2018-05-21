@@ -18,19 +18,22 @@ ballet_tuple = ([], [])  # (value, address)
 message_list = []
 
 cluster_rep = None  # type -> bool
-terminated = False  # If true: the client has been instructed to terminate; inform our functions and exit cleanly.
-allow_command_execution = False  # Don't execute arbitrary UNIX commands when casually asked, that's bad :]
 ongoing_election = False
+no_prop = "ffffffffffffffff"  # True:[message] = No message propagation.
+terminated = False  # If true: the client has been instructed to terminate; inform our functions and exit cleanly.
+
+
+# To be set by init()
+allow_command_execution = False  # Don't execute arbitrary UNIX commands when casually asked, that's bad :]
 connecting_to_server = False
 allow_file_storage = True
 log_level = ""  # "Debug", "Info", or "Warning"; To be set by init
-no_prop = "ffffffffffffffff"  # ffffffffffffffff:[message] = No message propagation.
 
 
 class Client:
 
     @staticmethod
-    def log(log_message, in_log_level='Warning', subnode="Client"):
+    def log(log_message, in_log_level='Warning', sub_node="Client"):
 
         # input verification
         levels = ["Debug", "Info", "Warning"]
@@ -50,7 +53,7 @@ class Client:
             pass
 
         else:
-            print(subnode, "->", in_log_level + ":", log_message)
+            print(sub_node, "->", in_log_level + ":", log_message)
 
     def get_local_ip(self):
         # Creates a temporary socket and connects to subnet, yielding our local address.

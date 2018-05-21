@@ -31,7 +31,7 @@ log_level = ""  # "Debug", "Info", or "Warning"; will be set by self.initialize(
 class Server:
 
     @staticmethod
-    def log(log_message, in_log_level='Warning', subnode="Server"):
+    def log(log_message, in_log_level='Warning', sub_node="Server"):
 
         # input verification
         levels = ["Debug", "Info", "Warning"]
@@ -51,7 +51,7 @@ class Server:
             pass
 
         else:
-            print(subnode, "->", in_log_level + ":", log_message)
+            print(sub_node, "->", in_log_level + ":", log_message)
 
     def get_local_ip(self):
         # Creates a temporary socket and connects to subnet, yielding our local address.
