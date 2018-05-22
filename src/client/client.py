@@ -17,6 +17,7 @@ network_tuple = ()  # (socket, address)
 ballet_tuple = ([], [])  # (value, address)
 message_list = []
 page_list = []  # temporary file objects to close
+page_ids = []
 
 cluster_rep = None  # type -> bool
 ongoing_election = False
@@ -345,6 +346,7 @@ class Client:
         global ballet_tuple
         global cluster_rep
         global page_list
+        global page_ids
 
         full_message = str(msg)
         sig = full_message[:16]
@@ -465,8 +467,11 @@ class Client:
 
             if message.startswith("corecount:"):
                 page_id = message[10:]
-                num_of_cores = str(multiprocessing.cpu_count())
-                self.write_to_page(page_id, num_of_cores)
+                if page_id not in page_ids:
+                    num_of_cores = str(multiprocessing.cpu_count())
+                    self.write_to_page(page_id, num_of_cores)
+                elif page_id in page_ids:
+                    pass
 
             if message.startswith("file:"):
                 # Eventually we'll be able to distribute shared
