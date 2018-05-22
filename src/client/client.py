@@ -16,6 +16,7 @@ PORT = 3705
 network_tuple = ()  # (socket, address)
 ballet_tuple = ([], [])  # (value, address)
 message_list = []
+page_list = []  # temporary file objects to close
 
 cluster_rep = None  # type -> bool
 ongoing_election = False
@@ -330,6 +331,7 @@ class Client:
         global ongoing_election
         global ballet_tuple
         global cluster_rep
+        global page_list
 
         full_message = str(msg)
         sig = full_message[:16]
@@ -431,6 +433,24 @@ class Client:
                 # allow_command_execution is not set, don't execute arbitrary UNIX commands from the network.
                 else:
                     self.log(("Not executing command: ", message[5:]), in_log_level="Info")
+
+            if message.startswith("newpage:"):
+
+                # e.x newpage:(64-bit signature):
+
+                page_id = message[8:]
+                self.log("Creating new page with id: "+str(page_id), in_log_level="Info")
+
+                # create a new file to store our page fragments in.
+
+                this_dir = os.path.dirname(os.path.realpath(__file__))
+                os.chdir(this_dir)
+
+                new_filename = str("../inter/mem/"+page_id+".bin")
+                newpage = open(new_filename, "a+")
+                page_list.append(newpage)
+
+
 
             if message.startswith("file:"):
                 # Eventually we'll be able to distribute shared
@@ -548,9 +568,16 @@ class Client:
 
         global terminated
         global network_tuple
+        global page_list
+
         self.log("Safely terminating our connections...", in_log_level="Warning")
 
         index = 0
+        for file in page_list:
+            self.log("Closing pages..", in_log_level="Info")
+            file.close()
+            os.remove(file.name)
+
         for connection in network_tuple:
             address = connection[1]
             self.log(str("Terminating connection to " + address), in_log_level="Info")
@@ -558,6 +585,8 @@ class Client:
             index += 1
 
         terminated = True
+        print("!!!!!")
+
         return 0
 
     def initialize(self, port=3705, network_architecture="Complete",
