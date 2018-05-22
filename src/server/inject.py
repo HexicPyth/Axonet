@@ -2,6 +2,7 @@ import multiprocessing
 import struct
 import os
 import server
+import codecs
 current_message = None
 
 
@@ -77,32 +78,65 @@ class NetworkInjector(multiprocessing.Process):
 
         # Parse all files in the interaction directory for flags to broadcast.
         for file in os.listdir('./'):
-            file_to_read = open(file, 'r+')
-            flags = file_to_read.readlines()
+            do_continue = True
 
-            # the flags we get from a file with (naturally) contain newlines. Let's remove them.
-            for raw_flag in flags:
-                print(raw_flag)
-                formatted_flag = raw_flag.split('\n')[0]
-                formatted_flags.append(formatted_flag)
-                flags.remove(raw_flag)
+            try:
+                file_to_read = open(file, 'r+')
+            except IsADirectoryError:
+                do_continue = False
+            finally:
+                if do_continue:
+                    flags = file_to_read.readlines()
 
-            file_to_read.seek(0)
-            file_to_read.write(''.join(flags))
-            file_to_read.truncate()
-            file_to_read.close()
+                    # the flags we get from a file with (naturally) contain newlines. Let's remove them.
+                    for raw_flag in flags:
+                        print(raw_flag)
+                        formatted_flag = raw_flag.split('\n')[0]
+                        formatted_flags.append(formatted_flag)
+                        flags.remove(raw_flag)
+
+                    file_to_read.seek(0)
+                    file_to_read.write(''.join(flags))
+                    file_to_read.truncate()
+                    file_to_read.close()
 
         return formatted_flags
 
+    def interpret(self, in_msg, net_tuple):
+        msg_type = ""
+        if in_msg[:1] == "$":
+            msg_type = "command"
+        else:
+            msg_type = "flag"
+
+        if msg_type == "flag":
+            return self.broadcast(in_msg, net_tuple)
+
+        elif msg_type == "command":
+            in_cmd = in_msg[1:]
+
+            # TODO: Implement our algorithms here.
+            print("Received command: "+in_cmd)
+
+            if in_cmd == "corecount":
+                print("Injector -> info: Initiating a core count")
+                id_length = 16
+
+                # Get a random 64-bit id for this operation
+                op_id = codecs.encode(os.urandom(int(id_length / 2)), 'hex').decode()
+
+                self.broadcast("newpage:"+op_id, net_tuple)
+                self.broadcast("corecount:"+op_id, net_tuple)
+            return 0
+
     def init(self, network_tuple, msg=None):
-        if not msg:
-            msg = str(input("Please enter flag to inject into network:  "))
+        msg = str(input("Please enter flag to inject into network:  "))
 
         print("Server/Injector -> Broadcasting the contents of the "
               "interaction directory", "to the network")
 
         for flag in self.read_interaction_directory():
-            self.broadcast(flag, network_tuple)
+            self.interpret(flag, network_tuple)
 
         print("Server/Injector -> Broadcasting", msg, "to the network")
-        return self.broadcast(msg, network_tuple)
+        return self.interpret(msg, network_tuple)

@@ -323,6 +323,19 @@ class Client:
         os.system(command)
         return 0
 
+    def write_to_page(self, page_id, data):
+        print("!!!!")
+        this_dir = os.path.dirname(os.path.realpath(__file__))
+        os.chdir(this_dir)
+
+        # Until we implement Asymmetric crypto, we'll identify ourselves with a hash of our address.
+        our_id = sha3_224(self.get_local_ip().encode()).hexdigest()[:16]
+
+        this_page = open("../inter/mem/"+page_id+".bin", "a+")
+        data_line = str(our_id + ":" + data)
+        this_page.write(data_line)
+        this_page.close()
+
     def respond(self, connection, msg):
         # We received a message, reply with an appropriate response.
         # Doesn't return anything.
@@ -450,7 +463,10 @@ class Client:
                 newpage = open(new_filename, "a+")
                 page_list.append(newpage)
 
-
+            if message.startswith("corecount:"):
+                page_id = message[10:]
+                num_of_cores = str(multiprocessing.cpu_count())
+                self.write_to_page(page_id, num_of_cores)
 
             if message.startswith("file:"):
                 # Eventually we'll be able to distribute shared
