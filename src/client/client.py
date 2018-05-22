@@ -333,7 +333,7 @@ class Client:
         our_id = sha3_224(self.get_local_ip().encode()).hexdigest()[:16]
 
         this_page = open("../inter/mem/"+page_id+".bin", "a+")
-        data_line = str(our_id + ":" + data)
+        data_line = str(our_id + ":" + data+"\n")
         this_page.write(data_line)
         this_page.close()
 
