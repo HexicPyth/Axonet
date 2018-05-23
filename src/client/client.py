@@ -324,16 +324,21 @@ class Client:
         os.system(command)
         return 0
 
-    def write_to_page(self, page_id, data):
+    def write_to_page(self, page_id, data, signing=True):
         print("!!!!")
         this_dir = os.path.dirname(os.path.realpath(__file__))
         os.chdir(this_dir)
 
         # Until we implement Asymmetric crypto, we'll identify ourselves with a hash of our address.
-        our_id = sha3_224(self.get_local_ip().encode()).hexdigest()[:16]
+        if signing:
+            our_id = sha3_224(self.get_local_ip().encode()).hexdigest()[:16]
+            data_line = str(our_id + ":" + data + "\n")
+
+        else:
+            our_id = ""  # Hack our string operations to write nothing in the id field.
+            data_line = str(data + "\n")
 
         this_page = open("../inter/mem/"+page_id+".bin", "a+")
-        data_line = str(our_id + ":" + data+"\n")
         this_page.write(data_line)
         this_page.close()
 
@@ -472,6 +477,56 @@ class Client:
                     self.write_to_page(page_id, num_of_cores)
                 elif page_id in page_ids:
                     pass
+
+            if message.startswith("fetch:"):
+                ''' send the contents of page [page_id] to broadcast. We cannot reply directly to
+                sender because of message propagation.   . '''
+
+                page_ident = message[6:]
+
+                # Read contents of page
+                this_dir = os.path.dirname(os.path.realpath(__file__))
+                os.chdir(this_dir)
+                pagefile = open("../inter/mem/"+page_ident+".bin", "r+")
+
+                page_contents = ''.join(pagefile.readlines())
+                sync_msg = self.prepare("sync:"+page_ident+":"+page_contents)
+
+                self.broadcast(sync_msg)  # We need to broadcast
+
+            if message.startswith("sync:"):
+                this_dir = os.path.dirname(os.path.realpath(__file__))
+                os.chdir(this_dir)
+
+                page_id = message[5:][:16]
+                data = message[22:]
+                print(page_id)
+                print(data)
+                existing_pagelines = open("../inter/mem/"+page_id+".bin", "a+").readlines()
+                print(existing_pagelines)
+
+                duplicate = False
+                local = False
+
+                for line in existing_pagelines:
+                    if line == data:
+                        duplicate = True
+                        print("Not writing duplicate data into "+page_id)
+                        break
+                    else:
+                        pass
+
+                if not duplicate:
+                    data_id = data[:16]
+                    local_id = sha3_224(self.get_local_ip().encode()).hexdigest()[:16]
+                    if data_id == local_id:
+                        # Don't re-write data about ourselves. We already did that with 'corecount'.
+                        print("Not being hypocritical in page "+page_id)
+                        local = True
+
+                    if not local:
+                        print("Writing "+data+ "to page "+ page_id)
+                        self.write_to_page(page_id, data, signing=False)
 
             if message.startswith("file:"):
                 # Eventually we'll be able to distribute shared

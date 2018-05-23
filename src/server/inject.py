@@ -3,13 +3,28 @@ import struct
 import os
 import server
 import codecs
+from hashlib import sha3_224
+import datetime
 current_message = None
 
 
 class NetworkInjector(multiprocessing.Process):
 
+    @staticmethod
+    def prepare(message):
+        # Assign unique hashes to messages ready for transport.
+        # Returns (new hashed message) -> str
+        out = ""
+        timestamp = str(datetime.datetime.utcnow())
+        out += timestamp
+        out += message
+        sig = sha3_224(out.encode()).hexdigest()[:16]
+        out = sig+":"+message
+        return out
+
     # Send a given message to a specific node
     # Slightly modified compared to the server's send method
+
     def send(self, connection, msg, signing=True):
         sock = connection[0]
         address = connection[1]
@@ -42,6 +57,25 @@ class NetworkInjector(multiprocessing.Process):
 
             except OSError:
                 print("Injector -> Something went wrong with "+address)
+
+    @staticmethod
+    def lookup_socket(address, network_tuple):
+        # Do a brute force search for a specific socket.
+        # Maybe this can be optimized by caching the indexes of commonly-used connections?
+
+        for item in network_tuple:
+            discovered_address = item[1]
+            if address == discovered_address:
+                return item[0]
+
+    @staticmethod
+    def lookup_address(in_sock, network_tuple):
+        # Do a brute force search for a specific address.
+        # Maybe this can be optimized by caching the indexes of commonly-used connections?
+        for item in network_tuple:
+            discovered_socket = item[0]
+            if in_sock == discovered_socket:
+                return item[1]
 
     def broadcast(self, message, network_tuple):
         global current_message
@@ -115,7 +149,6 @@ class NetworkInjector(multiprocessing.Process):
         elif msg_type == "command":
             in_cmd = in_msg[1:]
 
-            # TODO: Implement our algorithms here.
             print("Received command: "+in_cmd)
 
             if in_cmd == "corecount":
@@ -127,6 +160,12 @@ class NetworkInjector(multiprocessing.Process):
 
                 self.broadcast("newpage:"+op_id, net_tuple)
                 self.broadcast("corecount:"+op_id, net_tuple)
+
+                localhost_socket = self.lookup_socket("127.0.0.1", net_tuple)
+                localhost_connection = (localhost_socket, "127.0.0.1")
+                retrieve_msg = "retrieve:"+op_id
+                self.send(localhost_connection, retrieve_msg)
+
             return 0
 
     def init(self, network_tuple, msg=None):

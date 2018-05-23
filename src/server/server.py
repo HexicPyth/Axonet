@@ -332,7 +332,33 @@ class Server:
                 self.log("Exiting Cleanly", in_log_level="Info")
                 self.stop()
 
-            elif message.startswith("affirm:"):
+            if message.startswith("retrieve:"):
+                '''
+                Opposite of write_page() function. This isn't a function because we need access to
+                the network to communicate. Typically sent from the network injector, not a client.
+
+                e.x retrieve:ffffffffeeeeeeee
+                '''
+
+                address_list = []
+                for net_socket, net_address in network_tuple:
+                    address_list.append(net_address)
+
+                id_list = []
+                for addr in address_list:
+                    ident = sha3_224(addr.encode()).hexdigest()[:16]
+                    id_list.append(ident)
+
+                target_page = message[9:]
+
+                ''' For every address, sequentially send 'fetch' flags to sync any changes
+                    to the page '''
+
+                fetch_msg = self.prepare("fetch:"+target_page)
+                self.broadcast(fetch_msg)
+
+
+            if message.startswith("affirm:"):
                 usable_message = message[7:]  # Remove the flag ("affirm:")
                 file_hash = usable_message[:16]
 
@@ -378,6 +404,7 @@ class Server:
         address = connection[1]
         try:
             if disallow_local_disconnect:
+                print(terminated)
                 if address == self.get_local_ip() and not terminated:
 
                     self.log("(Bug) Refusing to disconnect from localhost;"
