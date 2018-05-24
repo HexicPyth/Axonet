@@ -30,7 +30,7 @@ class NetworkInjector(multiprocessing.Process):
         address = connection[1]
         global current_message
         if signing:
-            msg = server.Server.prepare(msg).encode('utf-8')
+            msg = server.Server.prepare(msg).encode('utf-8', 'ignore')
 
         else:
             msg.encode('utf-8')
@@ -41,10 +41,10 @@ class NetworkInjector(multiprocessing.Process):
         if not current_message:
             current_message = msg
         try:
-            print("Server -> Injector -> Broadcast: " + current_message.decode() + " to the network.")
+            print("Server -> Injector -> Send: " + current_message.decode() + " to the network.")
 
         except UnicodeDecodeError:
-            print("Server -> Injector -> Broadcast (unable to decode) to the network")
+            print("Server -> Injector -> Send: (unable to decode) to the network")
 
         finally:
             try:

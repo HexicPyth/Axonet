@@ -490,7 +490,7 @@ class Client:
                 pagefile = open("../inter/mem/"+page_ident+".bin", "r+")
 
                 page_contents = ''.join(pagefile.readlines())
-                sync_msg = str(no_prop + "sync:" + page_ident + ":" + page_contents)
+                sync_msg = str(no_prop + ":" + "sync:" + page_ident + ":" + page_contents)
 
                 self.broadcast(sync_msg)  # We need to broadcast
 
