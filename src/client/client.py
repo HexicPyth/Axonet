@@ -364,7 +364,7 @@ class Client:
             self.log(not_responding_to_msg, in_log_level="Debug")
 
         # Do respond to messages we have yet to respond to.
-        elif sig not in message_list:
+        elif sig not in message_list or sig == no_prop:
 
             # Find the address of the socket we're receiving from...
 
@@ -490,7 +490,7 @@ class Client:
                 pagefile = open("../inter/mem/"+page_ident+".bin", "r+")
 
                 page_contents = ''.join(pagefile.readlines())
-                sync_msg = (no_prop+":"+"sync:"+page_ident+":"+page_contents)
+                sync_msg = self.prepare("sync:"+page_ident+":"+page_contents)
 
                 self.broadcast(sync_msg)  # We need to broadcast
 
@@ -525,7 +525,7 @@ class Client:
                         local = True
 
                     if not local:
-                        print("Writing "+data+ "to page "+ page_id)
+                        print("Writing "+data + "to page "+ page_id)
                         self.write_to_page(page_id, data, signing=False)
 
             if message.startswith("file:"):
