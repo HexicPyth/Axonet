@@ -338,9 +338,15 @@ class Client:
             our_id = ""  # Hack our string operations to write nothing in the id field.
             data_line = str(data + "\n")
 
-        this_page = open("../inter/mem/"+page_id+".bin", "a+")
+        file_path = ("../inter/mem/"+page_id+".bin")
+        this_page = open(file_path, "a+")
         this_page.write(data_line)
         this_page.close()
+
+        # Remove duplicate lines from output. Thanks marcell from StackOverflow.
+        # https://stackoverflow.com/a/1216544
+        unique_lines = set(open(file_path, 'a+').readlines())
+        final_output = open(file_path, 'w').writelines(set(unique_lines))
 
     def respond(self, connection, msg):
         # We received a message, reply with an appropriate response.
