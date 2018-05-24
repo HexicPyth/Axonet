@@ -412,6 +412,13 @@ class Server:
 
                 self.log("Permuting the Network Tuple", in_log_level="Info")
                 self.permute_network_tuple()
+            if sig == no_prop:
+                if message[:5] == "sync:":
+                    self.log("Violating the no_prop policy for localhost", in_log_level="Warning")
+                    localhost_address = "127.0.0.1"
+                    localhost_socket = self.lookup_socket(localhost_address)
+                    localhost_connection = (localhost_socket, localhost_address)
+                    self.send(localhost_connection, full_message, signing=False)
 
     def disconnect(self, connection, disallow_local_disconnect=True):
         # Try our best to cleanly disconnect from a socket.
