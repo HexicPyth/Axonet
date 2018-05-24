@@ -502,7 +502,7 @@ class Client:
                 data = message[22:]
                 print(page_id)
                 print(data)
-                existing_pagelines = open("../inter/mem/"+page_id+".bin", "a+").readlines()
+                existing_pagelines = open("../inter/mem/out_"+page_id+".bin", "a+").readlines()
                 print(existing_pagelines)
 
                 duplicate = False
