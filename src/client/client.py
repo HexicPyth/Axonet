@@ -490,7 +490,7 @@ class Client:
                 pagefile = open("../inter/mem/"+page_ident+".bin", "r+")
 
                 page_contents = ''.join(pagefile.readlines())
-                sync_msg = str(no_prop + ":" + "sync:" + page_ident + ":" + page_contents)
+                sync_msg = self.prepare("sync:"+page_ident+":"+page_contents)
 
                 self.broadcast(sync_msg)  # We need to broadcast
 
@@ -502,7 +502,7 @@ class Client:
                 data = message[22:]
                 print(page_id)
                 print(data)
-                existing_pagelines = open("../inter/mem/out_"+page_id+".bin", "a+").readlines()
+                existing_pagelines = open("../inter/mem/"+page_id+".bin", "a+").readlines()
                 print(existing_pagelines)
 
                 duplicate = False
