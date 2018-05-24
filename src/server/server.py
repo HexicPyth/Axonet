@@ -151,15 +151,31 @@ class Server:
 
                 self.disconnect(connection)
 
-    @staticmethod
-    def receiveall(sock, n):
-        # Helper function to receive n bytes or return None if EOF is hit
+    def receiveall(self, sock, n):
+        # Helper function to receive n bytes.
+        # returns None if EOF is hit
+
         data = ''
+
         while len(data) < n:
-            packet = (sock.recv(n - len(data))).decode()
+            try:
+                packet = (sock.recv(n - len(data))).decode()
+
+            except OSError:
+                self.log("Connection probably down or terminated (OSError: receiveall()",
+                         in_log_level="Warning")
+                raise ValueError
+
+            # Something corrupted in transit. Let's just ignore the bad pieces for now.
+            except UnicodeDecodeError:
+                packet = (sock.recv(n - len(data))).decode('utf-8', 'ignore')
+                print(packet)
+
             if not packet:
                 return None
-            data += packet
+
+            else:
+                data += packet
         return data.encode()
 
     def receive(self, connection):
