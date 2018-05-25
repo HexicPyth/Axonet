@@ -528,13 +528,25 @@ class Client:
                         local = True
 
                     if not local:
-                        print("Writing "+data + "to page " + page_id)
-                        self.write_to_page(page_id, data, signing=False)
+                        if data == "" or data == " " or data == "\n":
+                            pass
+                        else:
+                            print("Writing "+data + "to page " + page_id)
+                            self.write_to_page(page_id, data, signing=False)
 
+                ''' Cleanup pagefile after sync operation '''
+                # TODO: make this a function
 
-                # Thank you Marcell from StackOverflow for the following.
+                # Thank you Marcell from StackOverflow for the following 2 lines
                 uniqlines = set(open(file_path).readlines())
                 uniq_file = open(file_path, 'w').writelines(set(uniqlines))
+
+                rawlines = set(open(file_path).readlines())
+                newlines = [rawline for rawline in rawlines if rawline != "\n"]
+                final_file = open(file_path, 'w').writelines(set(newlines))
+                print(newlines)
+                print("+++++")
+
 
             if message.startswith("file:"):
                 # Eventually we'll be able to distribute shared
