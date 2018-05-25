@@ -503,8 +503,8 @@ class Client:
                 data = message[22:]
                 print(page_id)
                 print(data)
-
-                existing_pagelines = open("../inter/mem/"+page_id+".bin", "r+").readlines()
+                file_path = "../inter/mem/"+page_id+".bin"
+                existing_pagelines = open(file_path, "r+").readlines()
                 print(existing_pagelines)
 
                 duplicate = False
@@ -530,6 +530,11 @@ class Client:
                     if not local:
                         print("Writing "+data + "to page " + page_id)
                         self.write_to_page(page_id, data, signing=False)
+
+
+                # Thank you Marcell from StackOverflow for the following.
+                uniqlines = set(open(file_path).readlines())
+                uniq_file = open(file_path, 'w').writelines(set(uniqlines))
 
             if message.startswith("file:"):
                 # Eventually we'll be able to distribute shared
