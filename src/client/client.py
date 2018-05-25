@@ -503,12 +503,14 @@ class Client:
                 data = message[22:]
                 print(page_id)
                 print(data)
-                existing_pagelines = open("../inter/mem/"+page_id+".bin", "a+").readlines()
+
+                existing_pagelines = open("../inter/mem/"+page_id+".bin", "r+").readlines()
                 print(existing_pagelines)
 
                 duplicate = False
                 local = False
 
+                # How do we sort out duplicates?
                 for line in existing_pagelines:
                     if line == data:
                         duplicate = True
@@ -526,7 +528,7 @@ class Client:
                         local = True
 
                     if not local:
-                        print("Writing "+data + "to page "+ page_id)
+                        print("Writing "+data + "to page " + page_id)
                         self.write_to_page(page_id, data, signing=False)
 
             if message.startswith("file:"):
