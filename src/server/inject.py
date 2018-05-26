@@ -109,8 +109,8 @@ class NetworkInjector(multiprocessing.Process):
     @staticmethod
     def read_interaction_directory():
         formatted_flags = []
-        this_dir = os.path.dirname(os.path.realpath(__file__))
-        this_dir = os.path.dirname(os.path.realpath(__file__))
+        this_directory = os.path.dirname(os.path.realpath(__file__))
+        os.chdir(this_directory)
 
         # Switch to the interaction directory.
         os.chdir("../inter/")
