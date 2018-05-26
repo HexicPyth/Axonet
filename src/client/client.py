@@ -9,8 +9,8 @@ import random
 import sys
 from hashlib import sha3_224
 
-this_dir = os.path.dirname(os.path.realpath(__file__))
-os.chdir(this_dir)
+original_path = os.path.dirname(os.path.realpath(__file__))
+os.chdir(original_path)
 sys.path.insert(0, '../inter/modules/')
 
 # Globals
@@ -361,8 +361,7 @@ class Client:
 
     def write_to_page(self, page_id, data, signing=True):
         print("!!!!")
-        this_dir = os.path.dirname(os.path.realpath(__file__))
-        os.chdir(this_dir)
+        os.chdir(original_path)
 
         # Until we implement Asymmetric crypto, we'll identify ourselves with a hash of our address.
         if signing:
@@ -498,8 +497,7 @@ class Client:
 
                 # create a new file to store our page fragments in.
 
-                this_dir = os.path.dirname(os.path.realpath(__file__))
-                os.chdir(this_dir)
+                os.chdir(original_path)
 
                 new_filename = str("../inter/mem/"+page_id+".bin")
                 newpage = open(new_filename, "a+")
@@ -518,8 +516,7 @@ class Client:
                 page_ident = message[6:]
 
                 # Read contents of page
-                this_dir = os.path.dirname(os.path.realpath(__file__))
-                os.chdir(this_dir)
+                os.chdir(original_path)
                 pagefile = open("../inter/mem/"+page_ident+".bin", "r+")
 
                 pagelines = pagefile.readlines()
@@ -536,8 +533,7 @@ class Client:
 
 
             if message.startswith("sync:"):
-                this_dir = os.path.dirname(os.path.realpath(__file__))
-                os.chdir(this_dir)
+                os.chdir(original_path)
 
                 page_id = message[5:][:16]
                 data = message[22:]
@@ -597,7 +593,7 @@ class Client:
 
                 # Module stuff follows
                 if module_loaded == "corecount":
-                    this_dir = os.path.dirname(os.path.realpath(__file__))
+                    os.chdir(original_path)
                     import corecount
                     corecount.start(page_id, raw_lines, newlines)
 
