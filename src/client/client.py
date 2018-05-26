@@ -538,15 +538,14 @@ class Client:
                 # TODO: make this a function
 
                 # Thank you Marcell from StackOverflow for the following 2 lines
-                uniqlines = set(open(file_path).readlines())
-                uniq_file = open(file_path, 'w').writelines(set(uniqlines))
+                unique_lines = set(open(file_path).readlines())
+                open(file_path, 'w').writelines(set(unique_lines))
 
-                rawlines = set(open(file_path).readlines())
-                newlines = [rawline for rawline in rawlines if rawline != "\n"]
-                final_file = open(file_path, 'w').writelines(set(newlines))
+                raw_lines = set(open(file_path).readlines())
+                newlines = [rawline for rawline in raw_lines if rawline != "\n"]
+                open(file_path, 'w').writelines(set(newlines))
                 print(newlines)
                 print("+++++")
-
 
             if message.startswith("file:"):
                 # Eventually we'll be able to distribute shared
