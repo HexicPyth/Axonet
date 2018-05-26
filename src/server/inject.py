@@ -6,7 +6,7 @@ import codecs
 from hashlib import sha3_224
 import datetime
 import sys
-os.chdir(os.path.dirname(sys.argv[0]))
+this_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, '../inter/modules/')
 
 current_message = None
@@ -110,7 +110,7 @@ class NetworkInjector(multiprocessing.Process):
     def read_interaction_directory():
         formatted_flags = []
         this_dir = os.path.dirname(os.path.realpath(__file__))
-        os.chdir(os.path.dirname(sys.argv[0]))
+        this_dir = os.path.dirname(os.path.realpath(__file__))
 
         # Switch to the interaction directory.
         os.chdir("../inter/")
@@ -155,7 +155,7 @@ class NetworkInjector(multiprocessing.Process):
             in_cmd = in_msg[1:]
 
             if in_cmd == "corecount":
-                os.chdir(os.path.dirname(sys.argv[0]))
+                os.chdir(os.path.dirname(os.path.realpath(__file__)))
                 import corecount
                 corecount.initiate(in_cmd, net_tuple)
 

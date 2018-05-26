@@ -597,7 +597,7 @@ class Client:
 
                 # Module stuff follows
                 if module_loaded == "corecount":
-                    os.chdir(os.path.dirname(sys.argv[0]))
+                    this_dir = os.path.dirname(os.path.realpath(__file__))
                     import corecount
                     corecount.start(page_id, raw_lines, newlines)
 
