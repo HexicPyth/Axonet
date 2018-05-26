@@ -6,26 +6,32 @@ import multiprocessing
 import datetime
 import os
 import random
+import sys
 from hashlib import sha3_224
+
+this_dir = os.path.dirname(os.path.realpath(__file__))
+os.chdir(this_dir)
+sys.path.insert(0, '../inter/modules/')
 
 # Globals
 localhost = socket.socket()
 localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes TIME_WAIT-ing. Add SO_REUSEADDR.
 
-PORT = 3705
+# Constant or set during runtime
 network_tuple = ()  # (socket, address)
 ballet_tuple = ([], [])  # (value, address)
 message_list = []
 page_list = []  # temporary file objects to close
 page_ids = []
-
-cluster_rep = None  # type -> bool
 ongoing_election = False
-no_prop = "ffffffffffffffff"  # True:[message] = No message propagation.
 terminated = False  # If true: the client has been instructed to terminate; inform our functions and exit cleanly.
+cluster_rep = None  # type -> bool
+no_prop = "ffffffffffffffff"  # True:[message] = No message propagation.
+loaded_modules = []
+module_loaded = ""
 
-
-# To be set by init()
+# To be (re)set by init()
+PORT = 3705
 allow_command_execution = False  # Don't execute arbitrary UNIX commands when casually asked, that's bad :]
 connecting_to_server = False
 allow_file_storage = True
@@ -36,6 +42,8 @@ class Client:
 
     @staticmethod
     def log(log_message, in_log_level='Warning', sub_node="Client"):
+        ''' Process and deliver program output in an organized and
+        easy to read fashion. Never returns. '''
 
         # input verification
         levels = ["Debug", "Info", "Warning"]
@@ -58,8 +66,9 @@ class Client:
             print(sub_node, "->", in_log_level + ":", log_message)
 
     def get_local_ip(self):
-        # Creates a temporary socket and connects to subnet, yielding our local address.
-        # Returns: (local ip address) -> str
+        '''Creates a temporary socket and connects to subnet,
+           yielding our local address. Returns: (local ip address) -> str '''
+
         temp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
         try:
@@ -81,8 +90,9 @@ class Client:
 
     @staticmethod
     def prepare(message):
-        # Assign unique hashes to messages ready for transport.
-        # Returns (new hashed message) -> str
+        ''' Assign unique hashes to messages ready for transport.
+            Returns (new hashed message) -> str '''
+
         out = ""
         timestamp = str(datetime.datetime.utcnow())
         out += timestamp
@@ -93,6 +103,11 @@ class Client:
 
     @staticmethod
     def lookup_socket(address):  # TODO: optimize me
+        '''Brute force search the network tuple for a socket associated with a given address.
+            Return socket object if found.
+            Returns 0(-> int) id not found
+        '''
+
         for item in network_tuple:
             discovered_address = item[1]
             if address == discovered_address:
@@ -102,6 +117,10 @@ class Client:
 
     @staticmethod
     def lookup_address(in_sock):  # TODO: optimize me
+        '''Brute force search the network tuple for an address associated with a given socket.
+            Return a string containing an address if found.
+            Returns 0 (-> int) if not found
+        '''
         for item in network_tuple:
             discovered_socket = item[0]
             if in_sock == discovered_socket:
@@ -111,19 +130,29 @@ class Client:
 
     @staticmethod
     def permute_network_tuple():
-        # Permute the network tuple in place
-        # Returns nothing (network_tuple is a global variable)
-        cs_prng = random.SystemRandom()
+        ''' Permute the network tuple. Repetitive permutation after each call
+            of respond() functionally allow the network to inherit many of the anonymous
+            aspects of a mixing network. Packets are sent sequentially in the order of the
+            network tuple, which when permuted, thwarts many timing attacks. ''
+
+            Doesn't return '''
+
         global network_tuple
 
         network_list = list(network_tuple)
+
+        cs_prng = random.SystemRandom()
         cs_prng.shuffle(network_list)
+
+        # Tuples are immutable. We have to overwrite the exiting one to 'update' it.
         new_network_tuple = tuple(network_list)
         network_tuple = new_network_tuple
 
     @staticmethod
-    # Add a connection to the network_tuple
     def append(in_socket, address):
+        ''' Append a given connection object(tuple of (socket, address)) to the network tuple.
+            Doesn't return '''
+
         global network_tuple
 
         # Tuples are immutable; convert it to a list.
@@ -135,8 +164,10 @@ class Client:
         # (Again) tuples are immutable; replace the old one with the new one
         network_tuple = tuple(network_list)
 
-    # Remove a connection from the network_tuple
     def remove(self, connection):
+        ''' Remove a given connection object(tuple of (socket, address)) to the network tuple.
+            Doesn't return '''
+
         global network_tuple
 
         # Tuples are immutable; convert it to a list.
@@ -157,14 +188,15 @@ class Client:
         network_tuple = tuple(network_list)
 
     def connect(self, connection, address, port, local=False):
-        # Connect to a remote server and handle the connection(i.e append it).
-        # Returns nothing.
+        ''' Connect to a remote server and handle the connection(i.e append it).
+            Doesn't return. '''
         global connecting_to_server
         sock = connection[0]
 
         # * Ugh! Fucking race conditions... *
         # Append this as quickly as possible, so the following if statement
         # will trip correctly on a decent CPU.
+        # Moore's law tells me I should come up with a better solution to this problem.
 
         quasi_network_tuple = tuple(network_tuple)  # Make a copy of the network tuple to reference
         self.append(sock, address)
@@ -245,8 +277,10 @@ class Client:
     https://stackoverflow.com/users/9530/adam-rosenfield '''
 
     def send(self, connection, message, sign=True):
-        # Helper function to encode a given message and send it to a given server.
-        # Returns nothing.
+        '''Helper function to encode a given message and send it to a given server.
+            Set sign=False to disable automatic message signing(useful for no_prop things)
+            Doesn't Return. '''
+
         sock = connection[0]
 
         if sign:
@@ -267,8 +301,9 @@ class Client:
             self.disconnect(connection)
 
     def receiveall(self, sock, n):
-        # Helper function to receive n bytes.
-        # returns None if EOF is hit
+        ''' Helper function to receive n bytes.
+            Returns None(-> NoneType) if/when EOF is hit.
+        '''
 
         data = ''
 
@@ -335,7 +370,6 @@ class Client:
             data_line = str(our_id + ":" + data + "\n")
 
         else:
-            our_id = ""  # Hack our string operations to write nothing in the id field.
             data_line = str(data + "\n")
 
         file_path = ("../inter/mem/"+page_id+".bin")
@@ -472,12 +506,10 @@ class Client:
                 page_list.append(newpage)
 
             if message.startswith("corecount:"):
-                page_id = message[10:]
-                if page_id not in page_ids:
-                    num_of_cores = str(multiprocessing.cpu_count())
-                    self.write_to_page(page_id, num_of_cores)
-                elif page_id in page_ids:
-                    pass
+                global module_loaded
+                import corecount
+                module_loaded = "corecount"
+                corecount.respond_start(page_ids, message)
 
             if message.startswith("fetch:"):
                 ''' send the contents of page [page_id] to broadcast. We cannot reply directly to
@@ -490,10 +522,18 @@ class Client:
                 os.chdir(this_dir)
                 pagefile = open("../inter/mem/"+page_ident+".bin", "r+")
 
-                page_contents = ''.join(pagefile.readlines())
-                sync_msg = (no_prop+":"+"sync:"+page_ident+":"+page_contents)
+                pagelines = pagefile.readlines()
 
+                # Don't sync comments
+                for string in pagelines:
+                    if string[:1] == "#":
+                        pagelines.remove(string)
+
+                page_contents = ''.join(pagelines)
+
+                sync_msg = (no_prop+":"+"sync:"+page_ident+":"+page_contents)
                 self.broadcast(sync_msg)  # We need to broadcast
+
 
             if message.startswith("sync:"):
                 this_dir = os.path.dirname(os.path.realpath(__file__))
@@ -537,15 +577,29 @@ class Client:
                 ''' Cleanup pagefile after sync operation '''
                 # TODO: make this a function
 
-                # Thank you Marcell from StackOverflow for the following 2 lines
+                '''
+                Thank you Marcell from StackOverflow for the following 2 lines of code
+                https://stackoverflow.com/a/1216544
+                https://stackoverflow.com/users/146442/marcell
+                '''
+
+                # Remove duplicate lines
                 unique_lines = set(open(file_path).readlines())
                 open(file_path, 'w').writelines(set(unique_lines))
 
-                raw_lines = set(open(file_path).readlines())
-                newlines = [rawline for rawline in raw_lines if rawline != "\n"]
+                # Remove any extra newlines
+                raw_lines = list(set(open(file_path).readlines()))
+
+                newlines = [rawline for rawline in raw_lines
+                            if rawline != "\n" and rawline[:2] != "##"]
+
                 open(file_path, 'w').writelines(set(newlines))
-                print(newlines)
-                print("+++++")
+
+                # Module stuff follows
+                if module_loaded == "corecount":
+                    os.chdir(os.path.dirname(sys.argv[0]))
+                    import corecount
+                    corecount.start(page_id, raw_lines, newlines)
 
             if message.startswith("file:"):
                 # Eventually we'll be able to distribute shared
@@ -672,6 +726,7 @@ class Client:
             self.log("Closing pages..", in_log_level="Info")
             file.close()
             os.remove(file.name)
+            self.log(str("Terminating connection to "), in_log_level="Info")
 
         for connection in network_tuple:
             address = connection[1]
@@ -686,7 +741,7 @@ class Client:
 
     def initialize(self, port=3705, network_architecture="Complete",
                    remote_addresses=None, command_execution=False,
-                   file_storage=True, default_log_level="Debug"):
+                   file_storage=True, default_log_level="Debug", modules=None):
 
         # Initialize the client, set any global variable that need to be set, etc.
 
@@ -695,11 +750,17 @@ class Client:
         global localhost
         global log_level
         global PORT
+        global loaded_modules
 
         PORT = port  # Global variable assignment
         allow_command_execution = command_execution
         allow_file_storage = file_storage
         log_level = default_log_level
+
+        for item in modules:
+            import_str = "import "+item
+            loaded_modules.append(item)
+            exec(import_str)
 
         # Stage 0
         self.log("Initializing...", in_log_level="Info")
@@ -718,6 +779,9 @@ class Client:
             self.log("Connection to localhost was not successful; check that your server is "
                      "initialized, and try again later.", in_log_level="Warning")
             quit(1)
+
+        except FileNotFoundError:
+            pass
 
         self.log("Attempting to connect to remote server... (Initiating stage 1)",
                  in_log_level="Info")

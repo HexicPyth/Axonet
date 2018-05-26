@@ -2,7 +2,6 @@
 
 import os
 import sys
-import inject
 import random
 import socket
 import struct
@@ -10,11 +9,13 @@ import datetime
 import threading
 from hashlib import sha3_224
 
+this_dir = os.path.dirname(os.path.realpath(__file__))
+os.chdir(this_dir)
+sys.path.insert(0, '../inter/modules/')
+
 # Globals
 localhost = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes TIME_WAIT-ing. Add SO_REUSEADDR.
-
-injector = inject.NetworkInjector()
 
 network_tuple = ()  # Global lookup of (sockets, addresses)
 file_tuple = ()  # (hash, remote_host, index)
@@ -26,6 +27,7 @@ net_injection = False
 injector_terminated = False
 terminated = False
 log_level = ""  # "Debug", "Info", or "Warning"; will be set by self.initialize()
+loaded_modules = []
 
 
 class Server:
@@ -373,7 +375,6 @@ class Server:
                 fetch_msg = self.prepare("fetch:"+target_page)
                 self.broadcast(fetch_msg)
 
-
             if message.startswith("affirm:"):
                 usable_message = message[7:]  # Remove the flag ("affirm:")
                 file_hash = usable_message[:16]
@@ -495,21 +496,27 @@ class Server:
 
                                 # Don't leave zombie listeners running
                                 listener_terminated = True
+                    except OSError:
+                        pass
 
-                    except ValueError:  # socket is [closed]
-                        listener_terminated = True
+                except ValueError:  # socket is [closed]
+                    listener_terminated = True
 
         def start_injector():
             # Start one instance of the network injector and run it until another client connects.
             # Note: The injector itself (i.e inject.py) returns any address that throws a BrokenPipeError on broadcast.
             # This function returns nothing.
 
+            import inject
+            injector = inject.NetworkInjector()
+
             global net_injection
             global injector_terminated
+            global loaded_modules
 
             if not injector_terminated or terminated:
                 if net_injection:
-                    injector_return_value = injector.init(network_tuple)
+                    injector_return_value = injector.init(network_tuple, loaded_modules)
 
                     # The mess below handles the collect() loop that would normally be in inject.py
 
@@ -568,7 +575,8 @@ class Server:
                                 self.log("Permuting the network tuple... ", in_log_level="Info")
                                 self.log(str(network_tuple), in_log_level="Debug")
 
-                                injector_return_value = injector.init(network_tuple)  # Eww nested loops.
+                                # Eww nested loops.
+                                injector_return_value = injector.init(network_tuple, loaded_modules)
 
                             except BrokenPipeError:
                                 pass  # We'll get the address of the disconnected device through other methods shortly
@@ -603,7 +611,7 @@ class Server:
             threading.Thread(target=start_injector, name='injector_thread', args=()).start()
 
     def initialize(self, port=3704, listening=True, method="socket", network_injection=False,
-                   network_architecture="complete", default_log_level='Warning'):
+                   network_architecture="complete", default_log_level='Warning', modules = None):
 
         if method == "socket":
             global injector
@@ -611,6 +619,12 @@ class Server:
             global net_injection
             global terminated
             global log_level
+            global loaded_modules
+
+            for item in modules:
+                import_str = "import " + item
+                loaded_modules.append(item)
+                exec(import_str)
 
             # Set parameters and global variables from their default values
             address_string = self.get_local_ip()+":"+str(port)  # e.x 10.1.10.3:3705

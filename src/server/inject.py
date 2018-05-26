@@ -5,6 +5,10 @@ import server
 import codecs
 from hashlib import sha3_224
 import datetime
+import sys
+os.chdir(os.path.dirname(sys.argv[0]))
+sys.path.insert(0, '../inter/modules/')
+
 current_message = None
 
 
@@ -25,7 +29,8 @@ class NetworkInjector(multiprocessing.Process):
     # Send a given message to a specific node
     # Slightly modified compared to the server's send method
 
-    def send(self, connection, msg, signing=True):
+    @staticmethod
+    def send(connection, msg, signing=True):
         sock = connection[0]
         address = connection[1]
         global current_message
@@ -105,7 +110,7 @@ class NetworkInjector(multiprocessing.Process):
     def read_interaction_directory():
         formatted_flags = []
         this_dir = os.path.dirname(os.path.realpath(__file__))
-        os.chdir(this_dir)
+        os.chdir(os.path.dirname(sys.argv[0]))
 
         # Switch to the interaction directory.
         os.chdir("../inter/")
@@ -149,26 +154,18 @@ class NetworkInjector(multiprocessing.Process):
         elif msg_type == "command":
             in_cmd = in_msg[1:]
 
-            print("Received command: "+in_cmd)
-
             if in_cmd == "corecount":
-                print("Injector -> info: Initiating a core count")
-                id_length = 16
-
-                # Get a random 64-bit id for this operation
-                op_id = codecs.encode(os.urandom(int(id_length / 2)), 'hex').decode()
-
-                self.broadcast("newpage:"+op_id, net_tuple)
-                self.broadcast("corecount:"+op_id, net_tuple)
-
-                localhost_socket = self.lookup_socket("127.0.0.1", net_tuple)
-                localhost_connection = (localhost_socket, "127.0.0.1")
-                retrieve_msg = "retrieve:"+op_id
-                self.send(localhost_connection, retrieve_msg)
+                os.chdir(os.path.dirname(sys.argv[0]))
+                import corecount
+                corecount.initiate(in_cmd, net_tuple)
 
             return 0
 
-    def init(self, network_tuple, msg=None):
+    def init(self, network_tuple, loaded_modules, msg=None, ):
+        for item in loaded_modules:
+            import_str = "import "+item
+            exec(import_str)
+
         msg = str(input("Please enter flag to inject into network:  "))
 
         print("Server/Injector -> Broadcasting the contents of the "
