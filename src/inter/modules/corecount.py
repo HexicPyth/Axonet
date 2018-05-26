@@ -7,6 +7,7 @@ this_dir = os.path.dirname(os.path.realpath(__file__))
 os.chdir(this_dir)
 sys.path.insert(0, '../../client/')
 sys.path.insert(0, '../../server/')
+no_prop = "ffffffffffffffff"
 import multiprocessing
 
 
@@ -23,12 +24,12 @@ def initiate(in_cmd, net_tuple):
         op_id = codecs.encode(os.urandom(int(id_length / 2)), 'hex').decode()
 
         injector.broadcast("newpage:" + op_id, net_tuple)
-        injector.broadcast("corecount:" + op_id, net_tuple)
+        injector.broadcast("corecount:" + op_id, net_tuple, signing=True)
 
         localhost_socket = injector.lookup_socket("127.0.0.1", net_tuple)
         localhost_connection = (localhost_socket, "127.0.0.1")
         retrieve_msg = "retrieve:" + op_id
-        injector.send(localhost_connection, retrieve_msg)
+        injector.send(localhost_connection, retrieve_msg, sign=True)
 
 
 def respond_start(page_ids, message):

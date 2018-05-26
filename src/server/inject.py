@@ -31,15 +31,15 @@ class NetworkInjector(multiprocessing.Process):
     # Slightly modified compared to the server's send method
 
     @staticmethod
-    def send(connection, msg, signing=True):
+    def send(connection, msg, sign=True):
         sock = connection[0]
         address = connection[1]
         global current_message
-        if signing:
+        if sign:
             msg = server.Server.prepare(msg).encode('utf-8', 'ignore')
 
-        else:
-            msg.encode('utf-8')
+        elif not sign:
+            msg = msg.encode()
 
         # Prefix each message with a 4-byte length (network byte order)
         msg = struct.pack('>I', len(msg)) + msg
@@ -83,14 +83,14 @@ class NetworkInjector(multiprocessing.Process):
             if in_sock == discovered_socket:
                 return item[1]
 
-    def broadcast(self, message, network_tuple):
+    def broadcast(self, message, network_tuple, signing=True):
         global current_message
         return_code = 0
         for connection in network_tuple:
             address = connection[1]
             print("Sending: "+"'"+message+"'"+" to "+address)  # print("Sending: '(message)' to (address)")
             try:
-                send_status = self.send(connection, message, network_tuple)  # For each of them send the given message
+                send_status = self.send(connection, message, sign=signing)
 
             except OSError:  # Probably Bad file descriptor
                 print("Server/Injector -> Warning: errors occurred sending to: "+str(connection))
