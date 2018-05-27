@@ -517,7 +517,7 @@ class Client:
 
                 # Read contents of page
                 os.chdir(original_path)
-                pagefile = open("../inter/mem/"+page_ident+".bin", "a")
+                pagefile = open("../inter/mem/"+page_ident+".bin", "a+")
 
                 pagelines = pagefile.readlines()
 
