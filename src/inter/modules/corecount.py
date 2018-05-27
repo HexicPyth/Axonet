@@ -24,7 +24,7 @@ def initiate(in_cmd, net_tuple):
         op_id = codecs.encode(os.urandom(int(id_length / 2)), 'hex').decode()
 
         injector.broadcast("newpage:" + op_id, net_tuple)
-        injector.broadcast(no_prop+":corecount:" + op_id, net_tuple, signing=False)
+        injector.broadcast(":corecount:" + op_id, net_tuple)
 
         localhost_socket = injector.lookup_socket("127.0.0.1", net_tuple)
         localhost_connection = (localhost_socket, "127.0.0.1")
