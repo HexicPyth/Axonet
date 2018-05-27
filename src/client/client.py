@@ -517,7 +517,7 @@ class Client:
 
                 # Read contents of page
                 os.chdir(original_path)
-                pagefile = open("../inter/mem/"+page_ident+".bin", "a+")
+                pagefile = open("../inter/mem/"+page_ident+".bin", "r+")
 
                 pagelines = pagefile.readlines()
 
@@ -596,7 +596,6 @@ class Client:
                     os.chdir(original_path)
                     import corecount
                     corecount.start(page_id, raw_lines, newlines)
-                    module_loaded = ""
 
             if message.startswith("file:"):
                 # Eventually we'll be able to distribute shared
