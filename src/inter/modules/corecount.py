@@ -49,7 +49,7 @@ def start(page_id, raw_lines, newlines):
     import client
     Client = client.Client()
     print(page_id)
-    # corecount stuff. TODO: put this in it's own module
+    # corecount stuff.
     almost_formatted_cores = [parse_line[17:].rstrip("\n") for parse_line
                               in raw_lines if parse_line != "\n"]
 
