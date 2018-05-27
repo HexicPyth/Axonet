@@ -7,7 +7,6 @@ this_dir = os.path.dirname(os.path.realpath(__file__))
 os.chdir(this_dir)
 sys.path.insert(0, '../../client/')
 sys.path.insert(0, '../../server/')
-no_prop = "ffffffffffffffff"
 import multiprocessing
 
 
@@ -29,7 +28,7 @@ def initiate(in_cmd, net_tuple):
         localhost_socket = injector.lookup_socket("127.0.0.1", net_tuple)
         localhost_connection = (localhost_socket, "127.0.0.1")
         retrieve_msg = "retrieve:" + op_id
-        injector.send(localhost_connection, retrieve_msg, sign=True)
+        injector.send(localhost_connection, retrieve_msg)
 
 
 def respond_start(page_ids, message):
@@ -49,7 +48,7 @@ def start(page_id, raw_lines, newlines):
     import client
     Client = client.Client()
     print(page_id)
-    # corecount stuff.
+    # corecount stuff. TODO: put this in it's own module
     almost_formatted_cores = [parse_line[17:].rstrip("\n") for parse_line
                               in raw_lines if parse_line != "\n"]
 
