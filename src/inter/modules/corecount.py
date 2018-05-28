@@ -11,7 +11,6 @@ no_prop = "ffffffffffffffff"
 import multiprocessing
 
 
-
 def initiate(in_cmd, net_tuple):
     import inject
     injector = inject.NetworkInjector()

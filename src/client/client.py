@@ -9,9 +9,6 @@ import random
 import sys
 from hashlib import sha3_224
 
-original_path = os.path.dirname(os.path.realpath(__file__))
-os.chdir(original_path)
-sys.path.insert(0, '../inter/modules/')
 
 # Globals
 localhost = socket.socket()
@@ -21,14 +18,20 @@ localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes 
 network_tuple = ()  # (socket, address)
 ballet_tuple = ([], [])  # (value, address)
 message_list = []
-page_list = []  # temporary file objects to close
-page_ids = []
+page_list = []  # temporary file objects to close on stop
+page_ids = []  # Used by some modules
+
 ongoing_election = False
-terminated = False  # If true: the client has been instructed to terminate; inform our functions and exit cleanly.
-cluster_rep = None  # type -> bool
+terminated = False
+cluster_rep = False
 no_prop = "ffffffffffffffff"  # True:[message] = No message propagation.
-loaded_modules = []
-module_loaded = ""
+
+loaded_modules = []  # List of all modules loaded
+module_loaded = ""   # Current module being executed
+
+original_path = os.path.dirname(os.path.realpath(__file__))
+os.chdir(original_path)
+sys.path.insert(0, '../inter/modules/')
 
 # To be (re)set by init()
 PORT = 3705
@@ -131,10 +134,9 @@ class Client:
     @staticmethod
     def permute_network_tuple():
         ''' Permute the network tuple. Repetitive permutation after each call
-            of respond() functionally allow the network to inherit many of the anonymous
+            of respond() functionally allows the network to inherit many of the anonymous
             aspects of a mixing network. Packets are sent sequentially in the order of the
             network tuple, which when permuted, thwarts many timing attacks. ''
-
             Doesn't return '''
 
         global network_tuple
@@ -165,7 +167,7 @@ class Client:
         network_tuple = tuple(network_list)
 
     def remove(self, connection):
-        ''' Remove a given connection object(tuple of (socket, address)) to the network tuple.
+        ''' Remove a given connection object(tuple of (socket, address)) from the network tuple.
             Doesn't return '''
 
         global network_tuple
@@ -190,17 +192,24 @@ class Client:
     def connect(self, connection, address, port, local=False):
         ''' Connect to a remote server and handle the connection(i.e append it).
             Doesn't return. '''
+
         global connecting_to_server
         sock = connection[0]
 
-        # * Ugh! Fucking race conditions... *
-        # Append this as quickly as possible, so the following if statement
-        # will trip correctly on a decent CPU.
-        # Moore's law tells me I should come up with a better solution to this problem.
+        ''' 
+        * Ugh! Fucking race conditions... *
+         Append this new connection as quickly as possible, 
+         so the following if statement
+         will trip correctly on a decent CPU.
+         Moore's law tells me I should come up with a better solution to this problem.
+         But then again, Moore's law is pretty much dead.
+        '''
 
-        quasi_network_tuple = tuple(network_tuple)  # Make a copy of the network tuple to reference
-        self.append(sock, address)
+        # Make a real copy of the network tuple, not a pointer.
+        quasi_network_tuple = tuple(network_tuple)
+        self.append(sock, address)  # Append it, quick!
 
+        # Don't connect to an address we're already connected to.
         if connection in quasi_network_tuple:
             not_connecting_msg = str("Not connecting to "+connection[1],
                                      "We're already connected.")
@@ -209,6 +218,7 @@ class Client:
             self.remove((sock, address))
 
         else:
+            # Also don't try to connect to multiple servers at once in the same thread.
             if not connecting_to_server:
                 connecting_to_server = True
 
@@ -222,14 +232,17 @@ class Client:
                 elif local:
                     self.remove((sock, address))
 
-                    self.log("Connecting to localhost server...", in_log_level="Info")
+                    self.log("Connecting to localhost server...",
+                             in_log_level="Info")
                     sock.connect((address, port))
-                    self.log("Successfully connected to localhost server", in_log_level="Info")
+
+                    self.log("Successfully connected to localhost server",
+                             in_log_level="Info")
                     connecting_to_server = False
 
     def disconnect(self, connection, disallow_local_disconnect=True):
-        # Try to disconnect from a remote server and remove it from the network tuple.
-        # Returns None if you try to do something stupid. otherwise returns nothing at all.
+        ''' Try to disconnect from a remote server and remove it from the network tuple.
+          Returns None if you do something stupid. otherwise don't return '''
 
         try:
             sock = connection[0]
@@ -246,7 +259,7 @@ class Client:
                 if address_to_disconnect == self.get_local_ip() or address_to_disconnect == "127.0.0.1":
                     self.log("Not disconnecting from localhost dimwit.", in_log_level="Warning")
 
-                # Do disconnect from remote nodes. That actually makes sense.
+                # Do disconnect from remote nodes. That actually makes sense (when applicable).
                 else:
                     verbose_connection_msg = str("Disconnecting from " + address_to_disconnect
                                                  + "\n\t(  " + str(sock) + "  )")
@@ -272,7 +285,7 @@ class Client:
             pass
 
     ''' The following three functions were written by StackOverflow user 
-    Adam Rosenfield and modified by me, HexicPyth.
+    Adam Rosenfield then modified by me, HexicPyth.
     https://stackoverflow.com/a/17668009
     https://stackoverflow.com/users/9530/adam-rosenfield '''
 
@@ -360,10 +373,13 @@ class Client:
         return 0
 
     def write_to_page(self, page_id, data, signing=True):
-        print("!!!!")
+        self.log("Writing to page:", page_id)
         os.chdir(original_path)
 
-        # Until we implement Asymmetric crypto, we'll identify ourselves with a hash of our address.
+        ''' Until we implement Asymmetric crypto, we'll identify ourselves 
+        with a hash of our address. That's actually convenient because other
+        nodes can reliably tell who (didn't) send a given message '''
+
         if signing:
             our_id = sha3_224(self.get_local_ip().encode()).hexdigest()[:16]
             data_line = str(our_id + ":" + data + "\n")
@@ -372,6 +388,7 @@ class Client:
             data_line = str(data + "\n")
 
         file_path = ("../inter/mem/"+page_id+".bin")
+
         this_page = open(file_path, "a+")
         this_page.write(data_line)
         this_page.close()
@@ -400,24 +417,27 @@ class Client:
         # Do respond to messages we have yet to respond to.
         elif sig not in message_list or sig == no_prop:
 
-            # Find the address of the socket we're receiving from...
-
             # e.x "Client -> Received: echo (ffffffffffffffff) from: 127.0.0.1"
             message_received_log = str('Received: ' + message
                                        + " (" + sig + ")" + " from: " + address)
 
             self.log(message_received_log, in_log_level="Info")
 
-            # Simple connection test mechanism.
             if message == "echo":
+                ''' Simple way to test our connection to a given node.
+                
+                Slight Caveat: Because of message propagation, this actually tests
+                every nodes connection to every other node on the network.'''
+
                 self.log("echoing...", in_log_level="Info")
                 self.send(connection, no_prop + ':' + message, sign=False)  # If received, send back
 
-            # Easy way to instruct all nodes to disconnect from each other and exit cleanly.
             if message == "stop":
-                # Inform our server to exit cleanly
+                ''' instruct all nodes to disconnect from each other and exit cleanly.'''
+
+                # Inform localhost to follow suit.
                 localhost_connection = (localhost, "127.0.0.1")
-                self.send(localhost_connection, "stop")
+                self.send(localhost_connection, "stop")  # TODO: should we use no_prop here?
 
                 # Do so ourselves
                 self.terminate()
@@ -426,9 +446,7 @@ class Client:
             if message.startswith("ConnectTo:"):
                 connect_to_address = message[10:]  # len("ConnectTo:") = 10
 
-                # The address is foreign, connect to it.
-
-                # Will return None if no socket is found(i.e we're not connected)
+                # Will return an socket if we're already connected to it.
                 connection_status = self.lookup_socket(connect_to_address)
                 self.log(str(network_tuple), in_log_level="Debug")
 
@@ -439,10 +457,13 @@ class Client:
                     if connect_to_address == self.get_local_ip() or connect_to_address == "127.0.0.1":
                         not_connecting_msg = str("Not connecting to " + connect_to_address
                                                  + ";" + " That's localhost :P")
+
                         self.log(not_connecting_msg, in_log_level="Warning")
 
                     else:
                         local_address = self.get_local_ip()
+
+                        # Be verbose
                         self.log(str("self.lookup_socket() indicates that "
                                  "we're not connected to "+connect_to_address), in_log_level="Info")
 
@@ -459,8 +480,10 @@ class Client:
                                 self.connect(new_connection, connect_to_address, PORT)
                                 self.listen(new_connection)
 
-                            # probably bad file descriptor in self.connect()
                             except OSError:
+                                ''' Most Likely a Bad Fie Descriptor in self.connect().
+                                I don't know what to do about that, so we'll just warn the user.'''
+
                                 self.log(str("Unable to connect to: "+str(connect_to_address)),
                                          in_log_level="Warning")
 
@@ -489,23 +512,22 @@ class Client:
                     self.log(("Not executing command: ", message[5:]), in_log_level="Info")
 
             if message.startswith("newpage:"):
-
-                # e.x newpage:(64-bit signature):
+                ''' Create a new pagefile that we'll presumably do some 
+                parallel or distributed operations with.
+                e.x newpage:(64-bit signature)'''
 
                 page_id = message[8:]
                 self.log("Creating new page with id: "+str(page_id), in_log_level="Info")
 
-                # create a new file to store our page fragments in.
-
                 os.chdir(original_path)
-
                 new_filename = str("../inter/mem/"+page_id+".bin")
                 newpage = open(new_filename, "a+")
                 page_list.append(newpage)
 
             if message.startswith("corecount:"):
                 global module_loaded
-                import corecount
+                import corecount  # If your IDE tells you this module isn't found, it's lying.
+
                 module_loaded = "corecount"
                 corecount.respond_start(page_ids, message)
 
@@ -531,17 +553,17 @@ class Client:
                 sync_msg = (no_prop+":"+"sync:"+page_ident+":"+page_contents)
                 self.broadcast(sync_msg)  # We need to broadcast
 
-
             if message.startswith("sync:"):
-                os.chdir(original_path)
+                ''' Update our pagefile with information from other node's completed work '''
 
+                os.chdir(original_path)
                 page_id = message[5:][:16]
                 data = message[22:]
-                print(page_id)
-                print(data)
+
+                self.log("Syncing " + data + " into page:" + page_id, in_log_level="Info")
+
                 file_path = "../inter/mem/"+page_id+".bin"
                 existing_pagelines = open(file_path, "r+").readlines()
-                print(existing_pagelines)
 
                 duplicate = False
                 local = False
@@ -550,31 +572,28 @@ class Client:
                 for line in existing_pagelines:
                     if line == data:
                         duplicate = True
-                        print("Not writing duplicate data into "+page_id)
+                        self.log("Not writing duplicate data into page "+page_id)
                         break
-                    else:
-                        pass
 
                 if not duplicate:
                     data_id = data[:16]
                     local_id = sha3_224(self.get_local_ip().encode()).hexdigest()[:16]
                     if data_id == local_id:
-                        # Don't re-write data about ourselves. We already did that with 'corecount'.
+                        # Don't re-write data from ourselves. We already did that with 'corecount'.
                         print("Not being hypocritical in page "+page_id)
                         local = True
 
                     if not local:
                         if data == "" or data == " " or data == "\n":
                             pass
+
                         else:
                             print("Writing "+data + "to page " + page_id)
                             self.write_to_page(page_id, data, signing=False)
 
-                ''' Cleanup pagefile after sync operation '''
-                # TODO: make this a function
-
-                '''
-                Thank you Marcell from StackOverflow for the following 2 lines of code
+                ''' Cleanup pagefile after sync operation
+                
+                Thank you 'Marcell' from StackOverflow for the following 2 lines of code
                 https://stackoverflow.com/a/1216544
                 https://stackoverflow.com/users/146442/marcell
                 '''
@@ -591,10 +610,10 @@ class Client:
 
                 open(file_path, 'w').writelines(set(newlines))
 
-                # Module stuff follows
+                # Module stuff below
                 if module_loaded == "corecount":
                     os.chdir(original_path)
-                    import corecount
+                    import corecount  # Again, your IDE might be lying to you
                     corecount.start(page_id, raw_lines, newlines)
 
             if message.startswith("file:"):
@@ -679,7 +698,7 @@ class Client:
         def listener_thread(conn):
             in_sock = conn[0]
             global terminated
-            listener_terminated = False  # When set, this specific instance of listener_thread is stopped.
+            listener_terminated = False  # Terminate when set
 
             while not listener_terminated and not terminated:
                 incoming = self.receive(conn)
@@ -730,9 +749,8 @@ class Client:
             self.disconnect(connection, disallow_local_disconnect=False)
             index += 1
 
+        self.log("Quietly Dying...")
         terminated = True
-        print("!!!!!")
-
         return 0
 
     def initialize(self, port=3705, network_architecture="Complete",
@@ -748,7 +766,8 @@ class Client:
         global PORT
         global loaded_modules
 
-        PORT = port  # Global variable assignment
+        # Global variable assignment
+        PORT = port
         allow_command_execution = command_execution
         allow_file_storage = file_storage
         log_level = default_log_level

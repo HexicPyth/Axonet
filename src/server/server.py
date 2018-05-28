@@ -9,10 +9,6 @@ import datetime
 import threading
 from hashlib import sha3_224
 
-this_dir = os.path.dirname(os.path.realpath(__file__))
-os.chdir(this_dir)
-sys.path.insert(0, '../inter/modules/')
-
 # Globals
 localhost = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes TIME_WAIT-ing. Add SO_REUSEADDR.
@@ -29,11 +25,17 @@ terminated = False
 log_level = ""  # "Debug", "Info", or "Warning"; will be set by self.initialize()
 loaded_modules = []
 
+this_dir = os.path.dirname(os.path.realpath(__file__))
+os.chdir(this_dir)
+sys.path.insert(0, '../inter/modules/')
+
 
 class Server:
 
     @staticmethod
     def log(log_message, in_log_level='Warning', sub_node="Server"):
+        ''' Process and deliver program output in an organized and
+        easy to read fashion. Never returns. '''
 
         # input verification
         levels = ["Debug", "Info", "Warning"]
@@ -56,8 +58,9 @@ class Server:
             print(sub_node, "->", in_log_level + ":", log_message)
 
     def get_local_ip(self):
-        # Creates a temporary socket and connects to subnet, yielding our local address.
-        # Returns: (local ip address) -> str
+        '''Creates a temporary socket and connects to subnet,
+           yielding our local address. Returns: (local ip address) -> str '''
+
         temp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
         try:
@@ -79,9 +82,8 @@ class Server:
 
     @staticmethod
     def prepare(message):
-        # Assign unique hashes to messages for transport
-        # Returns: (hash+message) -> str
-        # Please excuse the mess :P
+        ''' Assign unique hashes to messages ready for transport.
+            Returns (new hashed message) -> str '''
 
         out = ""
         timestamp = str(datetime.datetime.utcnow())
@@ -96,8 +98,12 @@ class Server:
 
     @staticmethod
     def permute_network_tuple():
-        # Permute the network tuple in place
-        # Returns nothing (network_tuple is a global variable)
+        ''' Permute the network tuple. Repetitive permutation after each call
+            of respond() functionally allows the network to inherit many of the anonymous
+            aspects of a mixing network. Packets are sent sequentially in the order of the
+            network tuple, which when permuted, thwarts many timing attacks. ''
+            Doesn't return '''
+
         cs_prng = random.SystemRandom()
         global network_tuple
 
@@ -108,8 +114,8 @@ class Server:
 
     @staticmethod
     def lookup_socket(address):  # TODO: optimize me
-        # Do a brute force search for a specific socket.
-        # Maybe this can be optimized by caching the indexes of commonly-used connections?
+        '''Do a brute force search for a specific socket.
+           Maybe this can be optimized by caching the indexes of commonly-used connections?'''
 
         for item in network_tuple:
             discovered_address = item[1]
@@ -118,8 +124,9 @@ class Server:
 
     @staticmethod
     def lookup_address(in_sock):  # TODO: optimize me
-        # Do a brute force search for a specific address.
-        # Maybe this can be optimized by caching the indexes of commonly-used connections?
+        '''Do a brute force search for a specific socket.
+           Maybe this can be optimized by caching the indexes of commonly-used connections?'''
+
         for item in network_tuple:
             discovered_socket = item[0]
             if in_sock == discovered_socket:
@@ -204,8 +211,8 @@ class Server:
             self.send(connection, message, signing=False)  # For each of them send the given message( = Broadcast)
 
     @staticmethod
-    # Add a connection to the network_tuple
     def append(in_socket, address):
+        ''' Add a connection to the network tuple. Doesn't return.'''
         global network_tuple
 
         # Tuples are immutable; convert it to a list.
@@ -217,8 +224,8 @@ class Server:
         # (Again) tuples are immutable; replace the old one with the new one
         network_tuple = tuple(network_list)
 
-    # Remove a connection from the network_tuple
     def remove(self, connection):
+        '''Remove a connection from the network tuple. Doesn't return.'''
         global network_tuple
 
         # Tuples are immutable; convert it to a list.
@@ -238,10 +245,10 @@ class Server:
         network_tuple = tuple(network_list)
 
     def stop(self):
+        ''' Attempt to gracefully disconnect and terminate,
+        but resort to brute force if needed.'''
         global terminated
         global injector_terminated
-
-        # Try to gracefully disconnect & disassociate from the network
 
         localhost_socket = self.lookup_socket("127.0.0.1")
         localhost_connection = (localhost_socket, "127.0.0.1")
@@ -353,10 +360,13 @@ class Server:
             if message.startswith("retrieve:"):
                 '''
                 Opposite of write_page() function. This isn't a function because we need access to
-                the network to communicate. Typically sent from the network injector, not a client.
+                the network to propagate. Typically sent from the network injector and received from
+                 a client, not from a client directly.
 
                 e.x retrieve:ffffffffeeeeeeee
                 '''
+
+                target_page = message[9:]
 
                 address_list = []
                 for net_socket, net_address in network_tuple:
@@ -367,8 +377,6 @@ class Server:
                     ident = sha3_224(addr.encode()).hexdigest()[:16]
                     id_list.append(ident)
 
-                target_page = message[9:]
-
                 ''' For every address, sequentially send 'fetch' flags to sync any changes
                     to the page '''
 
@@ -376,7 +384,13 @@ class Server:
                 self.broadcast(fetch_msg)
 
             if message.startswith("affirm:"):
-                usable_message = message[7:]  # Remove the flag ("affirm:")
+                ''' I would put a docstring here documenting what this does, but I
+                don't remember, and pretty much gave up on doing distributed 
+                file storage the normal way. See: all the paging-related flags '''
+
+                # TODO: why the hell do we 'affirm' again?
+
+                usable_message = message[7:]
                 file_hash = usable_message[:16]
 
                 # Sorry for this mess :P
@@ -386,7 +400,7 @@ class Server:
                                                   + full_message + '\n\t'
                                                   + message + '\n\t'
                                                   + usable_message + '\n\t'
-                                                  + file_hash + '\n\t'
+                                                     + file_hash + '\n\t'
                                                   + "There's nothing left; stopping")
 
                 # Note to self: Don't turn on log_level_debug :P
@@ -400,9 +414,12 @@ class Server:
                 self.append_to_file_tuple(file_hash, address, file_index)
                 file_index += 1
 
-            # We only broadcast messages with hashes we haven't already documented. That way the network doesn't
+            # If you actually read 417 lines down: good for you! You reached the end of
+            # self.respond()'s mess of flag processing!
+
+            '''We only broadcast messages with hashes we haven't already documented. That way the network doesn't
             # loop indefinitely broadcasting the same message. Also, Don't append no_prop to message_list.
-            # That would be bad.
+            # That would be bad. '''
 
             if sig not in message_list and sig != no_prop:
                 message_list.append(sig)
@@ -413,6 +430,7 @@ class Server:
 
                 self.log("Permuting the Network Tuple", in_log_level="Info")
                 self.permute_network_tuple()
+
             if sig == no_prop:
                 if message[:5] == "sync:":
                     self.log("Violating the no_prop policy for localhost", in_log_level="Warning")
@@ -422,19 +440,21 @@ class Server:
                     self.send(localhost_connection, full_message, signing=False)
 
     def disconnect(self, connection, disallow_local_disconnect=True):
-        # Try our best to cleanly disconnect from a socket.
-        # Doesn't return anything.
+        '''Try our best to cleanly disconnect from a socket.
+           Doesn't return anything. '''
+
         sock = connection[0]
         address = connection[1]
         try:
             if disallow_local_disconnect:
-                print(terminated)
+                self.log("Terminated:"+str(terminated), in_log_level="Debug")
+
                 if address == self.get_local_ip() and not terminated:
 
                     self.log("(Bug) Refusing to disconnect from localhost;"
                              " that's a terrible idea...", in_log_level="Warning")
-
                     return None
+
                 else:
 
                     self.log("\n\tSelf.disconnect() called.\n", in_log_level="Info")
@@ -449,11 +469,6 @@ class Server:
                     self.remove(connection)
                     sock.close()
 
-                    # Inform the network about this removal
-                    # self.broadcast(self.prepare("remove:" + address))
-                    # Scratch that; letting machines control other machines on a network in development
-                    # ends badly.
-
                     self.log("Successfully Disconnected.", in_log_level="Info")
 
         # Socket not in network_tuple. Probably already disconnected, or the socket was [closed]
@@ -461,10 +476,10 @@ class Server:
             self.log("Already disconnected from that address; passing;", in_log_level="Warning")
 
     def listen(self, connection):
-        # Listen for incoming messages in one thread, manage the network injector in another.
-        # Doesn't return anything.
+        '''Listen for incoming messages in one thread, manage the network injector in another.
+        Doesn't return anything. '''
 
-        global injector_terminated  # When true, all running network injectors (should) cleanly exit.
+        global injector_terminated  # If True: cleanly exit all network injectors.
 
         def listener(conn):
             listener_terminated = False  # When set, this thread and this thread only, is stopped.
@@ -472,10 +487,16 @@ class Server:
             while not listener_terminated and not terminated:
                 try:
                     incoming = self.receive(conn)
+
+                    # self.receive() returns none if something goes wrong.
                     if incoming:
                         self.respond(incoming, conn)
 
                 except (OSError, TypeError):
+                    '''
+                    OSError - Something terrible happened trying to receive from a node
+                    TypeError - A socket is apparently NoneType now. That's bad '''
+
                     try:
                         client = conn[0]
                         address = conn[1]
@@ -518,12 +539,13 @@ class Server:
                 if net_injection:
                     injector_return_value = injector.init(network_tuple, loaded_modules)
 
-                    # The mess below handles the collect() loop that would normally be in inject.py
+                    # The mess below handles the collect() loop that used to be in inject.py
 
                     current_network_size = len(network_tuple)
 
                     while not terminated or not injector_terminated:
-                        network_size = len(network_tuple)
+                        network_size = len(network_tuple) # Keep this up to date
+
                         if terminated:
                             injector_terminated = True
                             break
@@ -532,11 +554,16 @@ class Server:
                             break  # A new client connected, let's exit the injector.
 
                         if type(injector_return_value) == str:
+                            ''' Something went wrong sending to a given address. The injector
+                            doesn't have proper error handling because it's a disposable thread
+                            and a waste of lines, so we'll handle it here '''
 
-                            if injector_return_value != self.get_local_ip() and injector_return_value != "127.0.0.1":
+                            message_send_successful = (injector_return_value == self.get_local_ip())
+                            if message_send_successful and injector_return_value != "127.0.0.1":
 
-                                faulty_conn_disconnect_msg = str("Server -> Attempting to disconnect" 
-                                                                 "from faulty connection: "
+                                faulty_conn_disconnect_msg = str("Server -> Attempting to "
+                                                                 "disconnect from faulty"
+                                                                 " connection: "
                                                                  + injector_return_value)
 
                                 self.log(faulty_conn_disconnect_msg, in_log_level="Warning")
@@ -560,6 +587,7 @@ class Server:
 
                                     disconnect_attempt_msg = str("Trying to disconnect from: " +
                                                                  str(connection_to_disconnect))
+
                                     self.log(disconnect_attempt_msg, in_log_level="Info")
 
                                     self.disconnect(connection_to_disconnect)
@@ -583,6 +611,7 @@ class Server:
 
                         # Something catastrophically wrong happened and for some reason, there are zero connections
                         # whatsoever. Stop the injector loop immediately so we can deal with the issue at hand.
+
                         elif len(network_tuple) == 0:
                             break
 
