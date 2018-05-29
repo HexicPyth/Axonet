@@ -9,7 +9,6 @@ import random
 import sys
 from hashlib import sha3_224
 
-
 # Globals
 localhost = socket.socket()
 localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes TIME_WAIT-ing. Add SO_REUSEADDR.
@@ -27,7 +26,7 @@ cluster_rep = False
 no_prop = "ffffffffffffffff"  # True:[message] = No message propagation.
 
 loaded_modules = []  # List of all modules loaded
-module_loaded = ""   # Current module being executed
+module_loaded = ""  # Current module being executed
 
 original_path = os.path.dirname(os.path.realpath(__file__))
 os.chdir(original_path)
@@ -45,8 +44,8 @@ class Client:
 
     @staticmethod
     def log(log_message, in_log_level='Warning', sub_node="Client"):
-        ''' Process and deliver program output in an organized and
-        easy to read fashion. Never returns. '''
+        """ Process and deliver program output in an organized and
+        easy to read fashion. Never returns. """
 
         # input verification
         levels = ["Debug", "Info", "Warning"]
@@ -69,8 +68,8 @@ class Client:
             print(sub_node, "->", in_log_level + ":", log_message)
 
     def get_local_ip(self):
-        '''Creates a temporary socket and connects to subnet,
-           yielding our local address. Returns: (local ip address) -> str '''
+        """Creates a temporary socket and connects to subnet,
+           yielding our local address. Returns: (local ip address) -> str """
 
         temp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
@@ -93,23 +92,23 @@ class Client:
 
     @staticmethod
     def prepare(message):
-        ''' Assign unique hashes to messages ready for transport.
-            Returns (new hashed message) -> str '''
+        """ Assign unique hashes to messages ready for transport.
+            Returns (new hashed message) -> str """
 
         out = ""
         timestamp = str(datetime.datetime.utcnow())
         out += timestamp
         out += message
         sig = sha3_224(out.encode()).hexdigest()[:16]
-        out = sig+":"+message
+        out = sig + ":" + message
         return out
 
     @staticmethod
     def lookup_socket(address):  # TODO: optimize me
-        '''Brute force search the network tuple for a socket associated with a given address.
+        """Brute force search the network tuple for a socket associated with a given address.
             Return socket object if found.
             Returns 0(-> int) id not found
-        '''
+        """
 
         for item in network_tuple:
             discovered_address = item[1]
@@ -120,10 +119,10 @@ class Client:
 
     @staticmethod
     def lookup_address(in_sock):  # TODO: optimize me
-        '''Brute force search the network tuple for an address associated with a given socket.
+        """Brute force search the network tuple for an address associated with a given socket.
             Return a string containing an address if found.
             Returns 0 (-> int) if not found
-        '''
+        """
         for item in network_tuple:
             discovered_socket = item[0]
             if in_sock == discovered_socket:
@@ -133,11 +132,11 @@ class Client:
 
     @staticmethod
     def permute_network_tuple():
-        ''' Permute the network tuple. Repetitive permutation after each call
+        """ Permute the network tuple. Repetitive permutation after each call
             of respond() functionally allows the network to inherit many of the anonymous
             aspects of a mixing network. Packets are sent sequentially in the order of the
             network tuple, which when permuted, thwarts many timing attacks. ''
-            Doesn't return '''
+            Doesn't return """
 
         global network_tuple
 
@@ -152,8 +151,8 @@ class Client:
 
     @staticmethod
     def append(in_socket, address):
-        ''' Append a given connection object(tuple of (socket, address)) to the network tuple.
-            Doesn't return '''
+        """ Append a given connection object(tuple of (socket, address)) to the network tuple.
+            Doesn't return """
 
         global network_tuple
 
@@ -167,8 +166,8 @@ class Client:
         network_tuple = tuple(network_list)
 
     def remove(self, connection):
-        ''' Remove a given connection object(tuple of (socket, address)) from the network tuple.
-            Doesn't return '''
+        """ Remove a given connection object(tuple of (socket, address)) from the network tuple.
+            Doesn't return """
 
         global network_tuple
 
@@ -182,7 +181,7 @@ class Client:
 
         # Connection not in network tuple, or socket is [closed]
         except ValueError:
-            self.log(str("Not removing non-existent connection: "+str(connection)),
+            self.log(str("Not removing non-existent connection: " + str(connection)),
                      in_log_level="Warning")
             return None
 
@@ -190,28 +189,26 @@ class Client:
         network_tuple = tuple(network_list)
 
     def connect(self, connection, address, port, local=False):
-        ''' Connect to a remote server and handle the connection(i.e append it).
-            Doesn't return. '''
+        """ Connect to a remote server and handle the connection(i.e append it).
+            Doesn't return. """
 
         global connecting_to_server
         sock = connection[0]
 
-        ''' 
-        * Ugh! Fucking race conditions... *
-         Append this new connection as quickly as possible, 
-         so the following if statement
-         will trip correctly on a decent CPU.
-         Moore's law tells me I should come up with a better solution to this problem.
-         But then again, Moore's law is pretty much dead.
-        '''
+        # Ugh! Fucking race conditions... *
+        # Append this new connection as quickly as possible,
+        # so the following if statement
+        # will trip correctly on a decent CPU.
+        # Moore's law tells me I should come up with a better solution to this problem.
+        # But then again, Moore's law is pretty much dead.
 
         # Make a real copy of the network tuple, not a pointer.
         quasi_network_tuple = tuple(network_tuple)
-        self.append(sock, address)  # Append it, quick!
+        self.append(sock, address)  # Append it, quick! (see rant above)
 
         # Don't connect to an address we're already connected to.
         if connection in quasi_network_tuple:
-            not_connecting_msg = str("Not connecting to "+connection[1],
+            not_connecting_msg = str("Not connecting to " + connection[1],
                                      "We're already connected.")
             self.log(not_connecting_msg, "Warning")
 
@@ -224,7 +221,7 @@ class Client:
 
                 if not local:
 
-                    self.log(str("Connecting to "+address), in_log_level="Info")
+                    self.log(str("Connecting to " + address), in_log_level="Info")
                     sock.connect((address, port))
                     self.log("Successfully connected.", in_log_level="Info")
                     connecting_to_server = False
@@ -241,8 +238,8 @@ class Client:
                     connecting_to_server = False
 
     def disconnect(self, connection, disallow_local_disconnect=True):
-        ''' Try to disconnect from a remote server and remove it from the network tuple.
-          Returns None if you do something stupid. otherwise don't return '''
+        """ Try to disconnect from a remote server and remove it from the network tuple.
+          Returns None if you do something stupid. otherwise don't return """
 
         try:
             sock = connection[0]
@@ -250,7 +247,7 @@ class Client:
 
         except TypeError:
             self.log("Expected a connection tuple, got:", in_log_level="Warning")
-            self.log(str('\t')+str(connection), in_log_level="Warning")
+            self.log(str('\t') + str(connection), in_log_level="Warning")
             return None
 
         try:
@@ -284,15 +281,15 @@ class Client:
             self.log("Already disconnected from that address, passing...", in_log_level="Warning")
             pass
 
-    ''' The following three functions were written by StackOverflow user 
+    """ The following three functions were written by StackOverflow user 
     Adam Rosenfield then modified by me, HexicPyth.
     https://stackoverflow.com/a/17668009
-    https://stackoverflow.com/users/9530/adam-rosenfield '''
+    https://stackoverflow.com/users/9530/adam-rosenfield """
 
     def send(self, connection, message, sign=True):
-        '''Helper function to encode a given message and send it to a given server.
+        """Helper function to encode a given message and send it to a given server.
             Set sign=False to disable automatic message signing(useful for no_prop things)
-            Doesn't Return. '''
+            Doesn't Return. """
 
         sock = connection[0]
 
@@ -314,9 +311,9 @@ class Client:
             self.disconnect(connection)
 
     def receiveall(self, sock, n):
-        ''' Helper function to receive n bytes.
+        """ Helper function to receive n bytes.
             Returns None(-> NoneType) if/when EOF is hit.
-        '''
+        """
 
         data = ''
 
@@ -346,13 +343,13 @@ class Client:
         # Returns None if self.receiveall fails, or nothing at all otherwise.
         sock = connection[0]
         try:
-            raw_msglen = self.receiveall(sock, 4)
+            raw_msg_length = self.receiveall(sock, 4)
 
-            if not raw_msglen:
+            if not raw_msg_length:
                 return None
 
-            msglen = struct.unpack('>I', raw_msglen)[0]
-            return self.receiveall(sock, msglen).decode()
+            msg_length = struct.unpack('>I', raw_msg_length)[0]
+            return self.receiveall(sock, msg_length).decode()
 
         # This socket disconnected. Return 1 so the calling function(probably the listener) knows what happened.
         except ValueError:
@@ -376,9 +373,9 @@ class Client:
         self.log("Writing to page:", page_id)
         os.chdir(original_path)
 
-        ''' Until we implement Asymmetric crypto, we'll identify ourselves 
+        """ Until we implement Asymmetric crypto, we'll identify ourselves 
         with a hash of our address. That's actually convenient because other
-        nodes can reliably tell who (didn't) send a given message '''
+        nodes can reliably tell who (didn't) send a given message """
 
         if signing:
             our_id = sha3_224(self.get_local_ip().encode()).hexdigest()[:16]
@@ -387,7 +384,7 @@ class Client:
         else:
             data_line = str(data + "\n")
 
-        file_path = ("../inter/mem/"+page_id+".bin")
+        file_path = ("../inter/mem/" + page_id + ".bin")
 
         this_page = open(file_path, "a+")
         this_page.write(data_line)
@@ -411,7 +408,7 @@ class Client:
 
         # Don't respond to messages we've already responded to.
         if sig in message_list:
-            not_responding_to_msg = str("Not responding to "+sig)
+            not_responding_to_msg = str("Not responding to " + sig)
             self.log(not_responding_to_msg, in_log_level="Debug")
 
         # Do respond to messages we have yet to respond to.
@@ -424,16 +421,16 @@ class Client:
             self.log(message_received_log, in_log_level="Info")
 
             if message == "echo":
-                ''' Simple way to test our connection to a given node.
-                
+                """ Simple way to test our connection to a given node.
+
                 Slight Caveat: Because of message propagation, this actually tests
-                every nodes connection to every other node on the network.'''
+                every nodes connection to every other node on the network."""
 
                 self.log("echoing...", in_log_level="Info")
                 self.send(connection, no_prop + ':' + message, sign=False)  # If received, send back
 
             if message == "stop":
-                ''' instruct all nodes to disconnect from each other and exit cleanly.'''
+                """ instruct all nodes to disconnect from each other and exit cleanly."""
 
                 # Inform localhost to follow suit.
                 localhost_connection = (localhost, "127.0.0.1")
@@ -465,7 +462,7 @@ class Client:
 
                         # Be verbose
                         self.log(str("self.lookup_socket() indicates that "
-                                 "we're not connected to "+connect_to_address), in_log_level="Info")
+                                     "we're not connected to " + connect_to_address), in_log_level="Info")
 
                         self.log(str("self.get_local_ip() indicates that localhost "
                                      "= " + local_address), in_log_level="Info")
@@ -481,10 +478,10 @@ class Client:
                                 self.listen(new_connection)
 
                             except OSError:
-                                ''' Most Likely a Bad Fie Descriptor in self.connect().
-                                I don't know what to do about that, so we'll just warn the user.'''
+                                """ Most Likely a Bad Fie Descriptor in self.connect().
+                                I don't know what to do about that, so we'll just warn the user."""
 
-                                self.log(str("Unable to connect to: "+str(connect_to_address)),
+                                self.log(str("Unable to connect to: " + str(connect_to_address)),
                                          in_log_level="Warning")
 
                 # The address isn't foreign, don't re-connect to it.
@@ -499,7 +496,7 @@ class Client:
                 # Assuming allow_command_execution is set, execute arbitrary UNIX commands in their own threads.
                 if allow_command_execution:
                     command = message[5:]
-                    self.log(str("executing: "+command), in_log_level="Info")
+                    self.log(str("executing: " + command), in_log_level="Info")
 
                     # Warning: This is about to execute some arbitrary UNIX command in it's own nice little
                     # non-isolated fork of a process.
@@ -512,15 +509,15 @@ class Client:
                     self.log(("Not executing command: ", message[5:]), in_log_level="Info")
 
             if message.startswith("newpage:"):
-                ''' Create a new pagefile that we'll presumably do some 
+                """ Create a new pagefile that we'll presumably do some 
                 parallel or distributed operations with.
-                e.x newpage:(64-bit signature)'''
+                e.x newpage:(64-bit signature)"""
 
                 page_id = message[8:]
-                self.log("Creating new page with id: "+str(page_id), in_log_level="Info")
+                self.log("Creating new page with id: " + str(page_id), in_log_level="Info")
 
                 os.chdir(original_path)
-                new_filename = str("../inter/mem/"+page_id+".bin")
+                new_filename = str("../inter/mem/" + page_id + ".bin")
                 newpage = open(new_filename, "a+")
                 page_list.append(newpage)
 
@@ -532,29 +529,29 @@ class Client:
                 corecount.respond_start(page_ids, message)
 
             if message.startswith("fetch:"):
-                ''' send the contents of page [page_id] to broadcast. We cannot reply directly to
-                sender because of message propagation.   . '''
+                """ send the contents of page [page_id] to broadcast. We cannot reply directly to
+                sender because of message propagation.   . """
 
-                page_ident = message[6:]
+                page_id = message[6:]
 
                 # Read contents of page
                 os.chdir(original_path)
-                pagefile = open("../inter/mem/"+page_ident+".bin", "r+")
+                pagefile = open("../inter/mem/" + page_id + ".bin", "r+")
 
-                pagelines = pagefile.readlines()
+                page_lines = pagefile.readlines()
 
                 # Don't sync comments
-                for string in pagelines:
+                for string in page_lines:
                     if string[:1] == "#":
-                        pagelines.remove(string)
+                        page_lines.remove(string)
 
-                page_contents = ''.join(pagelines)
+                page_contents = ''.join(page_lines)
 
-                sync_msg = (no_prop+":"+"sync:"+page_ident+":"+page_contents)
+                sync_msg = (no_prop + ":" + "sync:" + page_id + ":" + page_contents)
                 self.broadcast(sync_msg)  # We need to broadcast
 
             if message.startswith("sync:"):
-                ''' Update our pagefile with information from other node's completed work '''
+                """ Update our pagefile with information from other node's completed work """
 
                 os.chdir(original_path)
                 page_id = message[5:][:16]
@@ -562,7 +559,7 @@ class Client:
 
                 self.log("Syncing " + data + " into page:" + page_id, in_log_level="Info")
 
-                file_path = "../inter/mem/"+page_id+".bin"
+                file_path = "../inter/mem/" + page_id + ".bin"
                 existing_pagelines = open(file_path, "r+").readlines()
 
                 duplicate = False
@@ -572,7 +569,7 @@ class Client:
                 for line in existing_pagelines:
                     if line == data:
                         duplicate = True
-                        self.log("Not writing duplicate data into page "+page_id)
+                        self.log("Not writing duplicate data into page " + page_id)
                         break
 
                 if not duplicate:
@@ -580,7 +577,7 @@ class Client:
                     local_id = sha3_224(self.get_local_ip().encode()).hexdigest()[:16]
                     if data_id == local_id:
                         # Don't re-write data from ourselves. We already did that with 'corecount'.
-                        print("Not being hypocritical in page "+page_id)
+                        print("Not being hypocritical in page " + page_id)
                         local = True
 
                     if not local:
@@ -588,15 +585,14 @@ class Client:
                             pass
 
                         else:
-                            print("Writing "+data + "to page " + page_id)
+                            print("Writing " + data + "to page " + page_id)
                             self.write_to_page(page_id, data, signing=False)
 
-                ''' Cleanup pagefile after sync operation
-                
-                Thank you 'Marcell' from StackOverflow for the following 2 lines of code
-                https://stackoverflow.com/a/1216544
-                https://stackoverflow.com/users/146442/marcell
-                '''
+                # https://stackoverflow.com/a/1216544
+                # https://stackoverflow.com/users/146442/marcell
+                # The following two lines of SLOC are the work of "Marcel" from StackOverflow
+
+                # Cleanup after sync
 
                 # Remove duplicate lines
                 unique_lines = set(open(file_path).readlines())
@@ -605,8 +601,8 @@ class Client:
                 # Remove any extra newlines
                 raw_lines = list(set(open(file_path).readlines()))
 
-                newlines = [rawline for rawline in raw_lines
-                            if rawline != "\n" and rawline[:2] != "##"]
+                newlines = [raw_line for raw_line in raw_lines
+                            if raw_line != "\n" and raw_line[:2] != "##"]
 
                 open(file_path, 'w').writelines(set(newlines))
 
@@ -628,8 +624,8 @@ class Client:
 
                     # file_length = info[16:20]  Let's put this aside for now
                     origin_address = info[22::]
-                    new_message = str(no_prop+":affirm"+":"+file_hash+":"+origin_address)
-                    self.log(str("Affirming request for file: "+file_hash), in_log_level="Info")
+                    new_message = str(no_prop + ":affirm" + ":" + file_hash + ":" + origin_address)
+                    self.log(str("Affirming request for file: " + file_hash), in_log_level="Info")
 
                     print(origin_address)
 
@@ -664,7 +660,7 @@ class Client:
 
                             # lookup the socket of the address we want to remove
                             connection_to_remove = (sock, address_to_remove)
-                            self.log(str("Who's connection is: "+str(connection_to_remove)),
+                            self.log(str("Who's connection is: " + str(connection_to_remove)),
                                      in_log_level="Info")
                             self.disconnect(connection_to_remove)
 
@@ -708,7 +704,7 @@ class Client:
                         self.respond(conn, raw_message)
 
                 except TypeError:
-                    conn_severed_msg = str("Connection to "+str(in_sock)
+                    conn_severed_msg = str("Connection to " + str(in_sock)
                                            + "was severed or disconnected."
                                            + "(TypeError: listen() -> listener_thread()")
                     self.log(conn_severed_msg, in_log_level="Warning")
@@ -773,7 +769,7 @@ class Client:
         log_level = default_log_level
 
         for item in modules:
-            import_str = "import "+item
+            import_str = "import " + item
             loaded_modules.append(item)
             exec(import_str)
 
