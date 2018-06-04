@@ -52,6 +52,7 @@ def start(page_id, raw_lines, newlines):
     # Called at the end of the 'sync' flag for module-specific I/O
     import client
     Client = client.Client()
+
     print(page_id)
     almost_formatted_cores = [parse_line[17:].rstrip("\n") for parse_line
                               in raw_lines if parse_line != "\n"]
@@ -67,9 +68,9 @@ def start(page_id, raw_lines, newlines):
             pass
 
     cores = sum(formatted_cores)
-    # e.x: #cores: 8
+    # e.x: ##cores: 8
     corecount_string = str("##cores:" + str(cores))
 
-    Client.write_to_page(page_id, corecount_string, signing=False)
-    print(formatted_cores)
+    Client.write_to_page(page_id, corecount_string, signing=False)  # TODO: This isn't written?
+
     print("\nCorecount complete. Available CPU Cores: "+str(cores)+"\n")

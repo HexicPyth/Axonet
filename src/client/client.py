@@ -370,7 +370,7 @@ class Client:
         return 0
 
     def write_to_page(self, page_id, data, signing=True):
-        self.log("Writing to page:", page_id)
+        self.log("Writing to page:" + page_id, in_log_level="Info")
         os.chdir(original_path)
 
         """ Until we implement Asymmetric crypto, we'll identify ourselves 
