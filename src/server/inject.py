@@ -145,7 +145,6 @@ class NetworkInjector(multiprocessing.Process):
         return formatted_flags
 
     def interpret(self, in_msg, net_tuple):
-        msg_type = ""
         if in_msg[:1] == "$":
             msg_type = "command"
         else:
@@ -165,7 +164,7 @@ class NetworkInjector(multiprocessing.Process):
 
             return 0
 
-    def init(self, network_tuple, loaded_modules, msg=None, ):
+    def init(self, network_tuple, loaded_modules, msg=None):
         for item in loaded_modules:
             import_str = "import "+item
             exec(import_str)

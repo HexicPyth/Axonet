@@ -1,6 +1,7 @@
 import os
 import sys
 import codecs
+from time import sleep
 
 # Allow us to import the client
 this_dir = os.path.dirname(os.path.realpath(__file__))
@@ -66,7 +67,7 @@ def start(page_id, raw_lines, newlines):
             pass
 
     cores = sum(formatted_cores)
-
+    sleep(10)  # Give each node a decent amount of time to populate pagefile.
     # e.x: #cores: 8
     corecount_string = str("##cores:" + str(cores))
 
