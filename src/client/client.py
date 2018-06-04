@@ -551,7 +551,10 @@ class Client:
                 self.broadcast(sync_msg)  # We need to broadcast
 
             if message.startswith("sync:"):
-                """ Update our pagefile with information from other node's completed work """
+                """ Update our pagefile with information from other node's completed work
+                Translation: write to page 
+                Syntax: sync:(page id):(data)
+                """
 
                 os.chdir(original_path)
                 page_id = message[5:][:16]
@@ -560,7 +563,11 @@ class Client:
                 self.log("Syncing " + data + " into page:" + page_id, in_log_level="Info")
 
                 file_path = "../inter/mem/" + page_id + ".bin"
-                existing_pagelines = open(file_path, "r+").readlines()
+                try:
+                    existing_pagelines = open(file_path, "r+").readlines()
+
+                except FileNotFoundError:
+                    self.log("Cannot open a non-existent page")
 
                 duplicate = False
                 local = False
@@ -611,6 +618,7 @@ class Client:
                     os.chdir(original_path)
                     import corecount  # Again, your IDE might be lying to you
                     corecount.start(page_id, raw_lines, newlines)
+                    module_loaded = ""
 
             if message.startswith("file:"):
                 # Eventually we'll be able to distribute shared

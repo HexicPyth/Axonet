@@ -32,23 +32,26 @@ def initiate(in_cmd, net_tuple):
 
 
 def respond_start(page_ids, message):
+    # Called when client's listener receives a "corecount" flag
     import client
     Client = client.Client()
 
     page_id = message[10:]
+
     if page_id not in page_ids:
         print(page_id)
         num_of_cores = str(multiprocessing.cpu_count())
         Client.write_to_page(page_id, num_of_cores)
+
     elif page_id in page_ids:
         pass
 
 
 def start(page_id, raw_lines, newlines):
+    # Called at the end of the 'sync' flag for module-specific I/O
     import client
     Client = client.Client()
     print(page_id)
-    # corecount stuff. TODO: put this in it's own module
     almost_formatted_cores = [parse_line[17:].rstrip("\n") for parse_line
                               in raw_lines if parse_line != "\n"]
 
