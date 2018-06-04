@@ -67,7 +67,6 @@ def start(page_id, raw_lines, newlines):
             pass
 
     cores = sum(formatted_cores)
-    sleep(10)  # Give each node a decent amount of time to populate pagefile.
     # e.x: #cores: 8
     corecount_string = str("##cores:" + str(cores))
 

@@ -618,12 +618,17 @@ class Client:
 
                     open(file_path, 'w').writelines(set(newlines))
 
-                    # Module stuff below
-                    if module_loaded == "corecount":
-                        os.chdir(original_path)
-                        import corecount  # Again, your IDE might be lying to you
-                        corecount.start(page_id, raw_lines, newlines)
-                        module_loaded = ""
+                    print(len(network_tuple))
+
+                    # Wait for each node to contribute before doing module-specific I/O
+                    if len(newlines) == len(network_tuple)+1:
+
+                        # Do module-specific I/O
+                        if module_loaded == "corecount":
+                            os.chdir(original_path)
+                            import corecount
+                            corecount.start(page_id, raw_lines, newlines)
+                            module_loaded = ""
 
             if message.startswith("file:"):
                 # Eventually we'll be able to distribute shared
