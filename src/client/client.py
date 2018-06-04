@@ -563,62 +563,67 @@ class Client:
                 self.log("Syncing " + data + " into page:" + page_id, in_log_level="Info")
 
                 file_path = "../inter/mem/" + page_id + ".bin"
+
+                file_exists = False
+
                 try:
                     existing_pagelines = open(file_path, "r+").readlines()
+                    file_exists = True
 
                 except FileNotFoundError:
                     self.log("Cannot open a non-existent page")
 
-                duplicate = False
-                local = False
+                if file_exists:
+                    duplicate = False
+                    local = False
 
-                # How do we sort out duplicates?
-                for line in existing_pagelines:
-                    if line == data:
-                        duplicate = True
-                        self.log("Not writing duplicate data into page " + page_id)
-                        break
+                    # How do we sort out duplicates?
+                    for line in existing_pagelines:
+                        if line == data:
+                            duplicate = True
+                            self.log("Not writing duplicate data into page " + page_id)
+                            break
 
-                if not duplicate:
-                    data_id = data[:16]
-                    local_id = sha3_224(self.get_local_ip().encode()).hexdigest()[:16]
-                    if data_id == local_id:
-                        # Don't re-write data from ourselves. We already did that with 'corecount'.
-                        print("Not being hypocritical in page " + page_id)
-                        local = True
+                    if not duplicate:
+                        data_id = data[:16]
+                        local_id = sha3_224(self.get_local_ip().encode()).hexdigest()[:16]
+                        if data_id == local_id:
+                            # Don't re-write data from ourselves. We already did that with 'corecount'.
+                            print("Not being hypocritical in page " + page_id)
+                            local = True
 
-                    if not local:
-                        if data == "" or data == " " or data == "\n":
-                            pass
+                        if not local:
+                            if data == "" or data == " " or data == "\n":
+                                pass
 
-                        else:
-                            print("Writing " + data + "to page " + page_id)
-                            self.write_to_page(page_id, data, signing=False)
+                            else:
+                                print("Writing " + data + "to page " + page_id)
+                                self.write_to_page(page_id, data, signing=False)
 
-                # https://stackoverflow.com/a/1216544
-                # https://stackoverflow.com/users/146442/marcell
-                # The following two lines of SLOC are the work of "Marcel" from StackOverflow
+                    # https://stackoverflow.com/a/1216544
+                    # https://stackoverflow.com/users/146442/marcell
+                    # The following two lines of SLOC are the work of "Marcel" from StackOverflow
 
-                # Cleanup after sync
+                    # Cleanup after sync
 
-                # Remove duplicate lines
-                unique_lines = set(open(file_path).readlines())
-                open(file_path, 'w').writelines(set(unique_lines))
+                    # Remove duplicate lines
+                    unique_lines = set(open(file_path).readlines())
+                    open(file_path, 'w').writelines(set(unique_lines))
 
-                # Remove any extra newlines
-                raw_lines = list(set(open(file_path).readlines()))
+                    # Remove any extra newlines
+                    raw_lines = list(set(open(file_path).readlines()))
 
-                newlines = [raw_line for raw_line in raw_lines
-                            if raw_line != "\n" and raw_line[:2] != "##"]
+                    newlines = [raw_line for raw_line in raw_lines
+                                if raw_line != "\n" and raw_line[:2] != "##"]
 
-                open(file_path, 'w').writelines(set(newlines))
+                    open(file_path, 'w').writelines(set(newlines))
 
-                # Module stuff below
-                if module_loaded == "corecount":
-                    os.chdir(original_path)
-                    import corecount  # Again, your IDE might be lying to you
-                    corecount.start(page_id, raw_lines, newlines)
-                    module_loaded = ""
+                    # Module stuff below
+                    if module_loaded == "corecount":
+                        os.chdir(original_path)
+                        import corecount  # Again, your IDE might be lying to you
+                        corecount.start(page_id, raw_lines, newlines)
+                        module_loaded = ""
 
             if message.startswith("file:"):
                 # Eventually we'll be able to distribute shared
