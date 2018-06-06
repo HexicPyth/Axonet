@@ -754,7 +754,10 @@ class Client:
         for file in page_list:
             self.log("Closing pages..", in_log_level="Info")
             file.close()
-            os.remove(file.name)
+            try:
+                os.remove(file.name)
+            except FileNotFoundError:
+                self.log("Not removing non-existent page")
             self.log(str("Terminating connection to "), in_log_level="Info")
 
         for connection in network_tuple:

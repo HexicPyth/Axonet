@@ -2,7 +2,6 @@ import multiprocessing
 import struct
 import os
 import server
-import codecs
 from hashlib import sha3_224
 import datetime
 import sys
@@ -44,7 +43,7 @@ class NetworkInjector(multiprocessing.Process):
         # Prefix each message with a 4-byte length (network byte order)
         msg = struct.pack('>I', len(msg)) + msg
 
-        if not current_message:
+        if not current_message:  # True when current_message=None
             current_message = msg
         try:
             print("Server -> Injector -> Send: " + current_message.decode() + " to the network.")
@@ -55,6 +54,7 @@ class NetworkInjector(multiprocessing.Process):
         finally:
             try:
                 sock.sendall(current_message)
+                current_message = None
 
             # Something's up with the node we're interacting with.
             # Notify the server with a return code.
@@ -109,6 +109,10 @@ class NetworkInjector(multiprocessing.Process):
 
     @staticmethod
     def read_interaction_directory():
+        # Read flags from lines in files in src/inter/ and broadcast them
+        # TODO: this should be run in a seperate thread as part of the server. As of now, this won't run without
+        # ...some form of user input. User input should never be necessary in (potentially) headless clusters.
+
         global original_path
 
         formatted_flags = []
@@ -120,13 +124,16 @@ class NetworkInjector(multiprocessing.Process):
         # Parse all files in the interaction directory for flags to broadcast.
         for file in os.listdir('./'):
             do_continue = True
+            file_to_read = None
 
             try:
                 file_to_read = open(file, 'r+')
+
             except IsADirectoryError:
                 do_continue = False
+
             finally:
-                if do_continue:
+                if do_continue and file_to_read:
                     flags = file_to_read.readlines()
 
                     # the flags we get from a file with (naturally) contain newlines. Let's remove them.

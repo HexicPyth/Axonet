@@ -71,6 +71,6 @@ def start(page_id, raw_lines, newlines):
     # e.x: ##cores: 8
     corecount_string = str("##cores:" + str(cores))
 
-    Client.write_to_page(page_id, corecount_string, signing=False)  # TODO: This isn't written?
+    Client.write_to_page(page_id, corecount_string, signing=False)  # TODO: This isn't actually written to the page?
 
     print("\nCorecount complete. Available CPU Cores: "+str(cores)+"\n")
