@@ -622,6 +622,9 @@ class Client:
 
                     # Wait for each node to contribute before doing module-specific I/O
                     if len(newlines) == len(network_tuple)+1:
+                        self.log("\n\t"+str(len(newlines))+"Node(s)s have contributed to the network.\n"
+                                                           "The network tuple(+1) is of"
+                                                           " length " + str(len(network_tuple)+1), in_log_level="Debug")
 
                         # Do module-specific I/O
                         if module_loaded == "corecount":
