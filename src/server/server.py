@@ -704,7 +704,7 @@ class Server:
                             self.log(str("Listening on: "+address), in_log_level="Info")
                             self.listen(connection)
 
-                            self.send(connection, "echo")  # TODO: is this necessary?
+                            self.send(connection, no_prop+":echo", signing=False)  # TODO: is this necessary?
 
                         if network_architecture == "complete":
                             # In a 'complete' network, every node is connected to every other node for redundancy.

@@ -638,8 +638,10 @@ class Client:
             if message.startswith("file:"):
                 # Eventually we'll be able to distribute shared
                 # retrievable information, like public keys, across the network.
+                # file:(64-bit signature):(32-bit file length):(origin address)
                 if allow_file_storage:
-                    info = message[5:]
+
+                    info = message[5:]  # remove "file:"
                     file_hash = info[:16]
                     verbose_info_dump = str("Info = " + info +
                                             '\n File hash = ' + file_hash)
@@ -838,7 +840,7 @@ class Client:
                         self.log(str("Starting listener on " + remote_address), in_log_level="Info")
                         self.listen(connection)
 
-                        self.send(connection, "echo")
+                        self.send(connection, no_prop+":echo", sign=False)
 
                     except ConnectionRefusedError:
                         self.log("Unable to connect to remove server; Failed to bootstrap.",
