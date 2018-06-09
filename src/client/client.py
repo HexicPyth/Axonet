@@ -8,6 +8,8 @@ import os
 import random
 import sys
 from hashlib import sha3_224
+sys.path.insert(0, '../inter/')
+import primitives
 
 # Globals
 localhost = socket.socket()
@@ -38,12 +40,16 @@ allow_command_execution = False  # Don't execute arbitrary UNIX commands when ca
 connecting_to_server = False
 allow_file_storage = True
 log_level = ""  # "Debug", "Info", or "Warning"; To be set by init
+sub_node = "Client"
+
+# This will be reset with input values by init()
+Primitives = primitives.Primitives(log_level, sub_node)
 
 
 class Client:
 
     @staticmethod
-    def log(log_message, in_log_level='Warning', sub_node="Client"):
+    def log(log_message, in_log_level='Warning', subnode="Client"):
         """ Process and deliver program output in an organized and
         easy to read fashion. Never returns. """
 
@@ -65,7 +71,7 @@ class Client:
             pass
 
         else:
-            print(sub_node, "->", in_log_level + ":", log_message)
+            print(subnode, "->", in_log_level + ":", log_message)
 
     def get_local_ip(self):
         """Creates a temporary socket and connects to subnet,
@@ -309,51 +315,6 @@ class Client:
         # from the network tuple so it can't cause issues.
         except OSError:
             self.disconnect(connection)
-
-    def receiveall(self, sock, n):
-        """ Helper function to receive n bytes.
-            Returns None(-> NoneType) if/when EOF is hit.
-        """
-
-        data = ''
-
-        while len(data) < n:
-            try:
-                packet = (sock.recv(n - len(data))).decode()
-
-            except OSError:
-                self.log("Connection probably down or terminated (OSError: receiveall()",
-                         in_log_level="Warning")
-                raise ValueError
-
-            # Something corrupted in transit. Let's just ignore the bad pieces for now.
-            except UnicodeDecodeError:
-                packet = (sock.recv(n - len(data))).decode('utf-8', 'ignore')
-                print(packet)
-
-            if not packet:
-                return None
-
-            else:
-                data += packet
-        return data.encode()
-
-    def receive(self, connection):
-        # Read message length and unpack it into an integer
-        # Returns None if self.receiveall fails, or nothing at all otherwise.
-        sock = connection[0]
-        try:
-            raw_msg_length = self.receiveall(sock, 4)
-
-            if not raw_msg_length:
-                return None
-
-            msg_length = struct.unpack('>I', raw_msg_length)[0]
-            return self.receiveall(sock, msg_length).decode()
-
-        # This socket disconnected. Return 1 so the calling function(probably the listener) knows what happened.
-        except ValueError:
-            return 1
 
     def broadcast(self, message):
         self.log("Permuting the network tuple", in_log_level="Info")
@@ -722,7 +683,7 @@ class Client:
             listener_terminated = False  # Terminate when set
 
             while not listener_terminated and not terminated:
-                incoming = self.receive(conn)
+                incoming = Primitives.receive(conn)
                 raw_message = incoming
                 try:
                     if incoming:
@@ -789,12 +750,16 @@ class Client:
         global log_level
         global PORT
         global loaded_modules
+        global Primitives
+        global sub_node
 
         # Global variable assignment
         PORT = port
         allow_command_execution = command_execution
         allow_file_storage = file_storage
         log_level = default_log_level
+
+        Primitives = primitives.Primitives(log_level, sub_node)
 
         for item in modules:
             import_str = "import " + item
