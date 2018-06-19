@@ -9,6 +9,7 @@ import datetime
 import threading
 from hashlib import sha3_224
 sys.path.insert(0, '../misc/')
+
 import primitives
 
 # Globals
@@ -31,6 +32,7 @@ loaded_modules = []
 this_dir = os.path.dirname(os.path.realpath(__file__))
 os.chdir(this_dir)
 sys.path.insert(0, '../inter/modules/')
+sys.path.insert(0, '../misc/')
 
 
 # This will be reset with input values by init()
@@ -350,37 +352,6 @@ class Server:
                 fetch_msg = self.prepare("fetch:"+target_page)
                 self.broadcast(fetch_msg)
 
-            if message.startswith("affirm:"):
-                """ I would put a docstring here documenting what this does, but I
-                don't remember, and pretty much gave up on doing distributed 
-                file storage the normal way. See: all the paging-related flags """
-
-                # TODO: why the hell do we 'affirm' again?
-
-                usable_message = message[7:]
-                file_hash = usable_message[:16]
-
-                # Sorry for this mess :P
-                file_affirmation_debug_dump = str("Received affirmation, dumping our soul into the void"
-                                                  " (of stdout)... "+'\n\t'
-                                                  + msg + '\n\t'
-                                                  + full_message + '\n\t'
-                                                  + message + '\n\t'
-                                                  + usable_message + '\n\t'
-                                                  + file_hash + '\n\t'
-                                                  + "There's nothing left; stopping")
-
-                # Note to self: Don't turn on log_level_debug :P
-                self.log(file_affirmation_debug_dump, in_log_level="Debug")
-
-                file_affirmation_friendly_notice = str("Received affirmation from " + address
-                                                       + " in response to file:" + file_hash)
-
-                self.log(file_affirmation_friendly_notice, in_log_level="Info")
-
-                self.append_to_file_tuple(file_hash, address, file_index)
-                file_index += 1
-
             # We only broadcast messages with hashes we haven't already documented. That way the network doesn't
             # loop indefinitely broadcasting the same message. Also, Don't append no_prop to message_list.
             # That would be bad.
@@ -622,6 +593,7 @@ class Server:
                 exec(import_str)
 
             # Set parameters and global variables from their default values
+
             address_string = self.get_local_ip()+":"+str(port)  # e.x 10.1.10.3:3705
             net_injection = network_injection  # Didn't want to shadow variable names.
             log_level = default_log_level

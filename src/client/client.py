@@ -9,6 +9,7 @@ import random
 import sys
 from hashlib import sha3_224
 sys.path.insert(0, '../inter/')
+sys.path.insert(0, '../misc/')
 import primitives
 
 # Globals
@@ -595,38 +596,6 @@ class Client:
                             import corecount
                             corecount.start(page_id, raw_lines, newlines)
                             module_loaded = ""
-
-            if message.startswith("file:"):
-                # Eventually we'll be able to distribute shared
-                # retrievable information, like public keys, across the network.
-                # file:(64-bit signature):(32-bit file length):(origin address)
-                if allow_file_storage:
-
-                    info = message[5:]  # remove "file:"
-                    file_hash = info[:16]
-                    verbose_info_dump = str("Info = " + info +
-                                            '\n File hash = ' + file_hash)
-                    self.log(verbose_info_dump, in_log_level="Info")
-
-                    # file_length = info[16:20]  Let's put this aside for now
-                    origin_address = info[22::]
-                    new_message = str(no_prop + ":affirm" + ":" + file_hash + ":" + origin_address)
-                    self.log(str("Affirming request for file: " + file_hash), in_log_level="Info")
-
-                    print(origin_address)
-
-                    origin_socket = self.lookup_socket(origin_address)
-                    print(origin_socket)
-                    if origin_socket == 0:
-                        self.log("Apparently we are not connected to the origin of that request,"
-                                 " passing;", in_log_level="Info")
-                    else:
-                        origin_connection = (origin_socket, origin_address)
-                        self.send(origin_connection, new_message, sign=False)
-
-                else:
-                    self.log("As per arguments to self.init(),"
-                             " not responding to requests for file storage", in_log_level="Info")
 
             # Remove the specified node from the network (i.e disconnect from it)
             if message.startswith("remove:"):
