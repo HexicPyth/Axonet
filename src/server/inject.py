@@ -2,9 +2,13 @@ import multiprocessing
 import struct
 import os
 import server
-import codecs
 from hashlib import sha3_224
 import datetime
+import sys
+original_path = os.path.dirname(os.path.realpath(__file__))
+
+sys.path.insert(0, '../inter/modules/')
+
 current_message = None
 
 
@@ -25,20 +29,21 @@ class NetworkInjector(multiprocessing.Process):
     # Send a given message to a specific node
     # Slightly modified compared to the server's send method
 
-    def send(self, connection, msg, signing=True):
+    @staticmethod
+    def send(connection, msg, sign=True):
         sock = connection[0]
         address = connection[1]
         global current_message
-        if signing:
+        if sign:
             msg = server.Server.prepare(msg).encode('utf-8', 'ignore')
 
-        else:
-            msg.encode('utf-8')
+        elif not sign:
+            msg = msg.encode()
 
         # Prefix each message with a 4-byte length (network byte order)
         msg = struct.pack('>I', len(msg)) + msg
 
-        if not current_message:
+        if not current_message:  # True when current_message=None
             current_message = msg
         try:
             print("Server -> Injector -> Send: " + current_message.decode() + " to the network.")
@@ -49,6 +54,7 @@ class NetworkInjector(multiprocessing.Process):
         finally:
             try:
                 sock.sendall(current_message)
+                current_message = None
 
             # Something's up with the node we're interacting with.
             # Notify the server with a return code.
@@ -77,14 +83,14 @@ class NetworkInjector(multiprocessing.Process):
             if in_sock == discovered_socket:
                 return item[1]
 
-    def broadcast(self, message, network_tuple):
+    def broadcast(self, message, network_tuple, signing=True):
         global current_message
         return_code = 0
         for connection in network_tuple:
             address = connection[1]
             print("Sending: "+"'"+message+"'"+" to "+address)  # print("Sending: '(message)' to (address)")
             try:
-                send_status = self.send(connection, message, network_tuple)  # For each of them send the given message
+                send_status = self.send(connection, message, sign=signing)
 
             except OSError:  # Probably Bad file descriptor
                 print("Server/Injector -> Warning: errors occurred sending to: "+str(connection))
@@ -103,9 +109,14 @@ class NetworkInjector(multiprocessing.Process):
 
     @staticmethod
     def read_interaction_directory():
+        # Read flags from lines in files in src/inter/ and broadcast them
+        # TODO: this should be run in a seperate thread as part of the server. As of now, this won't run without
+        # ...some form of user input. User input should never be necessary in (potentially) headless clusters.
+
+        global original_path
+
         formatted_flags = []
-        this_dir = os.path.dirname(os.path.realpath(__file__))
-        os.chdir(this_dir)
+        os.chdir(original_path)
 
         # Switch to the interaction directory.
         os.chdir("../inter/")
@@ -113,13 +124,16 @@ class NetworkInjector(multiprocessing.Process):
         # Parse all files in the interaction directory for flags to broadcast.
         for file in os.listdir('./'):
             do_continue = True
+            file_to_read = None
 
             try:
                 file_to_read = open(file, 'r+')
+
             except IsADirectoryError:
                 do_continue = False
+
             finally:
-                if do_continue:
+                if do_continue and file_to_read:
                     flags = file_to_read.readlines()
 
                     # the flags we get from a file with (naturally) contain newlines. Let's remove them.
@@ -134,10 +148,10 @@ class NetworkInjector(multiprocessing.Process):
                     file_to_read.truncate()
                     file_to_read.close()
 
+        os.chdir(original_path)
         return formatted_flags
 
     def interpret(self, in_msg, net_tuple):
-        msg_type = ""
         if in_msg[:1] == "$":
             msg_type = "command"
         else:
@@ -149,26 +163,19 @@ class NetworkInjector(multiprocessing.Process):
         elif msg_type == "command":
             in_cmd = in_msg[1:]
 
-            print("Received command: "+in_cmd)
-
             if in_cmd == "corecount":
-                print("Injector -> info: Initiating a core count")
-                id_length = 16
+                os.chdir(original_path)
 
-                # Get a random 64-bit id for this operation
-                op_id = codecs.encode(os.urandom(int(id_length / 2)), 'hex').decode()
-
-                self.broadcast("newpage:"+op_id, net_tuple)
-                self.broadcast("corecount:"+op_id, net_tuple)
-
-                localhost_socket = self.lookup_socket("127.0.0.1", net_tuple)
-                localhost_connection = (localhost_socket, "127.0.0.1")
-                retrieve_msg = "retrieve:"+op_id
-                self.send(localhost_connection, retrieve_msg)
+                import corecount
+                corecount.initiate(in_cmd, net_tuple)
 
             return 0
 
-    def init(self, network_tuple, msg=None):
+    def init(self, network_tuple, loaded_modules, msg=None):
+        for item in loaded_modules:
+            import_str = "import "+item
+            exec(import_str)
+
         msg = str(input("Please enter flag to inject into network:  "))
 
         print("Server/Injector -> Broadcasting the contents of the "

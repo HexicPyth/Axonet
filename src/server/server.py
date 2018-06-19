@@ -2,19 +2,19 @@
 
 import os
 import sys
-import inject
 import random
 import socket
 import struct
 import datetime
 import threading
 from hashlib import sha3_224
+sys.path.insert(0, '../misc/')
+
+import primitives
 
 # Globals
 localhost = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes TIME_WAIT-ing. Add SO_REUSEADDR.
-
-injector = inject.NetworkInjector()
 
 network_tuple = ()  # Global lookup of (sockets, addresses)
 file_tuple = ()  # (hash, remote_host, index)
@@ -26,12 +26,25 @@ net_injection = False
 injector_terminated = False
 terminated = False
 log_level = ""  # "Debug", "Info", or "Warning"; will be set by self.initialize()
+sub_node = "Server"
+loaded_modules = []
+
+this_dir = os.path.dirname(os.path.realpath(__file__))
+os.chdir(this_dir)
+sys.path.insert(0, '../inter/modules/')
+sys.path.insert(0, '../misc/')
+
+
+# This will be reset with input values by init()
+Primitives = primitives.Primitives(log_level, sub_node)
 
 
 class Server:
 
     @staticmethod
-    def log(log_message, in_log_level='Warning', sub_node="Server"):
+    def log(log_message, in_log_level='Warning', subnode="Server"):
+        """ Process and deliver program output in an organized and
+        easy to read fashion. Never returns. """
 
         # input verification
         levels = ["Debug", "Info", "Warning"]
@@ -51,11 +64,12 @@ class Server:
             pass
 
         else:
-            print(sub_node, "->", in_log_level + ":", log_message)
+            print(subnode, "->", in_log_level + ":", log_message)
 
     def get_local_ip(self):
-        # Creates a temporary socket and connects to subnet, yielding our local address.
-        # Returns: (local ip address) -> str
+        """Creates a temporary socket and connects to subnet,
+           yielding our local address. Returns: (local ip address) -> str """
+
         temp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
         try:
@@ -77,9 +91,8 @@ class Server:
 
     @staticmethod
     def prepare(message):
-        # Assign unique hashes to messages for transport
-        # Returns: (hash+message) -> str
-        # Please excuse the mess :P
+        """ Assign unique hashes to messages ready for transport.
+            Returns (new hashed message) -> str """
 
         out = ""
         timestamp = str(datetime.datetime.utcnow())
@@ -94,8 +107,12 @@ class Server:
 
     @staticmethod
     def permute_network_tuple():
-        # Permute the network tuple in place
-        # Returns nothing (network_tuple is a global variable)
+        """ Permute the network tuple. Repetitive permutation after each call
+            of respond() functionally allows the network to inherit many of the anonymous
+            aspects of a mixing network. Packets are sent sequentially in the order of the
+            network tuple, which when permuted, thwarts many timing attacks. ''
+            Doesn't return """
+
         cs_prng = random.SystemRandom()
         global network_tuple
 
@@ -106,8 +123,8 @@ class Server:
 
     @staticmethod
     def lookup_socket(address):  # TODO: optimize me
-        # Do a brute force search for a specific socket.
-        # Maybe this can be optimized by caching the indexes of commonly-used connections?
+        """Do a brute force search for a specific socket.
+           Maybe this can be optimized by caching the indexes of commonly-used connections?"""
 
         for item in network_tuple:
             discovered_address = item[1]
@@ -116,17 +133,18 @@ class Server:
 
     @staticmethod
     def lookup_address(in_sock):  # TODO: optimize me
-        # Do a brute force search for a specific address.
-        # Maybe this can be optimized by caching the indexes of commonly-used connections?
+        """Do a brute force search for a specific socket.
+           Maybe this can be optimized by caching the indexes of commonly-used connections?"""
+
         for item in network_tuple:
             discovered_socket = item[0]
             if in_sock == discovered_socket:
                 return item[1]
 
-    ''' The three functions below were written by StackOverflow user 
+    """ The three functions below were written by StackOverflow user 
     Adam Rosenfield and modified by me, HexicPyth.
     https://stackoverflow.com/a/17668009
-    https://stackoverflow.com/users/9530/adam-rosenfield '''
+    https://stackoverflow.com/users/9530/adam-rosenfield """
 
     def send(self, connection, message, signing=True):
         sock = connection[0]
@@ -151,46 +169,6 @@ class Server:
 
                 self.disconnect(connection)
 
-    def receiveall(self, sock, n):
-        # Helper function to receive n bytes.
-        # returns None if EOF is hit
-
-        data = ''
-
-        while len(data) < n:
-            try:
-                packet = (sock.recv(n - len(data))).decode()
-
-            except OSError:
-                self.log("Connection probably down or terminated (OSError: receiveall()",
-                         in_log_level="Warning")
-                raise ValueError
-
-            # Something corrupted in transit. Let's just ignore the bad pieces for now.
-            except UnicodeDecodeError:
-                packet = (sock.recv(n - len(data))).decode('utf-8', 'ignore')
-                print(packet)
-
-            if not packet:
-                return None
-
-            else:
-                data += packet
-        return data.encode()
-
-    def receive(self, connection):
-        in_sock = connection[0]
-        # Read message length and unpack it into an integer
-        # Returns: (message) -> str
-
-        raw_msglen = self.receiveall(in_sock, 4)
-
-        if not raw_msglen:
-            return None
-
-        msglen = struct.unpack('>I', raw_msglen)[0]
-        return self.receiveall(in_sock, msglen).decode()
-
     def broadcast(self, message):
         for connection in network_tuple:
             address = connection[1]
@@ -202,8 +180,8 @@ class Server:
             self.send(connection, message, signing=False)  # For each of them send the given message( = Broadcast)
 
     @staticmethod
-    # Add a connection to the network_tuple
     def append(in_socket, address):
+        """ Add a connection to the network tuple. Doesn't return."""
         global network_tuple
 
         # Tuples are immutable; convert it to a list.
@@ -215,8 +193,8 @@ class Server:
         # (Again) tuples are immutable; replace the old one with the new one
         network_tuple = tuple(network_list)
 
-    # Remove a connection from the network_tuple
     def remove(self, connection):
+        """Remove a connection from the network tuple. Doesn't return"""
         global network_tuple
 
         # Tuples are immutable; convert it to a list.
@@ -236,10 +214,10 @@ class Server:
         network_tuple = tuple(network_list)
 
     def stop(self):
+        """ Attempt to gracefully disconnect and terminate,
+        but resort to brute force if needed. """
         global terminated
         global injector_terminated
-
-        # Try to gracefully disconnect & disassociate from the network
 
         localhost_socket = self.lookup_socket("127.0.0.1")
         localhost_connection = (localhost_socket, "127.0.0.1")
@@ -349,55 +327,30 @@ class Server:
                 self.stop()
 
             if message.startswith("retrieve:"):
-                '''
+                """
                 Opposite of write_page() function. This isn't a function because we need access to
-                the network to communicate. Typically sent from the network injector, not a client.
+                the network to propagate. Typically sent from the network injector and received from
+                 a client, not from a client directly.
 
-                e.x retrieve:ffffffffeeeeeeee
-                '''
+                e.x retrieve:(64-bit hash)
+                """
+
+                target_page = message[9:]
 
                 address_list = []
                 for net_socket, net_address in network_tuple:
                     address_list.append(net_address)
 
                 id_list = []
-                for addr in address_list:
-                    ident = sha3_224(addr.encode()).hexdigest()[:16]
-                    id_list.append(ident)
+                for remote_address in address_list:
+                    identity = sha3_224(remote_address.encode()).hexdigest()[:16]
+                    id_list.append(identity)
 
-                target_page = message[9:]
-
-                ''' For every address, sequentially send 'fetch' flags to sync any changes
-                    to the page '''
+                # For every address, sequentially send 'fetch' flags to sync any changes
+                # to the page
 
                 fetch_msg = self.prepare("fetch:"+target_page)
                 self.broadcast(fetch_msg)
-
-
-            if message.startswith("affirm:"):
-                usable_message = message[7:]  # Remove the flag ("affirm:")
-                file_hash = usable_message[:16]
-
-                # Sorry for this mess :P
-                file_affirmation_debug_dump = str("Received affirmation, dumping our soul into the void"
-                                                  " (of stdout)... "+'\n\t'
-                                                  + msg + '\n\t'
-                                                  + full_message + '\n\t'
-                                                  + message + '\n\t'
-                                                  + usable_message + '\n\t'
-                                                  + file_hash + '\n\t'
-                                                  + "There's nothing left; stopping")
-
-                # Note to self: Don't turn on log_level_debug :P
-                self.log(file_affirmation_debug_dump, in_log_level="Debug")
-
-                file_affirmation_friendly_notice = str("Received affirmation from " + address
-                                                       + " in response to file:" + file_hash)
-
-                self.log(file_affirmation_friendly_notice, in_log_level="Info")
-
-                self.append_to_file_tuple(file_hash, address, file_index)
-                file_index += 1
 
             # We only broadcast messages with hashes we haven't already documented. That way the network doesn't
             # loop indefinitely broadcasting the same message. Also, Don't append no_prop to message_list.
@@ -412,6 +365,7 @@ class Server:
 
                 self.log("Permuting the Network Tuple", in_log_level="Info")
                 self.permute_network_tuple()
+
             if sig == no_prop:
                 if message[:5] == "sync:":
                     self.log("Violating the no_prop policy for localhost", in_log_level="Warning")
@@ -421,19 +375,21 @@ class Server:
                     self.send(localhost_connection, full_message, signing=False)
 
     def disconnect(self, connection, disallow_local_disconnect=True):
-        # Try our best to cleanly disconnect from a socket.
-        # Doesn't return anything.
+        """Try our best to cleanly disconnect from a socket.
+           Doesn't return anything. """
+
         sock = connection[0]
         address = connection[1]
         try:
             if disallow_local_disconnect:
-                print(terminated)
+                self.log("Terminated:"+str(terminated), in_log_level="Debug")
+
                 if address == self.get_local_ip() and not terminated:
 
                     self.log("(Bug) Refusing to disconnect from localhost;"
                              " that's a terrible idea...", in_log_level="Warning")
-
                     return None
+
                 else:
 
                     self.log("\n\tSelf.disconnect() called.\n", in_log_level="Info")
@@ -448,11 +404,6 @@ class Server:
                     self.remove(connection)
                     sock.close()
 
-                    # Inform the network about this removal
-                    # self.broadcast(self.prepare("remove:" + address))
-                    # Scratch that; letting machines control other machines on a network in development
-                    # ends badly.
-
                     self.log("Successfully Disconnected.", in_log_level="Info")
 
         # Socket not in network_tuple. Probably already disconnected, or the socket was [closed]
@@ -460,21 +411,26 @@ class Server:
             self.log("Already disconnected from that address; passing;", in_log_level="Warning")
 
     def listen(self, connection):
-        # Listen for incoming messages in one thread, manage the network injector in another.
-        # Doesn't return anything.
+        """Listen for incoming messages in one thread, manage the network injector in another.
+        Doesn't return anything. """
 
-        global injector_terminated  # When true, all running network injectors (should) cleanly exit.
+        global injector_terminated  # If True: cleanly exit all network injectors.
 
         def listener(conn):
             listener_terminated = False  # When set, this thread and this thread only, is stopped.
 
             while not listener_terminated and not terminated:
                 try:
-                    incoming = self.receive(conn)
+                    incoming = Primitives.receive(conn)
+
+                    # Primitives.receive() returns none if something goes wrong.
                     if incoming:
                         self.respond(incoming, conn)
 
                 except (OSError, TypeError):
+                    # OSError - Something terrible happened trying to receive from a node
+                    # TypeError - A socket is apparently NoneType now. That's bad
+
                     try:
                         client = conn[0]
                         address = conn[1]
@@ -495,28 +451,35 @@ class Server:
 
                                 # Don't leave zombie listeners running
                                 listener_terminated = True
+                    except OSError:
+                        pass
 
-                    except ValueError:  # socket is [closed]
-                        listener_terminated = True
+                except ValueError:  # socket is [closed]
+                    listener_terminated = True
 
         def start_injector():
             # Start one instance of the network injector and run it until another client connects.
             # Note: The injector itself (i.e inject.py) returns any address that throws a BrokenPipeError on broadcast.
             # This function returns nothing.
 
+            import inject
+            injector = inject.NetworkInjector()
+
             global net_injection
             global injector_terminated
+            global loaded_modules
 
             if not injector_terminated or terminated:
                 if net_injection:
-                    injector_return_value = injector.init(network_tuple)
+                    injector_return_value = injector.init(network_tuple, loaded_modules)
 
-                    # The mess below handles the collect() loop that would normally be in inject.py
+                    # The mess below handles the collect() loop that used to be in inject.py
 
                     current_network_size = len(network_tuple)
 
                     while not terminated or not injector_terminated:
-                        network_size = len(network_tuple)
+                        network_size = len(network_tuple)  # Keep this up to date
+
                         if terminated:
                             injector_terminated = True
                             break
@@ -525,11 +488,16 @@ class Server:
                             break  # A new client connected, let's exit the injector.
 
                         if type(injector_return_value) == str:
+                            """ Something went wrong sending to a given address. The injector
+                            doesn't have proper error handling because it's a disposable thread
+                            and a waste of lines, so we'll handle it here """
 
-                            if injector_return_value != self.get_local_ip() and injector_return_value != "127.0.0.1":
+                            message_send_successful = (injector_return_value == self.get_local_ip())
+                            if message_send_successful and injector_return_value != "127.0.0.1":
 
-                                faulty_conn_disconnect_msg = str("Server -> Attempting to disconnect" 
-                                                                 "from faulty connection: "
+                                faulty_conn_disconnect_msg = str("Server -> Attempting to "
+                                                                 "disconnect from faulty"
+                                                                 " connection: "
                                                                  + injector_return_value)
 
                                 self.log(faulty_conn_disconnect_msg, in_log_level="Warning")
@@ -553,6 +521,7 @@ class Server:
 
                                     disconnect_attempt_msg = str("Trying to disconnect from: " +
                                                                  str(connection_to_disconnect))
+
                                     self.log(disconnect_attempt_msg, in_log_level="Info")
 
                                     self.disconnect(connection_to_disconnect)
@@ -568,13 +537,15 @@ class Server:
                                 self.log("Permuting the network tuple... ", in_log_level="Info")
                                 self.log(str(network_tuple), in_log_level="Debug")
 
-                                injector_return_value = injector.init(network_tuple)  # Eww nested loops.
+                                # Eww nested loops.
+                                injector_return_value = injector.init(network_tuple, loaded_modules)
 
                             except BrokenPipeError:
                                 pass  # We'll get the address of the disconnected device through other methods shortly
 
                         # Something catastrophically wrong happened and for some reason, there are zero connections
                         # whatsoever. Stop the injector loop immediately so we can deal with the issue at hand.
+
                         elif len(network_tuple) == 0:
                             break
 
@@ -603,16 +574,26 @@ class Server:
             threading.Thread(target=start_injector, name='injector_thread', args=()).start()
 
     def initialize(self, port=3704, listening=True, method="socket", network_injection=False,
-                   network_architecture="complete", default_log_level='Warning'):
+                   network_architecture="complete", default_log_level='Warning', modules=None):
 
         if method == "socket":
-            global injector
             global localhost
             global net_injection
             global terminated
             global log_level
+            global loaded_modules
+            global sub_node
+            global Primitives
+
+            Primitives = primitives.Primitives(log_level, sub_node)
+
+            for item in modules:
+                import_str = "import " + item
+                loaded_modules.append(item)
+                exec(import_str)
 
             # Set parameters and global variables from their default values
+
             address_string = self.get_local_ip()+":"+str(port)  # e.x 10.1.10.3:3705
             net_injection = network_injection  # Didn't want to shadow variable names.
             log_level = default_log_level
@@ -666,7 +647,7 @@ class Server:
                             self.log(str("Listening on: "+address), in_log_level="Info")
                             self.listen(connection)
 
-                            self.send(connection, "echo")  # TODO: is this necessary?
+                            self.send(connection, no_prop+":echo", signing=False)  # TODO: is this necessary?
 
                         if network_architecture == "complete":
                             # In a 'complete' network, every node is connected to every other node for redundancy.

@@ -50,9 +50,9 @@ Axonet is an active **_terribly insecure_** <b>proof of concept</b> demonstratin
 
 * **HexicPyth** - *Research, Design, and Development*
 
-See also the list of [contributors](https://github.com/hexicpyth/Axonet/contributors) who participated in this project.
+See also the list of [contributors](https://gitlab.com/hexicpyth/Axonet/graphs/HexicPyth-Local) who participated in this project.
 
-## License 
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
 
