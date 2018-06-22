@@ -85,6 +85,7 @@ class NetworkInjector(multiprocessing.Process):
 
     def broadcast(self, message, network_tuple, signing=True):
         global current_message
+        print("Broadcasting:"+message)
         return_code = 0
 
         if signing:
@@ -98,7 +99,7 @@ class NetworkInjector(multiprocessing.Process):
             address = connection[1]
             print("Sending: "+"'"+message+"'"+" to "+address)  # print("Sending: '(message)' to (address)")
             try:
-                send_status = self.send(connection, message_to_send, sign=signing)
+                send_status = self.send(connection, message_to_send, sign=False)
 
             except OSError:  # Probably Bad file descriptor
                 print("Server/Injector -> Warning: errors occurred sending to: "+str(connection))
