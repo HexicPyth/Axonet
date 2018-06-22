@@ -60,6 +60,12 @@ class Primitives:
 
         return local_ip
 
+    def gen_addr_id(self, addr_salt):
+        local_addr = self.get_local_ip()
+        data_to_hash = local_addr + addr_salt
+        addr_id = sha3_224(data_to_hash.encode()).hexdigest()[:32]
+        return addr_id
+
     @staticmethod
     def prepare(message):
         """ Assign unique hashes to messages ready for transport.

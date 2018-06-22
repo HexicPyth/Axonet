@@ -7,7 +7,9 @@ import datetime
 import os
 import random
 import sys
+import secrets
 from hashlib import sha3_224
+
 sys.path.insert(0, '../inter/')
 sys.path.insert(0, '../misc/')
 import primitives
@@ -18,12 +20,10 @@ localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes 
 
 # Constant or set during runtime
 network_tuple = ()  # (socket, address)
-ballet_tuple = ([], [])  # (value, address)
 message_list = []
 page_list = []  # temporary file objects to close on stop
 page_ids = []  # Used by some modules
 
-ongoing_election = False
 terminated = False
 cluster_rep = False
 no_prop = "ffffffffffffffff"  # True:[message] = No message propagation.
@@ -42,6 +42,8 @@ connecting_to_server = False
 allow_file_storage = True
 log_level = ""  # "Debug", "Info", or "Warning"; To be set by init
 sub_node = "Client"
+SALT = None  # Will be set to a 128-bit hexadecimal token(by self.init) for making address identifiers
+ADDR_ID = None  # Another 128-bit hexadecimal token that wil be salted with SALt, and set by init()
 
 # This will be reset with input values by init()
 Primitives = primitives.Primitives(log_level, sub_node)
@@ -357,11 +359,11 @@ class Client:
         # Doesn't return anything.
 
         global message_list
-        global ongoing_election
-        global ballet_tuple
         global cluster_rep
         global page_list
         global page_ids
+        global ADDR_ID
+        global SALT
 
         full_message = str(msg)
         sig = full_message[:16]
@@ -597,6 +599,16 @@ class Client:
                             corecount.start(page_id, raw_lines, newlines)
                             module_loaded = ""
 
+            elif message.startswith("file:"):
+                # file:(64-bit file hash):(32-bit file length):(128-bit origin address identifier)
+                self.log("Not doing anything with file request because they are not implemented yet.")
+                message_to_parse = message[5:]  # Remove "file:" from message string so we can parse it correctly.
+                file_hash = message_to_parse[:16]
+                file_length = message_to_parse[17:][:8]
+                origin_addr_id = message_to_parse[26:]
+                self.log("Our Address Identifier: "+ADDR_ID, in_log_level="Debug")
+                self.log("Received message destined for Address Identifier: "+origin_addr_id, in_log_level="Debug")
+
             # Remove the specified node from the network (i.e disconnect from it)
             if message.startswith("remove:"):
 
@@ -721,6 +733,8 @@ class Client:
         global loaded_modules
         global Primitives
         global sub_node
+        global SALT
+        global ADDR_ID
 
         # Global variable assignment
         PORT = port
@@ -729,6 +743,8 @@ class Client:
         log_level = default_log_level
 
         Primitives = primitives.Primitives(log_level, sub_node)
+        SALT = secrets.token_hex(16)
+        ADDR_ID = Primitives.gen_addr_id(SALT)
 
         for item in modules:
             import_str = "import " + item

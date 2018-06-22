@@ -8,8 +8,9 @@ this_dir = os.path.dirname(os.path.realpath(__file__))
 os.chdir(this_dir)
 sys.path.insert(0, '../../client/')
 sys.path.insert(0, '../../server/')
-no_prop = "ffffffffffffffff"
 import multiprocessing
+import secrets
+no_prop = "ffffffffffffffff"
 
 
 def initiate(in_cmd, net_tuple):
@@ -21,7 +22,7 @@ def initiate(in_cmd, net_tuple):
         id_length = 16
 
         # Get a random 64-bit id for this operation
-        op_id = codecs.encode(os.urandom(int(id_length / 2)), 'hex').decode()
+        op_id = secrets.token_hex(8)
 
         injector.broadcast("newpage:" + op_id, net_tuple)
         injector.broadcast("corecount:" + op_id, net_tuple, signing=True)
@@ -34,6 +35,7 @@ def initiate(in_cmd, net_tuple):
 
 def respond_start(page_ids, message):
     # Called when client's listener receives a "corecount" flag
+
     import client
     Client = client.Client()
 
