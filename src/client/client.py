@@ -21,6 +21,7 @@ localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes 
 # Constant or set during runtime
 election_list = []   # [(reason, representative), (another_reason, another_representative)]
 campaign_list = []  # [int, another_int, etc.]
+our_campaign = 0  # An integer between 0 and 2^128
 network_tuple = ()  # ((socket, address), (another_socket, another_address))
 message_list = []
 page_list = []  # temporary file objects to close on stop
@@ -365,6 +366,7 @@ class Client:
         global page_list
         global election_list
         global campaign_list
+        global our_campaign
         global page_ids
         global ADDR_ID
         global SALT
@@ -664,16 +666,41 @@ class Client:
                 election_list.append(election_tuple)
 
                 campaign_int = random.randint(0, 2**128)
+                our_campaign = campaign_int
+
+                self.log("Campaigning for "+str(campaign_int), in_log_level="Info")
                 campaign_msg = self.prepare("campaign:"+reason+":"+str(campaign_int))
                 self.broadcast(campaign_msg)
 
             if message.startswith("campaign:"):
                 import inject
                 Injector = inject.NetworkInjector()
-                print(message)
+
                 campaign_tuple = tuple(Injector.parse_cmd(message))
                 campaign_list.append(campaign_tuple)
-                print("\n"+str(campaign_list)+"\n")
+
+                print(str(campaign_list))
+
+                # Wait for all votes to be cast
+                if len(campaign_list) == len(network_tuple)+1:
+                    campaign_ints = []
+
+                    for campaign_tuple in campaign_list:
+                        campaign_int = campaign_tuple[1]
+                        campaign_ints.append(campaign_int)
+
+                    winning_int = max(campaign_ints)
+                    winning_reason = ""
+                    for campaign_tuple in campaign_list:
+                        if campaign_tuple[1] == winning_int:
+                            winning_reason = campaign_tuple[0]
+
+                    election_log_msg = str(winning_int) + " Won the election for: " + winning_reason
+                    self.log(election_log_msg, in_log_level="Info")
+
+                    if our_campaign == winning_int:
+                        self.log("We won the election for: "+winning_reason, in_log_level="Info")
+                        cluster_rep = True
 
     def listen(self, connection):
         # Listen for incoming messages and call self.respond() to respond to them.
