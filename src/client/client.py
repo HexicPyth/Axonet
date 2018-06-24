@@ -8,6 +8,7 @@ import os
 import random
 import sys
 import secrets
+from time import sleep
 from hashlib import sha3_224
 
 sys.path.insert(0, '../inter/')
@@ -377,6 +378,9 @@ class Client:
         sig = full_message[:16]
         message = full_message[17:]
         address = connection[1]
+
+        # Fallback in case multiple threads somehow receive the same message at the same time
+        sleep(random.uniform(0.01, 0.15))
 
         # Don't respond to messages we've already responded to.
         if sig in message_list:
