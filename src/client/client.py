@@ -29,6 +29,7 @@ page_ids = []  # Used by some modules
 
 terminated = False
 cluster_rep = False
+ongoing_election = False
 no_prop = "ffffffffffffffff"  # True:[message] = No message propagation.
 
 loaded_modules = []  # List of all modules loaded
@@ -367,6 +368,7 @@ class Client:
         global election_list
         global campaign_list
         global our_campaign
+        global ongoing_election
         global page_ids
         global ADDR_ID
         global SALT
@@ -660,7 +662,8 @@ class Client:
                 self.broadcast(full_message)
 
             if message.startswith("vote:"):
-                if our_campaign == 0:
+                if not ongoing_election:
+                    ongoing_election = True
                     reason = message[5:]
                     print(reason)
                     election_tuple = (reason, "TBD")
@@ -674,38 +677,40 @@ class Client:
                     self.broadcast(campaign_msg)
 
             if message.startswith("campaign:"):
-                import inject
-                Injector = inject.NetworkInjector()
+                if ongoing_election:
+                    import inject
+                    Injector = inject.NetworkInjector()
 
-                campaign_tuple = tuple(Injector.parse_cmd(message))
-                campaign_list.append(campaign_tuple)
+                    campaign_tuple = tuple(Injector.parse_cmd(message))
+                    campaign_list.append(campaign_tuple)
 
-                print(str(campaign_list))
+                    print(str(campaign_list))
 
-                # Wait for all votes to be cast
-                if len(campaign_list) == len(network_tuple)+1:
-                    campaign_ints = []
+                    # Wait for all votes to be cast
+                    if len(campaign_list) == len(network_tuple)+1:
+                        campaign_ints = []
 
-                    for campaign_tuple in campaign_list:
-                        campaign_int = campaign_tuple[1]
-                        campaign_ints.append(campaign_int)
+                        for campaign_tuple in campaign_list:
+                            campaign_int = campaign_tuple[1]
+                            campaign_ints.append(campaign_int)
 
-                    winning_int = max(campaign_ints)
-                    winning_reason = ""
-                    for campaign_tuple in campaign_list:
-                        if campaign_tuple[1] == winning_int:
-                            winning_reason = campaign_tuple[0]
+                        winning_int = max(campaign_ints)
+                        winning_reason = ""
+                        for campaign_tuple in campaign_list:
+                            if campaign_tuple[1] == winning_int:
+                                winning_reason = campaign_tuple[0]
 
-                    election_log_msg = str(winning_int) + " Won the election for: " + winning_reason
-                    self.log(election_log_msg, in_log_level="Info")
+                        election_log_msg = str(winning_int) + " Won the election for: " + winning_reason
+                        self.log(election_log_msg, in_log_level="Info")
 
-                    if our_campaign == int(winning_int):
-                        self.log("We won the election for: "+winning_reason, in_log_level="Info")
-                        cluster_rep = True
+                        if our_campaign == int(winning_int):
+                            self.log("We won the election for: "+winning_reason, in_log_level="Info")
+                            cluster_rep = True
 
-                    # Cleanup
-                    campaign_list = []
-                    our_campaign = 0
+                        # Cleanup
+                        campaign_list = []
+                        our_campaign = 0
+                        ongoing_election = False
 
     def listen(self, connection):
         # Listen for incoming messages and call self.respond() to respond to them.
