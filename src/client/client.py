@@ -709,12 +709,29 @@ class Client:
 
                         if our_campaign == int(winning_int):
                             self.log("We won the election for: "+winning_reason, in_log_level="Info")
+                            self.broadcast("elect:"+winning_reason+":"+str(self.get_local_ip()))
+
                             cluster_rep = True
+                        else:
+                            cluster_rep = False
 
                         # Cleanup
                         campaign_list = []
                         our_campaign = 0
                         ongoing_election = False
+
+            if message.startswith("elect:"):
+                # elect:reason:representative
+                import inject
+                Injector = inject.NetworkInjector()
+                args = Injector.parse_cmd(message)
+                reason = args[0]
+                new_leader = args[1]
+                index = Primitives.find_election_index(election_list, reason)
+                election_list = Primitives.set_leader(election_list, index, new_leader)
+                print("\n")
+                print(election_list)
+                print("\n")
 
     def listen(self, connection):
         # Listen for incoming messages and call self.respond() to respond to them.

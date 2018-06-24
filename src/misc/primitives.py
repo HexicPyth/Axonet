@@ -132,3 +132,28 @@ class Primitives:
                 data += packet
         return data.encode()
 
+    def find_representative(self, election_list, reason):
+        for index, tup in enumerate(election_list):
+            if tup[0] == reason:
+                return tup[1]
+        else:
+            return -1
+
+    def find_election_index(self, election_list, reason):
+        for index, tup in enumerate(election_list):
+            if tup[0] == reason:
+                return index
+        else:
+            return -1
+
+    def set_leader(self, election_list, index, leader):
+        print(election_list)
+        election_tuple = election_list[index]
+
+        derived_list = list(election_tuple)
+        derived_list[1] = leader
+
+        election_list.pop(index)
+        new_tuple = tuple(derived_list)
+        election_list.insert(index, new_tuple)
+        return election_list
