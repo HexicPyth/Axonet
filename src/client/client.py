@@ -709,7 +709,8 @@ class Client:
 
                         if our_campaign == int(winning_int):
                             self.log("We won the election for: "+winning_reason, in_log_level="Info")
-                            self.broadcast("elect:"+winning_reason+":"+str(self.get_local_ip()))
+                            elect_msg = self.prepare("elect:"+winning_reason+":"+str(self.get_local_ip()))
+                            self.broadcast(elect_msg)
 
                             cluster_rep = True
                         else:
