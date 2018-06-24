@@ -19,7 +19,9 @@ localhost = socket.socket()
 localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes TIME_WAIT-ing. Add SO_REUSEADDR.
 
 # Constant or set during runtime
-network_tuple = ()  # (socket, address)
+election_list = []   # [(reason, representative), (another_reason, another_representative)]
+campaign_list = []  # [int, another_int, etc.]
+network_tuple = ()  # ((socket, address), (another_socket, another_address))
 message_list = []
 page_list = []  # temporary file objects to close on stop
 page_ids = []  # Used by some modules
@@ -361,6 +363,8 @@ class Client:
         global message_list
         global cluster_rep
         global page_list
+        global election_list
+        global campaign_list
         global page_ids
         global ADDR_ID
         global SALT
@@ -599,7 +603,7 @@ class Client:
                             corecount.start(page_id, raw_lines, newlines)
                             module_loaded = ""
 
-            elif message.startswith("file:"):
+            if message.startswith("file:"):
                 # file:(64-bit file hash):(32-bit file length):(128-bit origin address identifier)
                 self.log("Not doing anything with file request because they are not implemented yet.")
                 message_to_parse = message[5:]  # Remove "file:" from message string so we can parse it correctly.
@@ -652,6 +656,24 @@ class Client:
                 # Propagate the message to the rest of the network.
                 self.log(str('Broadcasting: ' + full_message), in_log_level="Debug")
                 self.broadcast(full_message)
+
+            if message.startswith("vote:"):
+                reason = message[5:]
+                print(reason)
+                election_tuple = (reason, "TBD")
+                election_list.append(election_tuple)
+
+                campaign_int = random.randint(0, 2**128)
+                campaign_msg = self.prepare("campaign:"+reason+":"+str(campaign_int))
+                self.broadcast(campaign_msg)
+
+            if message.startswith("campaign:"):
+                import inject
+                Injector = inject.NetworkInjector()
+                print(message)
+                campaign_tuple = tuple(Injector.parse_cmd(message))
+                campaign_list.append(campaign_tuple)
+                print("\n"+str(campaign_list)+"\n")
 
     def listen(self, connection):
         # Listen for incoming messages and call self.respond() to respond to them.

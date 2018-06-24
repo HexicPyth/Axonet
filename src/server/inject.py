@@ -116,6 +116,30 @@ class NetworkInjector(multiprocessing.Process):
     def kill(self):
         print("Injector -> kill() : Reluctantly terminating myself... * cries to the thought of SIGKILL *")
 
+    def parse_cmd(self, in_cmd):
+        """Parse an input command for arguments and return them in a List"""
+        args = []
+
+        # Find the command substring and remove it from the input
+        cmd_index = in_cmd.find(":")
+        in_cmd = in_cmd[cmd_index + 1:]
+
+        number_of_args = in_cmd.count(":") + 1
+
+        for i in range(0, number_of_args):
+            argument_index = in_cmd.find(":")
+
+            if argument_index != -1:
+
+                argument = in_cmd[:argument_index]
+                args.append(argument)
+
+                in_cmd = in_cmd[argument_index + 1:]
+
+            else:
+                args.append(in_cmd)
+        return args
+
     @staticmethod
     def read_interaction_directory():
         # Read flags from lines in files in src/inter/ and broadcast them
@@ -165,11 +189,9 @@ class NetworkInjector(multiprocessing.Process):
             msg_type = "command"
         else:
             msg_type = "flag"
-
-        if msg_type == "flag":
             return self.broadcast(in_msg, net_tuple)
 
-        elif msg_type == "command":
+        if msg_type == "command":
             in_cmd = in_msg[1:]
 
             if in_cmd == "corecount":
@@ -177,6 +199,13 @@ class NetworkInjector(multiprocessing.Process):
 
                 import corecount
                 corecount.initiate(in_cmd, net_tuple)
+
+            elif in_cmd.startswith("vote"):
+                os.chdir(original_path)
+                import vote
+
+                args = self.parse_cmd(in_cmd)
+                vote.initiate(net_tuple, args)
 
             return 0
 
