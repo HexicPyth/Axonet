@@ -660,17 +660,18 @@ class Client:
                 self.broadcast(full_message)
 
             if message.startswith("vote:"):
-                reason = message[5:]
-                print(reason)
-                election_tuple = (reason, "TBD")
-                election_list.append(election_tuple)
+                if our_campaign == 0:
+                    reason = message[5:]
+                    print(reason)
+                    election_tuple = (reason, "TBD")
+                    election_list.append(election_tuple)
 
-                campaign_int = random.randint(0, 2**128)
-                our_campaign = campaign_int
+                    campaign_int = random.randint(1, 2**128)
+                    our_campaign = campaign_int
 
-                self.log("Campaigning for "+str(campaign_int), in_log_level="Info")
-                campaign_msg = self.prepare("campaign:"+reason+":"+str(campaign_int))
-                self.broadcast(campaign_msg)
+                    self.log("Campaigning for "+str(campaign_int), in_log_level="Info")
+                    campaign_msg = self.prepare("campaign:"+reason+":"+str(campaign_int))
+                    self.broadcast(campaign_msg)
 
             if message.startswith("campaign:"):
                 import inject
@@ -702,7 +703,9 @@ class Client:
                         self.log("We won the election for: "+winning_reason, in_log_level="Info")
                         cluster_rep = True
 
+                    # Cleanup
                     campaign_list = []
+                    our_campaign = 0
 
     def listen(self, connection):
         # Listen for incoming messages and call self.respond() to respond to them.
