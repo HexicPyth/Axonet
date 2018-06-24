@@ -698,9 +698,11 @@ class Client:
                     election_log_msg = str(winning_int) + " Won the election for: " + winning_reason
                     self.log(election_log_msg, in_log_level="Info")
 
-                    if our_campaign == winning_int:
+                    if our_campaign == int(winning_int):
                         self.log("We won the election for: "+winning_reason, in_log_level="Info")
                         cluster_rep = True
+
+                    campaign_list = []
 
     def listen(self, connection):
         # Listen for incoming messages and call self.respond() to respond to them.
