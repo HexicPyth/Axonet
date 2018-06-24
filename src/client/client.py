@@ -7,7 +7,10 @@ import datetime
 import os
 import random
 import sys
+import secrets
+from time import sleep
 from hashlib import sha3_224
+
 sys.path.insert(0, '../inter/')
 sys.path.insert(0, '../misc/')
 import primitives
@@ -17,15 +20,17 @@ localhost = socket.socket()
 localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes TIME_WAIT-ing. Add SO_REUSEADDR.
 
 # Constant or set during runtime
-network_tuple = ()  # (socket, address)
-ballet_tuple = ([], [])  # (value, address)
+election_list = []   # [(reason, representative), (another_reason, another_representative)]
+campaign_list = []  # [int, another_int, etc.]
+our_campaign = 0  # An integer between 0 and 2^128
+network_tuple = ()  # ((socket, address), (another_socket, another_address))
 message_list = []
 page_list = []  # temporary file objects to close on stop
 page_ids = []  # Used by some modules
 
-ongoing_election = False
 terminated = False
 cluster_rep = False
+ongoing_election = False
 no_prop = "ffffffffffffffff"  # True:[message] = No message propagation.
 
 loaded_modules = []  # List of all modules loaded
@@ -42,6 +47,8 @@ connecting_to_server = False
 allow_file_storage = True
 log_level = ""  # "Debug", "Info", or "Warning"; To be set by init
 sub_node = "Client"
+SALT = None  # Will be set to a 128-bit hexadecimal token(by self.init) for making address identifiers
+ADDR_ID = None  # Another 128-bit hexadecimal token that wil be salted with SALt, and set by init()
 
 # This will be reset with input values by init()
 Primitives = primitives.Primitives(log_level, sub_node)
@@ -357,16 +364,23 @@ class Client:
         # Doesn't return anything.
 
         global message_list
-        global ongoing_election
-        global ballet_tuple
         global cluster_rep
         global page_list
+        global election_list
+        global campaign_list
+        global our_campaign
+        global ongoing_election
         global page_ids
+        global ADDR_ID
+        global SALT
 
         full_message = str(msg)
         sig = full_message[:16]
         message = full_message[17:]
         address = connection[1]
+
+        # Fallback in case multiple threads somehow receive the same message at the same time
+        sleep(random.uniform(0.01, 0.15))
 
         # Don't respond to messages we've already responded to.
         if sig in message_list:
@@ -597,6 +611,16 @@ class Client:
                             corecount.start(page_id, raw_lines, newlines)
                             module_loaded = ""
 
+            if message.startswith("file:"):
+                # file:(64-bit file hash):(32-bit file length):(128-bit origin address identifier)
+                self.log("Not doing anything with file request because they are not implemented yet.")
+                message_to_parse = message[5:]  # Remove "file:" from message string so we can parse it correctly.
+                file_hash = message_to_parse[:16]
+                file_length = message_to_parse[17:][:8]
+                origin_addr_id = message_to_parse[26:]
+                self.log("Our Address Identifier: "+ADDR_ID, in_log_level="Debug")
+                self.log("Received message destined for Address Identifier: "+origin_addr_id, in_log_level="Debug")
+
             # Remove the specified node from the network (i.e disconnect from it)
             if message.startswith("remove:"):
 
@@ -640,6 +664,75 @@ class Client:
                 # Propagate the message to the rest of the network.
                 self.log(str('Broadcasting: ' + full_message), in_log_level="Debug")
                 self.broadcast(full_message)
+
+            if message.startswith("vote:"):
+                if not ongoing_election:
+                    ongoing_election = True
+                    reason = message[5:]
+                    print(reason)
+                    election_tuple = (reason, "TBD")
+                    election_list.append(election_tuple)
+
+                    campaign_int = random.randint(1, 2**128)
+                    our_campaign = campaign_int
+
+                    self.log("Campaigning for "+str(campaign_int), in_log_level="Info")
+                    campaign_msg = self.prepare("campaign:"+reason+":"+str(campaign_int))
+                    self.broadcast(campaign_msg)
+
+            if message.startswith("campaign:"):
+                if ongoing_election:
+                    import inject
+                    Injector = inject.NetworkInjector()
+
+                    campaign_tuple = tuple(Injector.parse_cmd(message))
+                    campaign_list.append(campaign_tuple)
+
+                    print(str(campaign_list))
+
+                    # Wait for all votes to be cast
+                    if len(campaign_list) == len(network_tuple)+1:
+                        campaign_ints = []
+
+                        for campaign_tuple in campaign_list:
+                            campaign_int = campaign_tuple[1]
+                            campaign_ints.append(campaign_int)
+
+                        winning_int = max(campaign_ints)
+                        winning_reason = ""
+                        for campaign_tuple in campaign_list:
+                            if campaign_tuple[1] == winning_int:
+                                winning_reason = campaign_tuple[0]
+
+                        election_log_msg = str(winning_int) + " Won the election for: " + winning_reason
+                        self.log(election_log_msg, in_log_level="Info")
+
+                        if our_campaign == int(winning_int):
+                            self.log("We won the election for: "+winning_reason, in_log_level="Info")
+                            elect_msg = self.prepare("elect:"+winning_reason+":"+str(self.get_local_ip()))
+                            self.broadcast(elect_msg)
+
+                            cluster_rep = True
+                        else:
+                            cluster_rep = False
+
+                        # Cleanup
+                        campaign_list = []
+                        our_campaign = 0
+                        ongoing_election = False
+
+            if message.startswith("elect:"):
+                # elect:reason:representative
+                import inject
+                Injector = inject.NetworkInjector()
+                args = Injector.parse_cmd(message)
+                reason = args[0]
+                new_leader = args[1]
+                index = Primitives.find_election_index(election_list, reason)
+                election_list = Primitives.set_leader(election_list, index, new_leader)
+                print("\n")
+                print(election_list)
+                print("\n")
 
     def listen(self, connection):
         # Listen for incoming messages and call self.respond() to respond to them.
@@ -721,6 +814,8 @@ class Client:
         global loaded_modules
         global Primitives
         global sub_node
+        global SALT
+        global ADDR_ID
 
         # Global variable assignment
         PORT = port
@@ -729,6 +824,8 @@ class Client:
         log_level = default_log_level
 
         Primitives = primitives.Primitives(log_level, sub_node)
+        SALT = secrets.token_hex(16)
+        ADDR_ID = Primitives.gen_addr_id(SALT)
 
         for item in modules:
             import_str = "import " + item

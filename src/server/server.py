@@ -368,6 +368,8 @@ class Server:
 
             if sig == no_prop:
                 if message[:5] == "sync:":
+                    # This is marked no_prop, however, localhost needs to know about sync calls.
+                    # Propagate to localhost(and localhost only)
                     self.log("Violating the no_prop policy for localhost", in_log_level="Warning")
                     localhost_address = "127.0.0.1"
                     localhost_socket = self.lookup_socket(localhost_address)
