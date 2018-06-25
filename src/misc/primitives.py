@@ -98,7 +98,10 @@ class Primitives:
                 return None
 
             msg_length = struct.unpack('>I', raw_msg_length)[0]
-            return self.receiveall(sock, msg_length).decode()
+            try:
+                return self.receiveall(sock, msg_length).decode()
+            except AttributeError:
+                return 1
 
         # This socket disconnected. Return 1 so the calling function(probably the listener) knows what happened.
         except ValueError:
