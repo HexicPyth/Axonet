@@ -127,6 +127,7 @@ class Primitives:
             except UnicodeDecodeError:
                 packet = (sock.recv(n - len(data))).decode('utf-8', 'ignore')
                 print("\nERROR: Packet failed to decode:", packet, "\n")
+                return packet
 
             except MemoryError:
                 print("\nERROR: MemoryError occurred decoding a packet. Returning an empty string\n")
@@ -137,7 +138,7 @@ class Primitives:
 
             else:
                 data += packet
-        return data.encode()
+        return data.encode('utf-8', 'ignore')
 
     def find_representative(self, election_list, reason):
         for index, tup in enumerate(election_list):
