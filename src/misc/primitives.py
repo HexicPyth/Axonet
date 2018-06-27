@@ -97,7 +97,13 @@ class Primitives:
             if not raw_msg_length:
                 return None
 
-            msg_length = struct.unpack('>I', raw_msg_length)[0]
+            try:
+                msg_length = struct.unpack('>I', raw_msg_length)[0]
+
+            # This packet was corrupted, just return an empty string.
+            except TypeError:
+                return ""
+
             try:
                 return self.receiveall(sock, msg_length).decode()
             except AttributeError:
