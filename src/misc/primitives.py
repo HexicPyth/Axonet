@@ -132,8 +132,9 @@ class Primitives:
 
             # Something corrupted in transit. Let's just ignore the bad pieces for now.
             except UnicodeDecodeError:
-                packet = (sock.recv(n - len(data))).decode('utf-8', 'ignore')
-                print("\nERROR: Packet failed to decode:", packet, "\n")
+                raw_packet = (sock.recv(n - len(data)))
+                packet = raw_packet.decode('utf-8', 'ignore')
+                print("\nERROR: Packet failed to decode:", raw_packet, "\n")  # TODO: Why do we receive b'ffff'?
 
             except MemoryError:
                 print("\nERROR: MemoryError occurred decoding a packet. Returning an empty string\n")
