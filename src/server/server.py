@@ -303,12 +303,13 @@ class Server:
         global message_list
         global file_tuple  # (hash, remote_host, node)
         global file_index
-        
-        message_received_log_dbg = str("Received raw message: "+full_message)
-        self.log(message_received_log_dbg, in_log_level="Debug")
 
         address = connection[1]
         full_message = str(msg)
+
+        message_received_log_dbg = str("Received raw message: "+full_message)
+        self.log(message_received_log_dbg, in_log_level="Debug")
+
         sig = msg[:16]
         message = msg[17:]
 
