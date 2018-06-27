@@ -126,7 +126,11 @@ class Primitives:
             # Something corrupted in transit. Let's just ignore the bad pieces for now.
             except UnicodeDecodeError:
                 packet = (sock.recv(n - len(data))).decode('utf-8', 'ignore')
-                print(packet)
+                print("\nERROR: Packet failed to decode:", packet, "\n")
+
+            except MemoryError:
+                print("\nERROR: MemoryError occurred decoding a packet. Returning an empty string\n")
+                return ""
 
             if not packet:
                 return None
