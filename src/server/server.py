@@ -306,11 +306,12 @@ class Server:
 
         address = connection[1]
         full_message = str(msg)
-        sig = msg[:16]
-        message = msg[17:]
 
         message_received_log_dbg = str("Received raw message: "+full_message)
         self.log(message_received_log_dbg, in_log_level="Debug")
+
+        sig = msg[:16]
+        message = msg[17:]
 
         if sig not in message_list:
             message_received_log_info = str('Server -> Received: ' + message + " (" + sig + ")")
@@ -655,7 +656,7 @@ class Server:
                             # In a 'complete' network, every node is connected to every other node for redundancy.
                             # Hence, when a new node connects, we broadcast it's address to the  entire network so
                             # every other node can try to connect to it (i.e 'complete' the network).
-                            self.broadcast(self.prepare('ConnectTo:' + address))
+                            self.broadcast(no_prop + ':ConnectTo:' + address)
 
                     elif terminated:
                         sys.exit(0)
