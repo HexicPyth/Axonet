@@ -380,7 +380,7 @@ class Client:
         address = connection[1]
 
         # Fallback in case multiple threads somehow receive the same message at the same time
-        sleep(random.uniform(0.01, 0.15))
+        sleep(random.uniform(0.008, 0.05))
 
         # Don't respond to messages we've already responded to.
         if sig in message_list:
