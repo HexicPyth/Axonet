@@ -783,10 +783,11 @@ class Client:
                     file_proxy = new_leader
                     file_checksum = reason[4:]
 
-                    file_tuple = Primitives.find_file_tuple(file_list, file_checksum)
-                    file_index = file_list.index(file_tuple)
-                    file_list[file_index] = Primitives.set_file_proxy(file_checksum, file_list, file_proxy)
-                    self.init_file(1, file_proxy, file_checksum)
+                    if Primitives.find_file_tuple(file_list, file_checksum) != -1:
+                        file_tuple = Primitives.find_file_tuple(file_list, file_checksum)
+                        file_index = file_list.index(file_tuple)
+                        file_list[file_index] = Primitives.set_file_proxy(file_checksum, file_list, file_proxy)
+                        self.init_file(1, file_proxy, file_checksum)
 
                 print("\n")
                 print(election_list)

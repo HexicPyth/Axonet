@@ -193,5 +193,6 @@ class Primitives:
         for f_tuple in in_list:
             if list(f_tuple)[2] == checksum:
                 file_tuple = f_tuple
-                break
-        return file_tuple
+                return file_tuple
+        return -1
+
