@@ -19,7 +19,7 @@ import primitives
 localhost = socket.socket()
 localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes TIME_WAIT-ing. Add SO_REUSEADDR.
 
-# Constant or set during runtime
+# State
 election_list = []   # [(reason, representative), (another_reason, another_representative)]
 campaign_list = []  # [int, another_int, etc.]
 file_list = []  # (file_size, path, checksum, proxy)
@@ -370,10 +370,13 @@ class Client:
 
             if proxy == self.get_local_ip():
                 proxy_socket = localhost
+                proxy_address = "127.0.0.1"
             else:
                 proxy_socket = self.lookup_socket(proxy)
+                proxy_address = proxy
 
-            proxy_connection = (proxy_socket, proxy)
+            proxy_connection = (proxy_socket, proxy_address)
+
             self.log("Passing control to proxy...", in_log_level="Info")
             proxy_msg = no_prop+":proxy:file:"+checksum+":"+file_tuple[0]+":"+"YOUR_ADDR"
             self.send(proxy_connection, proxy_msg, sign=False)

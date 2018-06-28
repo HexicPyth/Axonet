@@ -18,6 +18,7 @@ localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes 
 
 network_tuple = ()  # Global lookup of (sockets, addresses)
 file_tuple = ()  # (hash, remote_host, index)
+file_proxies = []  # Addresses we are proxying for
 message_list = []   # List of message hashes
 no_prop = "ffffffffffffffff"  # a message with a true hash indicates that no message propagation is needed.
 file_index = 0
@@ -266,6 +267,7 @@ class Server:
         global message_list
         global file_tuple  # (hash, remote_host, node)
         global file_index
+        global file_proxies
 
         address = connection[1]
         full_message = str(msg)
@@ -315,6 +317,30 @@ class Server:
 
                 fetch_msg = self.prepare("fetch:"+target_page)
                 self.broadcast(fetch_msg)
+
+            if message.startswith("proxy"):
+                import inject
+                injector = inject.NetworkInjector()
+
+                host_addr = address
+
+                if host_addr == "127.0.0.1":
+                    host_addr = self.get_local_ip()
+
+                self.log("Being a proxy for "+host_addr, in_log_level="Info")
+                proxy_message = message[6:]
+
+                if proxy_message.startswith("file:"):
+                    arguments = injector.parse_cmd(proxy_message)
+                    checksum = arguments[0]
+                    proxy_tuple = (host_addr, checksum)
+                    file_proxies.append(proxy_tuple)
+
+                    proxy_message = proxy_message[:-9]
+                    print(arguments)
+                    proxy_message += self.get_local_ip()
+                    self.broadcast(self.prepare(proxy_message))
+                    print(proxy_message)
 
             # We only broadcast messages with hashes we haven't already documented. That way the network doesn't
             # loop indefinitely broadcasting the same message. Also, Don't append no_prop to message_list.
