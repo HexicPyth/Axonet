@@ -374,7 +374,7 @@ class Client:
                 proxy_socket = self.lookup_socket(proxy)
 
             proxy_connection = (proxy_socket, proxy)
-            print("Sending to proxy...")
+            self.log("Passing control to proxy...", in_log_level="Info")
             proxy_msg = no_prop+":proxy:file:"+checksum+":"+file_tuple[0]+":"+"YOUR_ADDR"
             self.send(proxy_connection, proxy_msg, sign=False)
 
