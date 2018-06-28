@@ -1,0 +1,59 @@
+# file:(64-bit file hash):(32-bit file length):(128-bit origin address identifier)
+import os
+import sys
+import hashlib
+
+# Allow us to import the client
+this_dir = os.path.dirname(os.path.realpath(__file__))
+os.chdir(this_dir)
+sys.path.insert(0, '../../client/')
+sys.path.insert(0, '../../server/')
+no_prop = "ffffffffffffffff"
+
+
+# The following md5sum function was adapted liberally from
+# "prologic" at BitBucket
+# https://bitbucket.org/prologic/tools/
+# https://bitbucket.org/prologic/
+# Accessed 06/28/18 00:00 UTC
+
+def md5sum(filename):
+    hash_function = hashlib.md5()
+    file_path = os.path.abspath(filename)
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(128 * hash_function.block_size), b""):
+            hash_function.update(chunk)
+    return hash_function.hexdigest()
+
+
+def initiate(net_tuple, arguments):
+    """ Called from the network injector when it receives a $file: flag"""
+    import inject
+    injector = inject.NetworkInjector()
+    file_path = arguments[0]
+
+    if os.path.isfile(os.path.abspath(file_path)):
+
+        abs_path = os.path.abspath(file_path)
+        file_size = os.path.getsize(abs_path)
+
+        # Hand control to localhost client
+        localhost_socket = injector.lookup_socket("127.0.0.1", net_tuple)
+        if localhost_socket != 1:
+            localhost_connection = (localhost_socket, "127.0.0.1")
+            init_msg = no_prop+":init_file:"+abs_path+":"+str(file_size)
+            injector.send(localhost_connection, init_msg, sign=False)
+        pass
+
+
+def respond_start(proxy_addr, file_path, checksum, network_tuple):
+    """Called by the client's listener_thread when it received a file: flag"""
+    import inject
+    injector = inject.NetworkInjector()
+    msg = str(proxy_addr)+str(file_path)+str(checksum)
+    injector.broadcast(injector.prepare(msg), network_tuple)
+
+
+def start():
+    """Called at then end of sync: to allow for module-specific I/O in modules that need access to the disk"""
+    pass  # (not used)

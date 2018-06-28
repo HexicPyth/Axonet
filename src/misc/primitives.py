@@ -134,7 +134,8 @@ class Primitives:
             except UnicodeDecodeError:
                 raw_packet = (sock.recv(n - len(data)))
                 packet = raw_packet.decode('utf-8', 'ignore')
-                print("\nERROR: Packet failed to decode:", raw_packet, "\n")  # TODO: Why do we receive b'ffff'?
+                print("\nWarning: Packet failed to decode:", raw_packet)  # TODO: Why do we receive b'ffff'?
+                print("\tReturning: ", packet)
 
             except MemoryError:
                 print("\nERROR: MemoryError occurred decoding a packet. Returning an empty string\n")
@@ -172,3 +173,25 @@ class Primitives:
         new_tuple = tuple(derived_list)
         election_list.insert(index, new_tuple)
         return election_list
+
+    def set_file_proxy(self, checksum, in_list, proxy_addr):
+        # File list: (size, path, checksum, proxy)
+        file_tuple = ()
+        for f_tuple in in_list:
+            if list(f_tuple)[2] == checksum:
+                file_tuple = f_tuple
+                break
+
+        derived_list = list(file_tuple)
+        derived_list[3] = proxy_addr
+        new_file_tuple = tuple(derived_list)
+        return new_file_tuple
+
+    def find_file_tuple(self, in_list, checksum):
+        # File list: (size, path, checksum, proxy)
+        file_tuple = ()
+        for f_tuple in in_list:
+            if list(f_tuple)[2] == checksum:
+                file_tuple = f_tuple
+                break
+        return file_tuple

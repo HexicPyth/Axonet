@@ -28,7 +28,6 @@ class NetworkInjector(multiprocessing.Process):
 
     # Send a given message to a specific node
     # Slightly modified compared to the server's send method
-
     @staticmethod
     def send(connection, msg, sign=True):
         sock = connection[0]
@@ -73,6 +72,7 @@ class NetworkInjector(multiprocessing.Process):
             discovered_address = item[1]
             if address == discovered_address:
                 return item[0]
+        return 1
 
     @staticmethod
     def lookup_address(in_sock, network_tuple):
@@ -82,6 +82,7 @@ class NetworkInjector(multiprocessing.Process):
             discovered_socket = item[0]
             if in_sock == discovered_socket:
                 return item[1]
+        return 1
 
     def broadcast(self, message, network_tuple, signing=True):
         global current_message
@@ -207,7 +208,13 @@ class NetworkInjector(multiprocessing.Process):
                 args = self.parse_cmd(in_cmd)
                 vote.initiate(net_tuple, args)
 
-            return 0
+            elif in_cmd.startswith("file"):
+                # $file_path
+                os.chdir(original_path)
+                import file
+
+                args = self.parse_cmd(in_cmd)
+                file.initiate(net_tuple, args)
 
     def init(self, network_tuple, loaded_modules, msg=None):
         for item in loaded_modules:

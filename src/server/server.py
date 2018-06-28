@@ -258,43 +258,6 @@ class Server:
         # noinspection PyProtectedMember
         os._exit(0)
 
-    def append_to_file_tuple(self, file_hash, remote_host, index):
-        global file_tuple  # (hash, remote_host, data)
-
-        # Tuples are immutable; convert it to a list.
-        file_list = list(file_tuple)
-
-        file_object = [file_hash, remote_host, index]
-
-        if file_tuple:
-            try:
-                for f_object in file_tuple:
-
-                    # Avoid shadowing names
-                    f_hash = f_object[0]
-                    remote_node = f_object[1]
-                    # index = f_object[2]  -- We'll come back to this later
-
-                    if file_hash == f_hash:
-                        log_msg = str("Warning: " + remote_host +
-                                      " is trying to claim multiple indexes; disallowing...")
-                        self.log(log_msg, in_log_level="Warning")
-
-                    if remote_host == remote_node:
-                        self.log("Not appending duplicate node to file tuple; ", in_log_level="Info")
-                        return
-
-            except IndexError:
-                # TODO: What does this catch?
-                self.log("IndexError(s) occurred checking to file tuple; continuing...", in_log_level="Warning")
-
-        file_list.append(file_object)
-        self.log(str(file_list), in_log_level="Debug")
-
-        # (Again) tuples are immutable; replace the old one with the new one
-        file_tuple = tuple(file_list)
-        self.log(str(file_tuple), in_log_level="Debug")
-
     def respond(self, msg, connection):
         # We received a message, reply with an appropriate response.
         # Doesn't return anything.

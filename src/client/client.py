@@ -22,12 +22,13 @@ localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes 
 # Constant or set during runtime
 election_list = []   # [(reason, representative), (another_reason, another_representative)]
 campaign_list = []  # [int, another_int, etc.]
+file_list = []  # (file_size, path, checksum, proxy)
 our_campaign = 0  # An integer between 0 and 2^128
 network_tuple = ()  # ((socket, address), (another_socket, another_address))
 message_list = []
 page_list = []  # temporary file objects to close on stop
 page_ids = []  # Used by some modules
-
+file_proxy = ""
 terminated = False
 cluster_rep = False
 ongoing_election = False
@@ -359,6 +360,23 @@ class Client:
         this_page.write(data_line)
         this_page.close()
 
+    def init_file(self, stage, proxy, checksum):
+        global file_list
+        # file:(64-bit file hash):(32-bit file length):(128-bit origin address identifier)
+
+        if stage == 1:
+            print("Proxy: "+proxy)
+            file_tuple = Primitives.find_file_tuple(file_list, checksum)
+
+            if proxy == self.get_local_ip():
+                proxy_socket = localhost
+            else:
+                proxy_socket = self.lookup_socket(proxy)
+
+            proxy_connection = (proxy_socket, proxy)
+            proxy_msg = no_prop+":proxy:file:"+checksum+":"+file_tuple[0]+":"+"YOUR_ADDR"
+            self.send(proxy_connection, proxy_msg, sign=False)
+
     def respond(self, connection, msg):
         # We received a message, reply with an appropriate response.
         # Doesn't return anything.
@@ -368,10 +386,12 @@ class Client:
         global page_list
         global election_list
         global campaign_list
+        global file_list
         global our_campaign
         global ongoing_election
         global page_ids
         global ADDR_ID
+        global file_proxy
         global SALT
 
         full_message = str(msg)
@@ -622,6 +642,31 @@ class Client:
                 self.log("Received message destined for Address Identifier: "+origin_addr_id, in_log_level="Debug")
 
             # Remove the specified node from the network (i.e disconnect from it)
+
+            if message.startswith("init_file:"):
+                os.chdir(original_path)
+                import inject
+                import file
+                injector = inject.NetworkInjector()
+                arguments = injector.parse_cmd(message)
+                file_path = arguments[0]
+                file_size = arguments[1]
+                checksum = str(file.md5sum(file_path))
+                election_reason = 'dfs-'+checksum
+
+                file_tuple = (file_size, file_path, checksum, "TBD")
+                file_list.append(file_tuple)
+
+                # Vote a proxy
+                self.log("Voting a proxy", in_log_level="Info")
+
+                vote_msg = "vote:"+election_reason
+                self.broadcast(self.prepare(vote_msg))
+
+                proxy = Primitives.find_representative(election_list, election_reason)  # Doesn't work (race condition)
+
+                # Will be continued in self.init_file(stage=1), called during the elect: flag
+
             if message.startswith("remove:"):
 
                 address_to_remove = message[7:]
@@ -666,6 +711,8 @@ class Client:
                 self.broadcast(full_message)
 
             if message.startswith("vote:"):
+                self.log("Ongoing election: "+str(ongoing_election), in_log_level="Debug")
+
                 if not ongoing_election:
                     ongoing_election = True
                     reason = message[5:]
@@ -719,7 +766,6 @@ class Client:
                         # Cleanup
                         campaign_list = []
                         our_campaign = 0
-                        ongoing_election = False
 
             if message.startswith("elect:"):
                 # elect:reason:representative
@@ -730,6 +776,18 @@ class Client:
                 new_leader = args[1]
                 index = Primitives.find_election_index(election_list, reason)
                 election_list = Primitives.set_leader(election_list, index, new_leader)
+                ongoing_election = False
+
+                if reason.startswith('dfs'):
+                    print("File proxy: "+new_leader)
+                    file_proxy = new_leader
+                    file_checksum = reason[4:]
+
+                    file_tuple = Primitives.find_file_tuple(file_list, file_checksum)
+                    file_index = file_list.index(file_tuple)
+                    file_list[file_index] = Primitives.set_file_proxy(file_checksum, file_list, file_proxy)
+                    self.init_file(1, file_proxy, file_checksum)
+
                 print("\n")
                 print(election_list)
                 print("\n")
