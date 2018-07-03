@@ -104,6 +104,7 @@ class Primitives:
                 return ""
 
             try:
+                print("Message length: "+msg_length)  # DEBUG
                 return self.receiveall(sock, msg_length).decode('utf-8', 'ignore')
 
             except AttributeError:
@@ -139,7 +140,7 @@ class Primitives:
 
             except MemoryError:
                 print("\nERROR: MemoryError occurred decoding a packet. Returning an empty string\n")
-                print("\tn: "+str(n))
+                print("\tn: "+str(n))  # DEBUG
                 packet = ""
 
             if not packet:
