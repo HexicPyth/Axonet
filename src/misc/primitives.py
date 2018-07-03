@@ -1,4 +1,3 @@
-# TODO: add send() receive(), etc.
 import struct
 import socket
 import datetime
