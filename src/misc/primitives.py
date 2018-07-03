@@ -119,7 +119,7 @@ class Primitives:
             Returns None(-> NoneType) if/when EOF is hit.
         """
 
-        data = ''
+        data = b''
 
         while len(data) < n:
             try:
@@ -152,8 +152,13 @@ class Primitives:
                 return None
 
             else:
-                data += packet
-        return data.encode('utf-8', 'ignore')
+                try:
+                    data += bytes(packet, 'ascii')
+
+                # We're appending bytes
+                except TypeError:
+                    data += packet
+        return data
 
     def find_representative(self, election_list, reason):
         for index, tup in enumerate(election_list):

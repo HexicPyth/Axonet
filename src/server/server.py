@@ -419,7 +419,7 @@ class Server:
                     if incoming:
                         self.respond(incoming, conn)
 
-                except (OSError, TypeError):
+                except (BlockingIOError, TabError):  # OSError, TypeError  # DEBUG
                     # OSError - Something terrible happened trying to receive from a node
                     # TypeError - A socket is apparently NoneType now. That's bad
 
