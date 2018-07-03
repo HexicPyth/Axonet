@@ -92,7 +92,8 @@ class Primitives:
         sock = connection[0]
         try:
             raw_msg_length = self.receiveall(sock, 4)
-
+            if raw_msg_length == b'ffff':
+                return None
             if not raw_msg_length:
                 return None
 
@@ -105,7 +106,7 @@ class Primitives:
 
             try:
                 print("Message length: "+str(msg_length))  # DEBUG
-                print("Raw message length: "+ str(raw_msg_length))  # DEBUG
+                print("Raw message length: " + str(raw_msg_length))  # DEBUG
                 return self.receiveall(sock, msg_length).decode('utf-8', 'ignore')
 
             except AttributeError:
