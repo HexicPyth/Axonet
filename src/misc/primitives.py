@@ -105,6 +105,7 @@ class Primitives:
 
             try:
                 print("Message length: "+str(msg_length))  # DEBUG
+                print("Raw message length: "+ str(raw_msg_length))  # DEBUG
                 return self.receiveall(sock, msg_length).decode('utf-8', 'ignore')
 
             except AttributeError:
