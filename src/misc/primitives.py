@@ -92,8 +92,6 @@ class Primitives:
         sock = connection[0]
         try:
             raw_msg_length = self.receiveall(sock, 4)
-            if raw_msg_length == b'ffff':
-                return None
             if not raw_msg_length:
                 return None
 
@@ -136,9 +134,14 @@ class Primitives:
             # Something corrupted in transit. Let's just ignore the bad pieces for now.
             except UnicodeDecodeError:
                 raw_packet = (sock.recv(n - len(data)))
-                packet = raw_packet.decode('utf-8', 'ignore')
-                print("\nWarning: Packet failed to decode:", raw_packet)  # TODO: Why do we receive b'ffff'?
-                print("\tReturning: ", packet)
+                if len(raw_packet) == 4:
+                    # The first four bytes of a message are it's binary length(see self.send); it'll almost never
+                    # decode anyway; ignore it. (Fix issue #22)
+                    packet = raw_packet
+                else:
+                    packet = raw_packet.decode('utf-8', 'ignore')
+                    print("\nWarning: Packet failed to decode:", raw_packet)  # TODO: Why do we receive b'ffff'?
+                    print("\tReturning: ", packet)
 
             except MemoryError:
                 print("\nERROR: MemoryError occurred decoding a packet. Returning an empty string\n")
