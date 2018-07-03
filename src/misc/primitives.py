@@ -140,7 +140,7 @@ class Primitives:
 
             except MemoryError:
                 print("\nERROR: MemoryError occurred decoding a packet. Returning an empty string\n")
-                print(n)
+                print("\tn: "+str(n))
                 packet = ""
 
             if not packet:
