@@ -32,8 +32,8 @@ file_proxy = ""
 terminated = False
 cluster_rep = False
 ongoing_election = False
-no_prop = "ffffffffffffffff"  # True:[message] = No message propagation.
 
+no_prop = "ffffffffffffffff"  # True:[message] = No message propagation.
 loaded_modules = []  # List of all modules loaded
 module_loaded = ""  # Current module being executed
 
@@ -50,8 +50,6 @@ log_level = ""  # "Debug", "Info", or "Warning"; To be set by init
 sub_node = "Client"
 SALT = None  # Will be set to a 128-bit hexadecimal token(by self.init) for making address identifiers
 ADDR_ID = None  # Another 128-bit hexadecimal token that wil be salted with SALt, and set by init()
-
-# This will be reset with input values by init()
 Primitives = primitives.Primitives(log_level, sub_node)
 
 
@@ -421,10 +419,7 @@ class Client:
             self.log(message_received_log, in_log_level="Info")
 
             if message == "echo":
-                """ Simple way to test our connection to a given node.
-
-                Slight Caveat: Because of message propagation, this actually tests
-                every nodes connection to every other node on the network."""
+                """ Simple way to test our connection to a given node."""
 
                 self.log("echoing...", in_log_level="Info")
                 self.send(connection, no_prop + ':' + message, sign=False)  # If received, send back

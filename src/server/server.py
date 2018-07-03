@@ -162,7 +162,7 @@ class Server:
         try:
             sock.sendall(msg)
 
-        except (BrokenPipeError, OSError):
+        except (BrokenPipeError, OSError, AttributeError):
             if address != self.get_local_ip() and address != "127.0.0.1":
 
                 log_msg = str("Errors occurred sending to " + address + "; Disconnecting...")

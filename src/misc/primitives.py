@@ -123,7 +123,8 @@ class Primitives:
 
         while len(data) < n:
             try:
-                packet = (sock.recv(n - len(data))).decode()
+                packet = (sock.recv(n - len(data)))
+                packet = packet.decode()  # If this fails, we still have a packet to work with/debug
 
             except OSError:
                 self.log("Connection probably down or terminated (OSError: receiveall()",
@@ -139,6 +140,7 @@ class Primitives:
 
             except MemoryError:
                 print("\nERROR: MemoryError occurred decoding a packet. Returning an empty string\n")
+                print(packet)
                 packet = ""
 
             if not packet:
