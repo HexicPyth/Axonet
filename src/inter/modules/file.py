@@ -71,7 +71,7 @@ def start(stage, proxy, checksum, localhost, file_list, network_tuple):
             proxy_socket = localhost
             proxy_address = "127.0.0.1"
         else:
-            proxy_socket = Client.lookup_socket(proxy, net_tuple=network_tuple)
+            proxy_socket = Client.lookup_socket(proxy, ext_net_tuple=network_tuple)
             proxy_address = proxy
 
         proxy_connection = (proxy_socket, proxy_address)
