@@ -616,7 +616,6 @@ class Client:
                     print(len(network_tuple))
 
                     # Wait for each node to contribute before doing module-specific I/O
-                    print("\n\nNetwork Tuple: "+str(network_tuple)+"\n\n")  # DEBUG
                     self.log("\n\t" + str(len(newlines)) + " Node(s) have contributed to the network.\n"
                                                            "The network tuple(+1) is of"
                                                            " length " + str(len(network_tuple) + 1),
