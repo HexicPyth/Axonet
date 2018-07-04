@@ -1,6 +1,7 @@
 import struct
 import socket
 import datetime
+import sys
 from hashlib import sha3_224
 
 
@@ -123,8 +124,8 @@ class Primitives:
 
         while len(data) < n:
             try:
-                packet = (sock.recv(n - len(data)))
-                packet = packet.decode()  # If this fails, we still have a packet to work with/debug
+                raw_packet = (sock.recv(n - len(data)))
+                packet = raw_packet.decode()  # If this fails, we still have a packet to work with/debug
 
             except OSError:
                 self.log("Connection probably down or terminated (OSError: receiveall()",
@@ -133,7 +134,6 @@ class Primitives:
 
             # Something corrupted in transit. Let's just ignore the bad pieces for now.
             except UnicodeDecodeError:
-                raw_packet = (sock.recv(n - len(data)))
                 if len(raw_packet) == 4:
                     # The first four bytes of a message are it's binary length(see self.send); it'll almost never
                     # decode anyway; ignore it. (Fix issue #22)
