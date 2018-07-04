@@ -117,11 +117,15 @@ class Client:
         return out
 
     @staticmethod
-    def lookup_socket(address, net_tuple=network_tuple):  # TODO: optimize me
+    def lookup_socket(address, ext_net_tuple=None):  # TODO: optimize me
         """Brute force search the network tuple for a socket associated with a given address.
             Return socket object if found.
             Returns 0(-> int) id not found
         """
+        if ext_net_tuple:
+            net_tuple = ext_net_tuple
+        else:
+            net_tuple = network_tuple
 
         for item in net_tuple:
             discovered_address = item[1]
@@ -131,11 +135,16 @@ class Client:
         return 0  # Socket not found
 
     @staticmethod
-    def lookup_address(in_sock, net_tuple=network_tuple):  # TODO: optimize me
+    def lookup_address(in_sock, ext_net_tuple=None):  # TODO: optimize me
         """Brute force search the network tuple for an address associated with a given socket.
             Return a string containing an address if found.
             Returns 0 (-> int) if not found
         """
+        if ext_net_tuple:
+            net_tuple = ext_net_tuple
+        else:
+            net_tuple = network_tuple
+
         for item in net_tuple:
             discovered_socket = item[0]
             if in_sock == discovered_socket:
