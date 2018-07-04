@@ -54,6 +54,28 @@ def respond_start(proxy_addr, file_path, checksum, network_tuple):
     injector.broadcast(injector.prepare(msg), network_tuple)
 
 
-def start():
-    """Called at then end of sync: to allow for module-specific I/O in modules that need access to the disk"""
-    pass  # (not used)
+def start(stage, proxy, checksum, localhost, file_list, network_tuple):
+    import primitives
+    import client
+    Primitives = primitives.Primitives("Debug", "Client")
+    Client = client.Client()
+
+    """Called at then end of elect: when the election for dfs-[...] completes"""
+    # file:(64-bit file hash):(32-bit file length):(128-bit origin address identifier)
+
+    if stage == 1:
+        print("Proxy: " + proxy)
+        file_tuple = Primitives.find_file_tuple(file_list, checksum)
+
+        if proxy == Primitives.get_local_ip():
+            proxy_socket = localhost
+            proxy_address = "127.0.0.1"
+        else:
+            proxy_socket = Client.lookup_socket(proxy, net_tuple=network_tuple)
+            proxy_address = proxy
+
+        proxy_connection = (proxy_socket, proxy_address)
+
+        print("Client -> Info: Passing control to proxy")
+        proxy_msg = no_prop + ":proxy:file:" + checksum + ":" + file_tuple[0] + ":" + "YOUR_ADDR"
+        Client.send(proxy_connection, proxy_msg, sign=False)

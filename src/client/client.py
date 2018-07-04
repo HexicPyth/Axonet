@@ -117,13 +117,13 @@ class Client:
         return out
 
     @staticmethod
-    def lookup_socket(address):  # TODO: optimize me
+    def lookup_socket(address, net_tuple=network_tuple):  # TODO: optimize me
         """Brute force search the network tuple for a socket associated with a given address.
             Return socket object if found.
             Returns 0(-> int) id not found
         """
 
-        for item in network_tuple:
+        for item in net_tuple:
             discovered_address = item[1]
             if address == discovered_address:
                 return item[0]
@@ -131,12 +131,12 @@ class Client:
         return 0  # Socket not found
 
     @staticmethod
-    def lookup_address(in_sock):  # TODO: optimize me
+    def lookup_address(in_sock, net_tuple=network_tuple):  # TODO: optimize me
         """Brute force search the network tuple for an address associated with a given socket.
             Return a string containing an address if found.
             Returns 0 (-> int) if not found
         """
-        for item in network_tuple:
+        for item in net_tuple:
             discovered_socket = item[0]
             if in_sock == discovered_socket:
                 return item[1]
@@ -357,27 +357,6 @@ class Client:
         this_page = open(file_path, "a+")
         this_page.write(data_line)
         this_page.close()
-
-    def init_file(self, stage, proxy, checksum):
-        global file_list
-        # file:(64-bit file hash):(32-bit file length):(128-bit origin address identifier)
-
-        if stage == 1:
-            print("Proxy: "+proxy)
-            file_tuple = Primitives.find_file_tuple(file_list, checksum)
-
-            if proxy == self.get_local_ip():
-                proxy_socket = localhost
-                proxy_address = "127.0.0.1"
-            else:
-                proxy_socket = self.lookup_socket(proxy)
-                proxy_address = proxy
-
-            proxy_connection = (proxy_socket, proxy_address)
-
-            self.log("Passing control to proxy...", in_log_level="Info")
-            proxy_msg = no_prop+":proxy:file:"+checksum+":"+file_tuple[0]+":"+"YOUR_ADDR"
-            self.send(proxy_connection, proxy_msg, sign=False)
 
     def respond(self, connection, msg):
         # We received a message, reply with an appropriate response.
@@ -782,11 +761,13 @@ class Client:
                     file_checksum = reason[4:]
 
                     if Primitives.find_file_tuple(file_list, file_checksum) != -1:
+                        import file
                         file_tuple = Primitives.find_file_tuple(file_list, file_checksum)
                         file_index = file_list.index(file_tuple)
                         file_list[file_index] = Primitives.set_file_proxy(file_checksum, file_list, file_proxy)
-                        self.init_file(1, file_proxy, file_checksum)
 
+                        # Pass control to the file module
+                        file.start(1, new_leader, file_checksum, localhost, file_list, network_tuple)
                 print("\n")
                 print(election_list)
                 print("\n")

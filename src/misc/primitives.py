@@ -69,7 +69,9 @@ class Primitives:
     @staticmethod
     def prepare(message):
         """ Assign unique hashes to messages ready for transport.
-            Returns (new hashed message) -> str """
+            Returns (new hashed message) -> str
+            Note: These timestamps may be vulnerable to replay attacks.
+            Some day we should start using random data instead. """
 
         out = ""
         timestamp = str(datetime.datetime.utcnow())
@@ -132,16 +134,21 @@ class Primitives:
 
             # Something corrupted in transit. Let's just ignore the bad pieces for now.
             except UnicodeDecodeError:
-                if len(raw_packet) == 4:
+
+                if len(raw_packet) == 4:  # raw_packet should not be referenced before assignment. TODO: will it?
+
                     # The first four bytes of a message are it's binary length(see self.send); it'll almost never
                     # decode anyway; ignore it. (Fix issue #22)
                     packet = raw_packet
+
                 else:
+
                     packet = raw_packet.decode('utf-8', 'ignore')
                     print("\nWarning: Packet failed to decode:", raw_packet)  # TODO: Why do we receive b'ffff'?
                     print("\tReturning: ", packet)
 
             except MemoryError:
+
                 print("\nERROR: MemoryError occurred decoding a packet. Returning an empty string\n")
                 packet = ""
 
