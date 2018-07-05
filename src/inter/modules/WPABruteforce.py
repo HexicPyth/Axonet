@@ -39,7 +39,7 @@ def do_wpa_benchmark():
         os.remove(os.path.abspath("./out.txt"))
     except FileNotFoundError:
         pass
-    
+
     os.system("sh dobenchmark.sh")
     benchmark_lines = open("out.txt").readlines()
     result = benchmark_lines[-1]
@@ -47,13 +47,21 @@ def do_wpa_benchmark():
     return int(score)
 
 
-def respond_start(score, page_id, net_tuple):
+def respond_start(score, page_id, addr_id, net_tuple):
     """Called by the client's listener_thread when it finished executing self.do_wpa_benchmark"""
     import client
+    import inject
     Client = client.Client()
+    Injector = inject.NetworkInjector()
     print("WPABruteForce -> respond_start: Result: "+str(score))
     print("WPABruteForce -> respond_start: Writing score to page: "+page_id)
+
     Client.write_to_page(page_id, str(score))
+    pageline = addr_id+str(score)
+
+    Injector.broadcast("sync"+":"+page_id+":"+pageline, net_tuple)
+    # 2. Synchronise pagefiles
+
 
 
 

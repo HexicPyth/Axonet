@@ -796,7 +796,7 @@ class Client:
                     def do_benchmark_and_continue(page_hash):
                         global score
                         score = WPABruteforce.do_wpa_benchmark()
-                        WPABruteforce.respond_start(score, page_hash, network_tuple)
+                        WPABruteforce.respond_start(score, page_hash, ADDR_ID, network_tuple)
 
                     new_process = multiprocessing.Process(target=do_benchmark_and_continue,
                                                           args=(arguments[1], ), name='WPA Benchmark Thread')
