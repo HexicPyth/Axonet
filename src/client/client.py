@@ -41,7 +41,7 @@ original_path = os.path.dirname(os.path.realpath(__file__))
 os.chdir(original_path)
 sys.path.insert(0, '../inter/modules/')
 
-# To be (re)set by init()
+# Defaults
 PORT = 3705
 allow_command_execution = False  # Don't execute arbitrary UNIX commands when casually asked, that's bad :]
 connecting_to_server = False
@@ -109,9 +109,13 @@ class Client:
             Returns (new hashed message) -> str """
 
         out = ""
+
+        # Assign a timestamp
         timestamp = str(datetime.datetime.utcnow())
-        out += timestamp
-        out += message
+        stamped_message = timestamp+message
+        out += stamped_message
+
+        # Generate the hash and append the message to it
         sig = sha3_224(out.encode()).hexdigest()[:16]
         out = sig + ":" + message
         return out
@@ -203,8 +207,7 @@ class Client:
 
         # Connection not in network tuple, or socket is [closed]
         except ValueError:
-            self.log(str("Not removing non-existent connection: " + str(connection)),
-                     in_log_level="Warning")
+            self.log(str("Not removing non-existent connection: " + str(connection)), in_log_level="Warning")
             return None
 
         # (Again) tuples are immutable; replace the old one with the new one
@@ -217,25 +220,21 @@ class Client:
         global connecting_to_server
         sock = connection[0]
 
-        # Ugh! Fucking race conditions... *
-        # Append this new connection as quickly as possible,
-        # so the following if statement
-        # will trip correctly on a decent CPU.
-        # Moore's law tells me I should come up with a better solution to this problem.
-        # But then again, Moore's law is pretty much dead.
-
-        # Make a real copy of the network tuple, not a pointer.
+        # Make a real copy of the network tuple
+        # Then append our new connection (will be removed if connection fails)
         quasi_network_tuple = tuple(network_tuple)
-        self.append(sock, address)  # Append it, quick! (see rant above)
+        self.append(sock, address)
 
         # Don't connect to an address we're already connected to.
         if connection in quasi_network_tuple:
+
             not_connecting_msg = str("Not connecting to " + connection[1],
                                      "We're already connected.")
-            self.log(not_connecting_msg, "Warning")
 
+            self.log(not_connecting_msg, in_log_level="Warning")
             self.remove((sock, address))
 
+        # Do connect to nodes we are not already connected to
         else:
             # Also don't try to connect to multiple servers at once in the same thread.
             if not connecting_to_server:
@@ -251,18 +250,17 @@ class Client:
                 elif local:
                     self.remove((sock, address))
 
-                    self.log("Connecting to localhost server...",
-                             in_log_level="Info")
+                    self.log("Connecting to localhost server...", in_log_level="Info")
                     sock.connect((address, port))
 
-                    self.log("Successfully connected to localhost server",
-                             in_log_level="Info")
+                    self.log("Successfully connected to localhost server", in_log_level="Info")
                     connecting_to_server = False
 
     def disconnect(self, connection, disallow_local_disconnect=True):
         """ Try to disconnect from a remote server and remove it from the network tuple.
           Returns None if you do something stupid. otherwise don't return """
 
+        # 1. Input validation
         try:
             sock = connection[0]
             address_to_disconnect = connection[1]
@@ -272,13 +270,15 @@ class Client:
             self.log(str('\t') + str(connection), in_log_level="Warning")
             return None
 
+        # 2. Try to disconnect from said node.
         try:
-            # Don't disconnect from localhost. That's done with self.terminate().
+
+            # Don't disconnect from localhost unless told to. That's done with self.terminate().
             if disallow_local_disconnect:
                 if address_to_disconnect == self.get_local_ip() or address_to_disconnect == "127.0.0.1":
                     self.log("Not disconnecting from localhost dimwit.", in_log_level="Warning")
 
-                # Do disconnect from remote nodes. That actually makes sense (when applicable).
+                # Do disconnect from remote nodes. That sometimes makes sense.
                 else:
                     verbose_connection_msg = str("Disconnecting from " + address_to_disconnect
                                                  + "\n\t(  " + str(sock) + "  )")
@@ -341,12 +341,15 @@ class Client:
     @staticmethod
     def run_external_command(command):
         # Given a string containing a UNIX command, execute it.
-        # Returns 0 -> int (duh)
+        # Returns 0 -> (int)
 
         os.system(command)
         return 0
 
     def write_to_page(self, page_id, data, signing=True):
+        global ADDR_ID
+        """ Write data to a given pagefile by ID."""
+
         self.log("Writing to page:" + page_id, in_log_level="Info")
         os.chdir(original_path)
 
@@ -355,8 +358,7 @@ class Client:
         nodes can reliably tell who (didn't) send a given message """
 
         if signing:
-            our_id = sha3_224(self.get_local_ip().encode()).hexdigest()[:16]
-            data_line = str(our_id + ":" + data + "\n")
+            data_line = str(ADDR_ID + ":" + data + "\n")
 
         else:
             data_line = str(data + "\n")
@@ -368,9 +370,10 @@ class Client:
         this_page.close()
 
     def respond(self, connection, msg):
-        # We received a message, reply with an appropriate response.
-        # Doesn't return anything.
+        """ We received a message, reply with an appropriate response.
+            Doesn't return anything. """
 
+        # Eww... I smell a global state lurking somewhere.
         global message_list
         global cluster_rep
         global page_list
@@ -385,11 +388,12 @@ class Client:
         global SALT
 
         full_message = str(msg)
-        sig = full_message[:16]
-        message = full_message[17:]
+        message = full_message[17:]  # Message without signature
+        sig = full_message[:16]  # Just the signature
         address = connection[1]
 
-        # Fallback in case multiple threads somehow receive the same message at the same time
+        # Try to prevent race-conditions in case multiple threads
+        # somehow receive the same message at the same time
         sleep(random.uniform(0.008, 0.05))
 
         # Don't respond to messages we've already responded to.
@@ -482,7 +486,7 @@ class Client:
                     self.log(str("executing: " + command), in_log_level="Info")
 
                     # Warning: This is about to execute some arbitrary UNIX command in it's own nice little
-                    # non-isolated fork of a process.
+                    # non-isolated fork of a process. That's very dangerous.
                     command_process = multiprocessing.Process(target=self.run_external_command,
                                                               args=(command,), name='Cmd_Thread')
                     command_process.start()
@@ -506,7 +510,7 @@ class Client:
 
             if message.startswith("corecount:"):
                 global module_loaded
-                import corecount  # If your IDE tells you this module isn't found, it's lying.
+                import corecount
 
                 module_loaded = "corecount"
                 corecount.respond_start(page_ids, message)
@@ -531,7 +535,7 @@ class Client:
                 page_contents = ''.join(page_lines)
 
                 sync_msg = (no_prop + ":" + "sync:" + page_id + ":" + page_contents)
-                self.broadcast(sync_msg)  # We need to broadcast
+                self.broadcast(sync_msg)
 
             if message.startswith("sync:"):
                 """ Update our pagefile with information from other node's completed work
@@ -555,6 +559,7 @@ class Client:
 
                 except FileNotFoundError:
                     self.log("Cannot open a non-existent page")
+                    existing_pagelines = []  # Stop my PyCharm from telling me this is referenced before assignment
 
                 if file_exists:
                     duplicate = False
@@ -610,7 +615,8 @@ class Client:
                              in_log_level="Debug")
 
                     if len(newlines) == len(network_tuple)+1:
-                        # Do module-specific I/O
+                        # We've received contributions from very node on the network.
+                        # Now do module-specific I/O
                         if module_loaded == "corecount":
                             os.chdir(original_path)
                             import corecount
@@ -624,10 +630,13 @@ class Client:
                 file_hash = message_to_parse[:16]
                 file_length = message_to_parse[17:][:8]
                 origin_addr_id = message_to_parse[26:]
+
                 self.log("Our Address Identifier: "+ADDR_ID, in_log_level="Debug")
                 self.log("Received message destined for Address Identifier: "+origin_addr_id, in_log_level="Debug")
+                self.log("Checksum: " + file_hash)
+                self.log("File Size: "+str(file_length))
 
-            # Remove the specified node from the network (i.e disconnect from it)
+                # ... If applicable, affirm the file request, and hopefully receive data through the proxy.
 
             if message.startswith("init_file:"):
                 os.chdir(original_path)
@@ -653,6 +662,7 @@ class Client:
 
                 # Will be continued in self.init_file(stage=1), called during the elect: flag
 
+            # Disconnect from some misbehaving node and pop it from out network tuple
             if message.startswith("remove:"):
 
                 address_to_remove = message[7:]
@@ -686,15 +696,6 @@ class Client:
                     self.log(str("Sorry, we're not connected to " + address_to_remove),
                              in_log_level="Warning")
                     pass
-
-            # Append signature(hash) to the message list, or in the case of sig=no_prop, do nothing.
-            if sig != no_prop:
-                message_list.append(sig)
-
-                # End of respond()
-                # Propagate the message to the rest of the network.
-                self.log(str('Broadcasting: ' + full_message), in_log_level="Debug")
-                self.broadcast(full_message)
 
             if message.startswith("vote:"):
                 self.log("Ongoing election: "+str(ongoing_election), in_log_level="Debug")
@@ -756,11 +757,14 @@ class Client:
             if message.startswith("elect:"):
                 # elect:reason:representative
                 import inject
+
+                # Parse arguments
                 Injector = inject.NetworkInjector()
                 args = Injector.parse_cmd(message)
                 reason = args[0]
                 new_leader = args[1]
                 index = Primitives.find_election_index(election_list, reason)
+
                 election_list = Primitives.set_leader(election_list, index, new_leader)
                 ongoing_election = False
 
@@ -778,8 +782,36 @@ class Client:
                         # Pass control to the file module
                         file.start(1, new_leader, file_checksum, localhost, file_list, network_tuple)
                 print("\n")
-                print(election_list)
+                print(election_list)  # DEBUG
                 print("\n")
+
+            if message.startswith("benchmark:"):
+                os.chdir(original_path)
+                import inject
+                import WPABruteforce
+                arguments = inject.NetworkInjector().parse_cmd(message)
+
+                if arguments[0] == "WPA":
+
+                    def do_benchmark_and_continue(page_hash):
+                        global score
+                        score = WPABruteforce.do_wpa_benchmark()
+                        WPABruteforce.respond_start(score, page_hash, network_tuple)
+
+                    new_process = multiprocessing.Process(target=do_benchmark_and_continue,
+                                                          args=(arguments[1], ), name='WPA Benchmark Thread')
+                    new_process.daemon = True
+                    new_process.start()
+                    self.log("Initiating benchmark...", in_log_level="Info")
+
+            # Append signature(hash) to the message list, or in the case of sig=no_prop, do nothing.
+            if sig != no_prop:
+                message_list.append(sig)
+
+                # End of respond()
+                # Propagate the message to the rest of the network.
+                self.log(str('Broadcasting: ' + full_message), in_log_level="Debug")
+                self.broadcast(full_message)
 
     def listen(self, connection):
         # Listen for incoming messages and call self.respond() to respond to them.
@@ -909,6 +941,8 @@ class Client:
             if remote_addresses:
 
                 for remote_address in remote_addresses:
+                    # Bootstrap into the network
+
                     sock = socket.socket()
 
                     try:

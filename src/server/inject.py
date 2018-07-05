@@ -9,6 +9,9 @@ original_path = os.path.dirname(os.path.realpath(__file__))
 
 sys.path.insert(0, '../inter/modules/')
 
+# Global lookup of message we are currently trying to send.
+# Used as a backup in case of OSError/BrokenPipeError/etc.
+# in the send call
 current_message = None
 
 
@@ -86,7 +89,7 @@ class NetworkInjector(multiprocessing.Process):
 
     def broadcast(self, message, network_tuple, signing=True):
         global current_message
-        print("Broadcasting:"+message)
+        print("Server/Injector -> Info: Broadcasting: ", message, sep='')
         return_code = 0
 
         if signing:
@@ -111,11 +114,9 @@ class NetworkInjector(multiprocessing.Process):
             if type(send_status) == str:
                 return_code = send_status
 
-        current_message = None  # TODO: clarify the purpose of this variable. What does it do?
+        # This message has been send successfully
+        current_message = None
         return return_code
-
-    def kill(self):
-        print("Injector -> kill() : Reluctantly terminating myself... * cries to the thought of SIGKILL *")
 
     def parse_cmd(self, in_cmd):
         """Parse an input command for arguments and return them in a List"""
@@ -126,6 +127,9 @@ class NetworkInjector(multiprocessing.Process):
         in_cmd = in_cmd[cmd_index + 1:]
 
         number_of_args = in_cmd.count(":") + 1
+
+        # All arguments are separated by colons.
+        # Find colon index -> Read until next colon -> append argument to list -> remove argument -> repeat.
 
         for i in range(0, number_of_args):
             argument_index = in_cmd.find(":")
@@ -143,9 +147,9 @@ class NetworkInjector(multiprocessing.Process):
 
     @staticmethod
     def read_interaction_directory():
-        # Read flags from lines in files in src/inter/ and broadcast them
+        """ Read flags from lines in text files in src/inter and broadcast them.
         # TODO: this should be run in a seperate thread as part of the server. As of now, this won't run without
-        # ...some form of user input. User input should never be necessary in (potentially) headless clusters.
+        # TODO: ...some form of user input. User input should never be necessary in (potentially) headless clusters. """
 
         global original_path
 
@@ -186,22 +190,29 @@ class NetworkInjector(multiprocessing.Process):
         return formatted_flags
 
     def interpret(self, in_msg, net_tuple):
+        """Identify whether a message is a flag or command, and execute any appropriate functions and/or broadcasts.
+        Doesn't return"""
+
         if in_msg[:1] == "$":
-            msg_type = "command"
+            command = True
+
         else:
-            msg_type = "flag"
             return self.broadcast(in_msg, net_tuple)
 
-        if msg_type == "command":
+        if command:
             in_cmd = in_msg[1:]
 
             if in_cmd == "corecount":
+                # Use distributed computing to identify how many total cores we have across the network.
+
                 os.chdir(original_path)
 
                 import corecount
                 corecount.initiate(in_cmd, net_tuple)
 
             elif in_cmd.startswith("vote"):
+                # Initiate a vote for some given reason.
+
                 os.chdir(original_path)
                 import vote
 
@@ -209,25 +220,38 @@ class NetworkInjector(multiprocessing.Process):
                 vote.initiate(net_tuple, args)
 
             elif in_cmd.startswith("file"):
-                # $file_path
+                # Start distributing a file across the network
+
+                # We need the file module to do that :P
                 os.chdir(original_path)
                 import file
 
+                # Run the appropriate module function
                 args = self.parse_cmd(in_cmd)
                 file.initiate(net_tuple, args)
 
+            elif in_cmd.startswith("WPABruteForce"):
+                # WPABruteForce:keysize
+                os.chdir(original_path)
+                import WPABruteforce
+
+                args = self.parse_cmd(in_cmd)
+                WPABruteforce.initiate(net_tuple, args)
+
     def init(self, network_tuple, loaded_modules, msg=None):
+
+        # 1. Load any modules loaded by server
         for item in loaded_modules:
             import_str = "import "+item
             exec(import_str)
 
+        # 2. a. Get user input
         msg = str(input("Please enter flag to inject into network:  "))
 
-        print("Server/Injector -> Broadcasting the contents of the "
-              "interaction directory", "to the network")
-
+        # 2. b. Get input from the filesystem
         for flag in self.read_interaction_directory():
             self.interpret(flag, network_tuple)
 
+        # 3. Interpret and/or broadcast.
         print("Server/Injector -> Broadcasting", msg, "to the network")
         return self.interpret(msg, network_tuple)
