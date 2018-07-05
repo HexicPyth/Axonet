@@ -34,8 +34,12 @@ def initiate(net_tuple, arguments):
 def do_wpa_benchmark():
     os.chdir(original_path)
     os.chdir(os.path.abspath("./scripts/WPABenchmark"))
-    os.remove(os.path.abspath("./out.txt"))
 
+    try:
+        os.remove(os.path.abspath("./out.txt"))
+    except FileNotFoundError:
+        pass
+    
     os.system("sh dobenchmark.sh")
     benchmark_lines = open("out.txt").readlines()
     result = benchmark_lines[-1]
