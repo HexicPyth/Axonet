@@ -57,7 +57,7 @@ def respond_start(score, page_id, addr_id, net_tuple):
     print("WPABruteForce -> respond_start: Writing score to page: "+page_id)
 
     Client.write_to_page(page_id, str(score))
-    pageline = addr_id+str(score)
+    pageline = addr_id+":"+str(score)
 
     Injector.broadcast("sync"+":"+page_id+":"+pageline, net_tuple)
     # 2. Synchronise pagefiles
