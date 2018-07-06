@@ -72,9 +72,17 @@ def start(page_id, raw_lines, dictionary_size, addr_id):
     print("WPABruteForce -> Working in page: "+page_id)
     print("WPABruteForce ->Raw lines: "+str(raw_lines))
 
-    score_list = [parse_line[33:].rstrip("\n") for parse_line
-                  in raw_lines if parse_line != "\n"]
+    our_score = 0
+    score_list = []
+
+    # Mindlessly converted verbatim from list-comprehension form. Excuse the "ugly-ness"
+    for parse_line in raw_lines:
+        if parse_line != "\n":
+            score_list.append(parse_line[33:])
+            if parse_line[:32] == addr_id:
+                our_score = int(parse_line[33:])
 
     print("WPABruteForce -> Scores: "+str(score_list))
     print("WPABruteForce -> Dictionary Size: "+str(dictionary_size))
     print("WPABruteForce -> Our Address Identifier: "+addr_id)
+    print("WPABruteForce -> Our Score: "+str(our_score))
