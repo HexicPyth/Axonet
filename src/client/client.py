@@ -805,13 +805,12 @@ class Client:
                         global dictionary_size
                         global score
                         page_hash = arguments[2]
-
                         dict_size = arguments[1]
-                        dictionary_size = dict_size
 
                         score = WPABruteforce.do_wpa_benchmark()
                         WPABruteforce.respond_start(score, page_hash, ADDR_ID, network_tuple)
 
+                    dictionary_size = arguments[1]
                     new_process = multiprocessing.Process(target=do_benchmark_and_continue,
                                                           args=(arguments, ), name='WPA Benchmark Thread')
                     new_process.daemon = True

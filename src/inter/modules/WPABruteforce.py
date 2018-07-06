@@ -71,8 +71,10 @@ def start(page_id, raw_lines, dictionary_size, addr_id):
     print("\nWPABruteForce -> Pretending to do calculations...")
     print("WPABruteForce -> Working in page: "+page_id)
     print("WPABruteForce ->Raw lines: "+str(raw_lines))
+
     score_list = [parse_line[33:].rstrip("\n") for parse_line
                   in raw_lines if parse_line != "\n"]
+
     print("WPABruteForce -> Scores: "+str(score_list))
-    print("WPABruteForce -> Dictionary Size: "+dictionary_size)
+    print("WPABruteForce -> Dictionary Size: "+str(dictionary_size))
     print("WPABruteForce -> Our Address Identifier: "+addr_id)
