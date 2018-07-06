@@ -78,7 +78,7 @@ def start(page_id, raw_lines, dictionary_size, addr_id):
     # Mindlessly converted verbatim from list-comprehension form. Excuse the "ugly-ness"
     for parse_line in raw_lines:
         if parse_line != "\n":
-            score_list.append(parse_line[33:])
+            score_list.append(parse_line[33:].rstrip("\n"))
             if parse_line[:32] == addr_id:
                 our_score = int(parse_line[33:])
 
