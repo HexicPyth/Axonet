@@ -75,7 +75,8 @@ def start(page_id, raw_lines, dictionary_size, addr_id):
     our_score = 0
     score_list = []
 
-    # Mindlessly converted verbatim from list-comprehension form. Excuse the "ugly-ness"
+    # Extract the actualy scores from pageline and append them to a list.
+    # (Mindlessly converted verbatim from list-comprehension form. Excuse the "ugly-ness")
     for parse_line in raw_lines:
         if parse_line != "\n":
             score_list.append(parse_line[33:].rstrip("\n"))
