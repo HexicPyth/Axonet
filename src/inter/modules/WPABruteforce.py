@@ -9,7 +9,6 @@ os.chdir(original_path)
 sys.path.insert(0, '../../client/')
 sys.path.insert(0, '../../server/')
 no_prop = "ffffffffffffffff"
-dict_size = 0
 
 
 def initiate(net_tuple, arguments):
@@ -29,7 +28,7 @@ def initiate(net_tuple, arguments):
     injector.broadcast(newpage_msg, net_tuple)
 
     # 1b. Initiate a benchmark
-    benchmark_msg = "benchmark:WPA:"+benchmark_id
+    benchmark_msg = "benchmark:WPA:"+dict_size+":"+benchmark_id
     injector.broadcast(benchmark_msg, net_tuple)
 
 
@@ -62,11 +61,12 @@ def respond_start(score, page_id, addr_id, net_tuple):
     pageline = addr_id+":"+str(score)
 
     # 2. Synchronise pagefiles
-    Injector.broadcast("sync"+":"+page_id+":"+pageline, net_tuple)
+    sync_msg = "sync"+":"+page_id+":"+pageline
+    print("\n\n", sync_msg, "\n\n")
+    Injector.broadcast(sync_msg, net_tuple)
 
 
-def start(page_id, raw_lines):
-    global dict_size
+def start(page_id, raw_lines, dictionary_size, addr_id):
     """Called from sync: once all nodes have contributed to the network"""
     print("\nWPABruteForce -> Pretending to do calculations...")
     print("WPABruteForce -> Working in page: "+page_id)
@@ -74,4 +74,5 @@ def start(page_id, raw_lines):
     score_list = [parse_line[33:].rstrip("\n") for parse_line
                   in raw_lines if parse_line != "\n"]
     print("WPABruteForce -> Scores: "+str(score_list))
-    print("WPABruteForce -> Dictionary Size: "+str(dict_size))
+    print("WPABruteForce -> Dictionary Size: "+dictionary_size)
+    print("WPABruteForce -> Our Address Identifier: "+addr_id)

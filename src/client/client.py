@@ -24,6 +24,7 @@ election_list = []   # [(reason, representative), (another_reason, another_repre
 campaign_list = []  # [int, another_int, etc.]
 file_list = []  # (file_size, path, checksum, proxy)
 our_campaign = 0  # An integer between 0 and 2^128
+dictionary_size = 0  # Temporarily hold the dictionary_size value while we sync: (WPABruteForce)
 network_tuple = ()  # ((socket, address), (another_socket, another_address))
 message_list = []
 page_list = []  # temporary file objects to close on stop
@@ -386,6 +387,7 @@ class Client:
         global ADDR_ID
         global file_proxy
         global SALT
+        global dictionary_size
 
         full_message = str(msg)
         message = full_message[17:]  # Message without signature
@@ -626,7 +628,7 @@ class Client:
                         elif module_loaded == "WPABruteForce":
                             os.chdir(original_path)
                             import WPABruteforce
-                            WPABruteforce.start(page_id, raw_lines)
+                            WPABruteforce.start(page_id, raw_lines, dictionary_size, ADDR_ID)
 
             if message.startswith("file:"):
                 # file:(64-bit file hash):(32-bit file length):(128-bit origin address identifier)
@@ -799,13 +801,19 @@ class Client:
 
                 if arguments[0] == "WPA":
 
-                    def do_benchmark_and_continue(page_hash):
+                    def do_benchmark_and_continue(in_arguments):
+                        global dictionary_size
                         global score
+                        page_hash = arguments[2]
+
+                        dict_size = arguments[1]
+                        dictionary_size = dict_size
+
                         score = WPABruteforce.do_wpa_benchmark()
                         WPABruteforce.respond_start(score, page_hash, ADDR_ID, network_tuple)
 
                     new_process = multiprocessing.Process(target=do_benchmark_and_continue,
-                                                          args=(arguments[1], ), name='WPA Benchmark Thread')
+                                                          args=(arguments, ), name='WPA Benchmark Thread')
                     new_process.daemon = True
                     new_process.start()
                     self.log("Initiating benchmark...", in_log_level="Info")

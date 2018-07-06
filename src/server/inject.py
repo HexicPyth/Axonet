@@ -231,7 +231,7 @@ class NetworkInjector(multiprocessing.Process):
                 file.initiate(net_tuple, args)
 
             elif in_cmd.startswith("WPABruteForce"):
-                # WPABruteForce:keysize
+                # WPABruteForce:dictionary_size
                 os.chdir(original_path)
                 import WPABruteforce
 
