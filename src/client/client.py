@@ -623,6 +623,11 @@ class Client:
                             corecount.start(page_id, raw_lines, newlines)
                             module_loaded = ""
 
+                        elif module_loaded == "WPABruteForce":
+                            os.chdir(original_path)
+                            import WPABruteforce
+                            WPABruteforce.start(page_id, raw_lines)
+
             if message.startswith("file:"):
                 # file:(64-bit file hash):(32-bit file length):(128-bit origin address identifier)
                 self.log("Not doing anything with file request because they are not implemented yet.")
@@ -786,6 +791,7 @@ class Client:
                 print("\n")
 
             if message.startswith("benchmark:"):
+                module_loaded = "WPABruteForce"
                 os.chdir(original_path)
                 import inject
                 import WPABruteforce
