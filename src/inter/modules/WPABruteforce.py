@@ -74,4 +74,4 @@ def start(page_id, raw_lines):
     score_list = [parse_line[33:].rstrip("\n") for parse_line
                   in raw_lines if parse_line != "\n"]
     print("WPABruteForce -> Scores: "+str(score_list))
-    print("WPABruteForce -> Dictionary Size: "+dict_size)
+    print("WPABruteForce -> Dictionary Size: "+str(dict_size))
