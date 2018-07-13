@@ -87,7 +87,7 @@ def start(page_id, raw_lines, dictionary_size, addr_id):
                 our_score = int(parse_line[33:])
 
     cluster_score = sum(score_list)
-    projected_cluster_time = dictionary_size/cluster_score
+    projected_cluster_time = int(dictionary_size)/cluster_score
     requested_keycount = projected_cluster_time*our_score
 
     print("WPABruteForce -> Scores: "+str(score_list))
