@@ -75,6 +75,7 @@ def start(page_id, raw_lines, dictionary_size, addr_id):
     print("WPABruteForce ->Raw lines: "+str(raw_lines))
 
     our_score = 0
+    cluster_score = 0
     score_list = []
 
     # Extract the actualy scores from pageline and append them to a list.
@@ -85,8 +86,13 @@ def start(page_id, raw_lines, dictionary_size, addr_id):
             if parse_line[:32] == addr_id:
                 our_score = int(parse_line[33:])
 
+    cluster_score = sum(score_list)
+    projected_cluster_time = dictionary_size/cluster_score
+    requested_keycount = projected_cluster_time*our_score
+
     print("WPABruteForce -> Scores: "+str(score_list))
     print("WPABruteForce -> Dictionary Size: "+str(dictionary_size))
-    print("WPABruteForce -> Our Address Identifier: "+addr_id)
     print("WPABruteForce -> Our Score: "+str(our_score))
-    print("WPABruteForce -> Cluster Score:" + str(sum(score_list)))
+    print("WPABruteForce -> Cluster Score: " + str(cluster_score))
+    print("WPABruteForce -> Projected time for cluster to exhaust dictionary: "+str(projected_cluster_time))
+    print("WPABruteForce -> Requesting "+str(requested_keycount)+" keys...")
