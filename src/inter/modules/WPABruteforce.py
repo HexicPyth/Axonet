@@ -88,11 +88,12 @@ def start(page_id, raw_lines, dictionary_size, addr_id):
 
     cluster_score = sum(score_list)
     projected_cluster_time = int(dictionary_size)/cluster_score
-    requested_keycount = projected_cluster_time*our_score
+    requested_keycount = round(projected_cluster_time*our_score)
 
     print("WPABruteForce -> Scores: "+str(score_list))
-    print("WPABruteForce -> Dictionary Size: "+str(dictionary_size))
-    print("WPABruteForce -> Our Score: "+str(our_score))
-    print("WPABruteForce -> Cluster Score: " + str(cluster_score))
-    print("WPABruteForce -> Projected time for cluster to exhaust dictionary: "+str(projected_cluster_time))
+    print("WPABruteForce -> Dictionary Size: "+str(dictionary_size) + "keys")
+    print("WPABruteForce -> Our Score: "+str(our_score) + "keys/second")
+    print("WPABruteForce -> Cluster Score: " + str(cluster_score) + "keys/second")
+    print("WPABruteForce -> Projected time for cluster to exhaust dictionary: "
+          + str(round(projected_cluster_time))) + " seconds"
     print("WPABruteForce -> Requesting "+str(requested_keycount)+" keys...")
