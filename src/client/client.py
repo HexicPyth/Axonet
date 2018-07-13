@@ -569,7 +569,7 @@ class Client:
 
                     # How do we sort out duplicates?
                     for line in existing_pagelines:
-                        if line == data:
+                        if line == data and line[:32]:
                             duplicate = True
                             self.log("Not writing duplicate data into page " + page_id)
                             break
@@ -804,11 +804,18 @@ class Client:
                     def do_benchmark_and_continue(in_arguments):
                         global dictionary_size
                         global score
+                        global page_ids
+
                         page_hash = arguments[2]
                         dict_size = arguments[1]
+                        if page_hash not in page_ids:
 
-                        score = WPABruteforce.do_wpa_benchmark()
-                        WPABruteforce.respond_start(score, page_hash, ADDR_ID, network_tuple)
+                            score = WPABruteforce.do_wpa_benchmark()
+                            WPABruteforce.respond_start(score, page_hash, ADDR_ID, network_tuple)
+
+                            page_ids.append(page_hash)
+                        else:
+                            self.log("Not initiating a duplicate benchmark")
 
                     dictionary_size = arguments[1]
                     new_process = multiprocessing.Process(target=do_benchmark_and_continue,
