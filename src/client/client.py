@@ -809,11 +809,10 @@ class Client:
                         page_hash = arguments[2]
                         dict_size = arguments[1]
                         if page_hash not in page_ids:
-
+                            page_ids.append(page_hash)
                             score = WPABruteforce.do_wpa_benchmark()
                             WPABruteforce.respond_start(score, page_hash, ADDR_ID, network_tuple)
 
-                            page_ids.append(page_hash)
                         else:
                             self.log("Not initiating a duplicate benchmark")
 
