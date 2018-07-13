@@ -33,6 +33,9 @@ def initiate(net_tuple, arguments):
 
 
 def do_wpa_benchmark():
+    """Scrape the output of aircrack-ng's benchmark option (aircrack-ng -S)
+    Returns whatever score aircrack-ng returns."""
+
     os.chdir(original_path)
     os.chdir(os.path.abspath("./scripts/WPABenchmark"))
 
@@ -68,7 +71,6 @@ def respond_start(score, page_id, addr_id, net_tuple):
 
 def start(page_id, raw_lines, dictionary_size, addr_id):
     """Called from sync: once all nodes have contributed to the network"""
-    print("\nWPABruteForce -> Pretending to do calculations...")
     print("WPABruteForce -> Working in page: "+page_id)
     print("WPABruteForce ->Raw lines: "+str(raw_lines))
 
@@ -87,3 +89,4 @@ def start(page_id, raw_lines, dictionary_size, addr_id):
     print("WPABruteForce -> Dictionary Size: "+str(dictionary_size))
     print("WPABruteForce -> Our Address Identifier: "+addr_id)
     print("WPABruteForce -> Our Score: "+str(our_score))
+    print("WPABruteForce -> Cluster Score:" + str(sum(score_list)))
