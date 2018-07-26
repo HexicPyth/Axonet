@@ -961,28 +961,26 @@ class Client:
                  in_log_level="Info")
 
         # Stage 1
-        if network_architecture == "Complete":
+        if remote_addresses:
 
-            if remote_addresses:
+            for remote_address in remote_addresses:
+                # Bootstrap into the network
 
-                for remote_address in remote_addresses:
-                    # Bootstrap into the network
+                sock = socket.socket()
 
-                    sock = socket.socket()
+                try:
+                    connection = (sock, remote_address)
+                    self.connect(connection, remote_address, port)
 
-                    try:
-                        connection = (sock, remote_address)
-                        self.connect(connection, remote_address, port)
+                    self.log(str("Starting listener on " + remote_address), in_log_level="Info")
+                    self.listen(connection)
 
-                        self.log(str("Starting listener on " + remote_address), in_log_level="Info")
-                        self.listen(connection)
+                    # What does this do?
+                    if network_architecture == "complete":
+                        self.send(connection, no_prop+":echo", sign=False)  # WIP
 
-                        # What does this do?
-                        if network_architecture == "complete":
-                            self.send(connection, no_prop+":echo", sign=False)  # WIP
-
-                    except ConnectionRefusedError:
-                        self.log("Unable to connect to remove server; Failed to bootstrap.",
-                                 in_log_level="Warning")
-            else:
-                self.log("Initializing with no remote connections...", in_log_level="Info")
+                except ConnectionRefusedError:
+                    self.log("Unable to connect to remove server; Failed to bootstrap.",
+                             in_log_level="Warning")
+        else:
+            self.log("Initializing with no remote connections...", in_log_level="Info")
