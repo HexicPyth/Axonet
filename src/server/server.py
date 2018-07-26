@@ -18,6 +18,7 @@ localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes 
 
 network_tuple = ()  # Global lookup of (sockets, addresses)
 file_tuple = ()  # (hash, remote_host, index)
+file_proxies = []  # Addresses we are proxying for
 message_list = []   # List of message hashes
 no_prop = "ffffffffffffffff"  # a message with a true hash indicates that no message propagation is needed.
 file_index = 0
@@ -161,7 +162,7 @@ class Server:
         try:
             sock.sendall(msg)
 
-        except (BrokenPipeError, OSError):
+        except (BrokenPipeError, OSError, AttributeError):
             if address != self.get_local_ip() and address != "127.0.0.1":
 
                 log_msg = str("Errors occurred sending to " + address + "; Disconnecting...")
@@ -258,43 +259,6 @@ class Server:
         # noinspection PyProtectedMember
         os._exit(0)
 
-    def append_to_file_tuple(self, file_hash, remote_host, index):
-        global file_tuple  # (hash, remote_host, data)
-
-        # Tuples are immutable; convert it to a list.
-        file_list = list(file_tuple)
-
-        file_object = [file_hash, remote_host, index]
-
-        if file_tuple:
-            try:
-                for f_object in file_tuple:
-
-                    # Avoid shadowing names
-                    f_hash = f_object[0]
-                    remote_node = f_object[1]
-                    # index = f_object[2]  -- We'll come back to this later
-
-                    if file_hash == f_hash:
-                        log_msg = str("Warning: " + remote_host +
-                                      " is trying to claim multiple indexes; disallowing...")
-                        self.log(log_msg, in_log_level="Warning")
-
-                    if remote_host == remote_node:
-                        self.log("Not appending duplicate node to file tuple; ", in_log_level="Info")
-                        return
-
-            except IndexError:
-                # TODO: What does this catch?
-                self.log("IndexError(s) occurred checking to file tuple; continuing...", in_log_level="Warning")
-
-        file_list.append(file_object)
-        self.log(str(file_list), in_log_level="Debug")
-
-        # (Again) tuples are immutable; replace the old one with the new one
-        file_tuple = tuple(file_list)
-        self.log(str(file_tuple), in_log_level="Debug")
-
     def respond(self, msg, connection):
         # We received a message, reply with an appropriate response.
         # Doesn't return anything.
@@ -303,6 +267,7 @@ class Server:
         global message_list
         global file_tuple  # (hash, remote_host, node)
         global file_index
+        global file_proxies
 
         address = connection[1]
         full_message = str(msg)
@@ -326,6 +291,39 @@ class Server:
             if message == "stop":
                 self.log("Exiting Cleanly", in_log_level="Info")
                 self.stop()
+
+            if message.startswith("remove:"):
+                address_to_remove = message[7:]
+
+                try:
+
+                    # Don't disconnect from localhost. That's what self.terminate is for.
+                    if address_to_remove != self.get_local_ip() and address_to_remove != "127.0.0.1":
+
+                        sock = self.lookup_socket(address_to_remove)
+
+                        if sock:
+                            self.log("Remove -> Disconnecting from " + address_to_remove,
+                                     in_log_level="Info")
+
+                            # lookup the socket of the address we want to remove
+                            connection_to_remove = (sock, address_to_remove)
+                            self.log(str("\t--who's connection is: " + str(connection_to_remove)),
+                                     in_log_level="Info")
+                            self.disconnect(connection_to_remove)
+
+                        else:
+                            self.log("Not disconnecting from a non-existent connection",
+                                     in_log_level="Warning")
+
+                    else:
+                        self.log("Not disconnecting from localhost, dimwit.", in_log_level="Warning")
+
+                except (ValueError, TypeError):
+                    # Either the address we're looking for doesn't exist, or we're not connected it it.
+                    self.log(str("Sorry, we're not connected to " + address_to_remove),
+                             in_log_level="Warning")
+                    pass
 
             if message.startswith("retrieve:"):
                 """
@@ -352,6 +350,30 @@ class Server:
 
                 fetch_msg = self.prepare("fetch:"+target_page)
                 self.broadcast(fetch_msg)
+
+            if message.startswith("proxy"):
+                import inject
+                injector = inject.NetworkInjector()
+
+                host_addr = address
+
+                if host_addr == "127.0.0.1":
+                    host_addr = self.get_local_ip()
+
+                self.log("Being a proxy for "+host_addr, in_log_level="Info")
+                proxy_message = message[6:]
+
+                if proxy_message.startswith("file:"):
+                    arguments = injector.parse_cmd(proxy_message)
+                    checksum = arguments[0]
+                    proxy_tuple = (host_addr, checksum)
+                    file_proxies.append(proxy_tuple)
+
+                    proxy_message = proxy_message[:-9]
+                    print(arguments)
+                    proxy_message += self.get_local_ip()
+                    self.broadcast(self.prepare(proxy_message))
+                    print(proxy_message)
 
             # We only broadcast messages with hashes we haven't already documented. That way the network doesn't
             # loop indefinitely broadcasting the same message. Also, Don't append no_prop to message_list.
@@ -650,7 +672,8 @@ class Server:
                             self.log(str("Listening on: "+address), in_log_level="Info")
                             self.listen(connection)
 
-                            self.send(connection, no_prop+":echo", signing=False)  # TODO: is this necessary?
+                            if network_architecture == "complete":
+                                self.send(connection, no_prop+":echo", signing=False)  # WIP
 
                         if network_architecture == "complete":
                             # In a 'complete' network, every node is connected to every other node for redundancy.
