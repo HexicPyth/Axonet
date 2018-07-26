@@ -51,7 +51,7 @@ original_path = os.path.dirname(os.path.realpath(__file__))
 os.chdir(original_path)
 sys.path.insert(0, '../inter/modules/')
 Primitives = primitives.Primitives(log_level, sub_node)
-
+network_architecture = "complete"
 
 class Client:
 
@@ -415,7 +415,9 @@ class Client:
                 """ Simple way to test our connection to a given node."""
 
                 self.log("echoing...", in_log_level="Info")
-                self.send(connection, no_prop + ':' + message, sign=False)  # If received, send back
+
+                if network_architecture == "complete":
+                    self.send(connection, no_prop + ':' + message, sign=False)  # If received, send back
 
             if message == "stop":
                 """ instruct all nodes to disconnect from each other and exit cleanly."""
@@ -900,7 +902,7 @@ class Client:
         terminated = True
         return 0
 
-    def initialize(self, port=3705, network_architecture="Complete",
+    def initialize(self, port=3705, net_architecture="Complete",
                    remote_addresses=None, command_execution=False,
                    file_storage=True, default_log_level="Debug", modules=None):
 
@@ -916,12 +918,14 @@ class Client:
         global sub_node
         global SALT
         global ADDR_ID
+        global network_architecture
 
         # Global variable assignment
         PORT = port
         allow_command_execution = command_execution
         allow_file_storage = file_storage
         log_level = default_log_level
+        network_architecture = net_architecture
 
         Primitives = primitives.Primitives(log_level, sub_node)
         SALT = secrets.token_hex(16)
@@ -974,7 +978,8 @@ class Client:
                         self.listen(connection)
 
                         # What does this do?
-                        self.send(connection, no_prop+":echo", sign=False)
+                        if network_architecture == "complete":
+                            self.send(connection, no_prop+":echo", sign=False)  # WIP
 
                     except ConnectionRefusedError:
                         self.log("Unable to connect to remove server; Failed to bootstrap.",
