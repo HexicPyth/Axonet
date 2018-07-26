@@ -308,7 +308,7 @@ class Server:
 
                             # lookup the socket of the address we want to remove
                             connection_to_remove = (sock, address_to_remove)
-                            self.log(str("Who's connection is: " + str(connection_to_remove)),
+                            self.log(str("\t--who's connection is: " + str(connection_to_remove)),
                                      in_log_level="Info")
                             self.disconnect(connection_to_remove)
 

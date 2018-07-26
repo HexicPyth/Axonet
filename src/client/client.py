@@ -953,7 +953,7 @@ class Client:
         except FileNotFoundError:
             pass
 
-        self.log("Attempting to connect to remote server... (Initiating stage 1)",
+        self.log("Attempting to connect to remote server(s)... (Initiating stage 1)",
                  in_log_level="Info")
 
         # Stage 1
@@ -973,6 +973,7 @@ class Client:
                         self.log(str("Starting listener on " + remote_address), in_log_level="Info")
                         self.listen(connection)
 
+                        # What does this do?
                         self.send(connection, no_prop+":echo", sign=False)
 
                     except ConnectionRefusedError:
