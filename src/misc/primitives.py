@@ -1,7 +1,7 @@
-# TODO: add send() receive(), etc.
 import struct
 import socket
 import datetime
+import sys
 from hashlib import sha3_224
 
 
@@ -12,7 +12,7 @@ class Primitives:
         self.SUB_NODE = sub_node
 
     def log(self, log_message, in_log_level='Warning'):
-        # TODO: Modularize this function
+        # TODO: This doesn't work. Fix it
 
         """ Process and deliver program output in an organized and
         easy to read fashion. Never returns. """
@@ -69,7 +69,9 @@ class Primitives:
     @staticmethod
     def prepare(message):
         """ Assign unique hashes to messages ready for transport.
-            Returns (new hashed message) -> str """
+            Returns (new hashed message) -> str
+            Note: These timestamps may be vulnerable to replay attacks.
+            Some day we should start using random data instead. """
 
         out = ""
         timestamp = str(datetime.datetime.utcnow())
@@ -82,9 +84,6 @@ class Primitives:
         out += message
         return out
 
-    # We would have send() here, but send() references disconnect(), which references remove(), which
-    # relies on the network tuple to function. Implementing remove() here would be impractical.
-
     def receive(self, connection):
         """ Read message length and unpack it into an integer
         Returns None if self.receiveall fails, or nothing at all otherwise.
@@ -93,7 +92,6 @@ class Primitives:
         sock = connection[0]
         try:
             raw_msg_length = self.receiveall(sock, 4)
-
             if not raw_msg_length:
                 return None
 
@@ -119,11 +117,12 @@ class Primitives:
             Returns None(-> NoneType) if/when EOF is hit.
         """
 
-        data = ''
+        data = b''
 
         while len(data) < n:
             try:
-                packet = (sock.recv(n - len(data))).decode()
+                raw_packet = (sock.recv(n - len(data)))
+                packet = raw_packet.decode()  # If this fails, we still have a packet to work with/debug
 
             except OSError:
                 self.log("Connection probably down or terminated (OSError: receiveall()",
@@ -132,11 +131,21 @@ class Primitives:
 
             # Something corrupted in transit. Let's just ignore the bad pieces for now.
             except UnicodeDecodeError:
-                raw_packet = (sock.recv(n - len(data)))
-                packet = raw_packet.decode('utf-8', 'ignore')
-                print("\nERROR: Packet failed to decode:", raw_packet, "\n")  # TODO: Why do we receive b'ffff'?
+
+                if len(raw_packet) == 4:  # raw_packet should not be referenced before assignment. TODO: will it?
+
+                    # The first four bytes of a message are it's binary length(see self.send); it'll almost never
+                    # decode anyway; ignore it. (Fix issue #22)
+                    packet = raw_packet
+
+                else:
+
+                    packet = raw_packet.decode('utf-8', 'ignore')
+                    print("\nWarning: Packet failed to decode:", raw_packet)  # TODO: Why do we receive b'ffff'?
+                    print("\tReturning: ", packet)
 
             except MemoryError:
+
                 print("\nERROR: MemoryError occurred decoding a packet. Returning an empty string\n")
                 packet = ""
 
@@ -144,24 +153,32 @@ class Primitives:
                 return None
 
             else:
-                data += packet
-        return data.encode('utf-8', 'ignore')
+                try:
+                    data += bytes(packet, 'ascii')
 
-    def find_representative(self, election_list, reason):
+                # We're appending bytes
+                except TypeError:
+                    data += packet
+        return data
+
+    @staticmethod
+    def find_representative(election_list, reason):
         for index, tup in enumerate(election_list):
             if tup[0] == reason:
                 return tup[1]
         else:
             return -1
 
-    def find_election_index(self, election_list, reason):
+    @staticmethod
+    def find_election_index(election_list, reason):
         for index, tup in enumerate(election_list):
             if tup[0] == reason:
                 return index
         else:
             return -1
 
-    def set_leader(self, election_list, index, leader):
+    @staticmethod
+    def set_leader(election_list, index, leader):
         print(election_list)
         election_tuple = election_list[index]
 
@@ -172,3 +189,28 @@ class Primitives:
         new_tuple = tuple(derived_list)
         election_list.insert(index, new_tuple)
         return election_list
+
+    @staticmethod
+    def set_file_proxy(checksum, in_list, proxy_addr):
+        # File list: (size, path, checksum, proxy)
+        file_tuple = ()
+        for f_tuple in in_list:
+            if list(f_tuple)[2] == checksum:
+                file_tuple = f_tuple
+                break
+
+        derived_list = list(file_tuple)
+        derived_list[3] = proxy_addr
+        new_file_tuple = tuple(derived_list)
+        return new_file_tuple
+
+    @staticmethod
+    def find_file_tuple(in_list, checksum):
+        # File list: (size, path, checksum, proxy)
+        file_tuple = ()
+        for f_tuple in in_list:
+            if list(f_tuple)[2] == checksum:
+                file_tuple = f_tuple
+                return file_tuple
+        return -1
+
