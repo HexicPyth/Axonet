@@ -648,7 +648,6 @@ class Server:
                 try:
 
                     localhost.listen(5)
-
                     client, address_tuple = localhost.accept()
 
                     if not terminated:
@@ -684,5 +683,6 @@ class Server:
                     elif terminated:
                         sys.exit(0)
 
-                except ConnectionResetError:
+                # OSError will occur on Windows Systems we try to terminate. Handle that.
+                except (ConnectionResetError, OSError):
                     self.log("Server -> localhost has disconnected", in_log_level="Warning")
