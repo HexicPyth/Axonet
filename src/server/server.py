@@ -683,6 +683,9 @@ class Server:
                     elif terminated:
                         sys.exit(0)
 
-                # OSError will occur on Windows Systems we try to terminate. Handle that.
-                except (ConnectionResetError, OSError):
+                except (ConnectionResetError):
                     self.log("Server -> localhost has disconnected", in_log_level="Warning")
+
+                # OSError will occur on Windows Systems we try to terminate. Handle that.
+                except OSError:
+                    sys.exit(0)
