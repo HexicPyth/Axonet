@@ -84,9 +84,6 @@ class Primitives:
         out += message
         return out
 
-    # We would have send() here, but send() references disconnect(), which references remove(), which
-    # relies on the network tuple to function. Implementing remove() here would be impractical.
-
     def receive(self, connection):
         """ Read message length and unpack it into an integer
         Returns None if self.receiveall fails, or nothing at all otherwise.
@@ -164,21 +161,24 @@ class Primitives:
                     data += packet
         return data
 
-    def find_representative(self, election_list, reason):
+    @staticmethod
+    def find_representative(election_list, reason):
         for index, tup in enumerate(election_list):
             if tup[0] == reason:
                 return tup[1]
         else:
             return -1
 
-    def find_election_index(self, election_list, reason):
+    @staticmethod
+    def find_election_index(election_list, reason):
         for index, tup in enumerate(election_list):
             if tup[0] == reason:
                 return index
         else:
             return -1
 
-    def set_leader(self, election_list, index, leader):
+    @staticmethod
+    def set_leader(election_list, index, leader):
         print(election_list)
         election_tuple = election_list[index]
 
@@ -190,7 +190,8 @@ class Primitives:
         election_list.insert(index, new_tuple)
         return election_list
 
-    def set_file_proxy(self, checksum, in_list, proxy_addr):
+    @staticmethod
+    def set_file_proxy(checksum, in_list, proxy_addr):
         # File list: (size, path, checksum, proxy)
         file_tuple = ()
         for f_tuple in in_list:
@@ -203,7 +204,8 @@ class Primitives:
         new_file_tuple = tuple(derived_list)
         return new_file_tuple
 
-    def find_file_tuple(self, in_list, checksum):
+    @staticmethod
+    def find_file_tuple(in_list, checksum):
         # File list: (size, path, checksum, proxy)
         file_tuple = ()
         for f_tuple in in_list:

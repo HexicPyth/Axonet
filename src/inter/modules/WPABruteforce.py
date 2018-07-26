@@ -75,11 +75,10 @@ def start(page_id, raw_lines, dictionary_size, addr_id):
     print("WPABruteForce ->Raw lines: "+str(raw_lines))
 
     our_score = 0
-    cluster_score = 0
     score_list = []
 
     # Extract the actual scores and append them to a list.
-    # (Mindlessly converted verbatim from list-comprehension form. Excuse the "ugly-ness")
+    # Note: Mindlessly converted verbatim from list-comprehension form. Excuse the ugly-ness
     for parse_line in raw_lines:
         if parse_line != "\n":
             score_list.append(int(parse_line[33:].rstrip("\n")))

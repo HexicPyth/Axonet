@@ -22,35 +22,34 @@ localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes 
 # State
 election_list = []   # [(reason, representative), (another_reason, another_representative)]
 campaign_list = []  # [int, another_int, etc.]
-file_list = []  # (file_size, path, checksum, proxy)
-our_campaign = 0  # An integer between 0 and 2^128
+file_list = []  # [(file_size, path, checksum, proxy), (file_size2, path2, checksum2, proxy2), etc.]
+our_campaign = 0  # An integer between 0 and 2^128 (see voting algorithm)
 dictionary_size = 0  # Temporarily hold the dictionary_size value while we sync: (WPABruteForce)
 network_tuple = ()  # ((socket, address), (another_socket, another_address))
 message_list = []
 page_list = []  # temporary file objects to close on stop
 page_ids = []  # Used by some modules
-file_proxy = ""
+file_proxy = ""  # Temporarily store the most recently voted file proxy until it is appended to the file_list.
 terminated = False
 cluster_rep = False
 ongoing_election = False
-
-no_prop = "ffffffffffffffff"  # True:[message] = No message propagation.
 loaded_modules = []  # List of all modules loaded
 module_loaded = ""  # Current module being executed
 
-original_path = os.path.dirname(os.path.realpath(__file__))
-os.chdir(original_path)
-sys.path.insert(0, '../inter/modules/')
 
-# Defaults
+# Defaults and arguments. Not state.
 PORT = 3705
 allow_command_execution = False  # Don't execute arbitrary UNIX commands when casually asked, that's bad :]
 connecting_to_server = False
 allow_file_storage = True
 log_level = ""  # "Debug", "Info", or "Warning"; To be set by init
 sub_node = "Client"
+no_prop = "ffffffffffffffff"  # True:[message] = No message propagation.
 SALT = None  # Will be set to a 128-bit hexadecimal token(by self.init) for making address identifiers
 ADDR_ID = None  # Another 128-bit hexadecimal token that wil be salted with SALt, and set by init()
+original_path = os.path.dirname(os.path.realpath(__file__))
+os.chdir(original_path)
+sys.path.insert(0, '../inter/modules/')
 Primitives = primitives.Primitives(log_level, sub_node)
 
 
@@ -428,7 +427,6 @@ class Client:
                 # Do so ourselves
                 self.terminate()
 
-            # If we received a foreign address, connect to it. This is address propagation.
             if message.startswith("ConnectTo:"):
                 connect_to_address = message[10:]  # len("ConnectTo:") = 10
 
@@ -441,8 +439,7 @@ class Client:
 
                     # Don't re-connect to localhost. All kinds of bad things happen if you do.
                     if connect_to_address == self.get_local_ip() or connect_to_address == "127.0.0.1":
-                        not_connecting_msg = str("Not connecting to " + connect_to_address
-                                                 + ";" + " That's localhost :P")
+                        not_connecting_msg = str("Not connecting to " + connect_to_address + "; That's localhost :P")
 
                         self.log(not_connecting_msg, in_log_level="Warning")
 
@@ -882,10 +879,13 @@ class Client:
         for file in page_list:
             self.log("Closing pages..", in_log_level="Info")
             file.close()
+
             try:
                 os.remove(file.name)
+
             except FileNotFoundError:
                 self.log("Not removing non-existent page")
+
             self.log(str("Terminating connection to "), in_log_level="Info")
 
         for connection in network_tuple:
