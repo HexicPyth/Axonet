@@ -292,6 +292,39 @@ class Server:
                 self.log("Exiting Cleanly", in_log_level="Info")
                 self.stop()
 
+            if message.startswith("remove:"):
+                address_to_remove = message[7:]
+
+                try:
+
+                    # Don't disconnect from localhost. That's what self.terminate is for.
+                    if address_to_remove != self.get_local_ip() and address_to_remove != "127.0.0.1":
+
+                        sock = self.lookup_socket(address_to_remove)
+
+                        if sock:
+                            self.log("Remove -> Disconnecting from " + address_to_remove,
+                                     in_log_level="Info")
+
+                            # lookup the socket of the address we want to remove
+                            connection_to_remove = (sock, address_to_remove)
+                            self.log(str("Who's connection is: " + str(connection_to_remove)),
+                                     in_log_level="Info")
+                            self.disconnect(connection_to_remove)
+
+                        else:
+                            self.log("Not disconnecting from a non-existent connection",
+                                     in_log_level="Warning")
+
+                    else:
+                        self.log("Not disconnecting from localhost, dimwit.", in_log_level="Warning")
+
+                except (ValueError, TypeError):
+                    # Either the address we're looking for doesn't exist, or we're not connected it it.
+                    self.log(str("Sorry, we're not connected to " + address_to_remove),
+                             in_log_level="Warning")
+                    pass
+
             if message.startswith("retrieve:"):
                 """
                 Opposite of write_page() function. This isn't a function because we need access to

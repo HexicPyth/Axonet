@@ -700,6 +700,8 @@ class Client:
                     self.log(str("Sorry, we're not connected to " + address_to_remove),
                              in_log_level="Warning")
                     pass
+                localhost_conn = (localhost, "127.0.0.1")
+                self.send(localhost_conn, no_prop+":"+message, sign=False)
 
             if message.startswith("vote:"):
                 self.log("Ongoing election: "+str(ongoing_election), in_log_level="Debug")
