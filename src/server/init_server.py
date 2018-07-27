@@ -5,9 +5,9 @@ import server
 port = 3705
 
 
-def init():
+def init(network_architecture):
     x = server.Server()
-    x.initialize(port=port, network_architecture="complete", method="socket",
+    x.initialize(port=port, network_architecture=network_architecture, method="socket",
                  listening=True, network_injection=True, default_log_level="Debug",
                  modules=["corecount"])
 
