@@ -41,30 +41,7 @@ Primitives = primitives.Primitives(sub_node, log_level)
 
 
 class Server:
-
-    def get_local_ip(self):
-        """Creates a temporary socket and connects to subnet,
-           yielding our local address. Returns: (local ip address) -> str """
-
-        temp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-        try:
-            temp_socket.connect(('10.255.255.0', 0))
-
-            # Yield our local address
-            local_ip = temp_socket.getsockname()[0]
-
-        except OSError:
-            # Connect refused; there is likely no network connection.
-            Primitives.log("Failed to identify local IP address; No network connection detected", in_log_level="Warning")
-
-            local_ip = "127.0.0.1"
-
-        finally:
-            temp_socket.close()
-
-        return local_ip
-
+    
     @staticmethod
     def prepare(message):
         """ Assign unique hashes to messages ready for transport.
@@ -138,7 +115,7 @@ class Server:
             sock.sendall(msg)
 
         except (BrokenPipeError, OSError, AttributeError):
-            if address != self.get_local_ip() and address != "127.0.0.1":
+            if address != () and address != "127.0.0.1":
 
                 log_msg = str("Errors occurred sending to " + address + "; Disconnecting...")
                 Primitives.log(log_msg, in_log_level="Warning")
@@ -273,7 +250,7 @@ class Server:
                 try:
 
                     # Don't disconnect from localhost. That's what self.terminate is for.
-                    if address_to_remove != self.get_local_ip() and address_to_remove != "127.0.0.1":
+                    if address_to_remove != Primitives.get_local_ip() and address_to_remove != "127.0.0.1":
 
                         sock = self.lookup_socket(address_to_remove)
 
@@ -333,7 +310,7 @@ class Server:
                 host_addr = address
 
                 if host_addr == "127.0.0.1":
-                    host_addr = self.get_local_ip()
+                    host_addr = Primitives.get_local_ip()
 
                 Primitives.log("Being a proxy for "+host_addr, in_log_level="Info")
                 proxy_message = message[6:]
@@ -346,7 +323,7 @@ class Server:
 
                     proxy_message = proxy_message[:-9]
                     print(arguments)
-                    proxy_message += self.get_local_ip()
+                    proxy_message += Primitives.get_local_ip()
                     self.broadcast(self.prepare(proxy_message))
                     print(proxy_message)
 
@@ -384,7 +361,7 @@ class Server:
             if disallow_local_disconnect:
                 Primitives.log("Terminated:"+str(terminated), in_log_level="Debug")
 
-                if address == self.get_local_ip() and not terminated:
+                if address == Primitives.get_local_ip() and not terminated:
 
                     Primitives.log("(Bug) Refusing to disconnect from localhost;"
                              " that's a terrible idea...", in_log_level="Warning")
@@ -435,9 +412,11 @@ class Server:
                         client = conn[0]
                         address = conn[1]
 
-                        if address == self.get_local_ip() or address == "127.0.0.1":
-                            Primitives.log("Something happened to localhost; not disconnecting",
-                                     in_log_level="Warning")
+                        print("TERMINATED: "+str(terminated))
+                        if address == Primitives.get_local_ip() or address == "127.0.0.1" and not terminated:
+                                Primitives.log("Something happened to localhost; not disconnecting",
+                                         in_log_level="Warning")
+                                print("TERMINATED: "+str(terminated))
                         else:
                             try:
                                 self.disconnect(conn)
@@ -451,6 +430,10 @@ class Server:
 
                                 # Don't leave zombie listeners running
                                 listener_terminated = True
+                                
+                            if terminated:
+                                os._exit(0)
+                                
                     except OSError:
                         pass
 
@@ -492,7 +475,7 @@ class Server:
                             doesn't have proper error handling because it's a disposable thread
                             and a waste of lines, so we'll handle it here """
 
-                            message_send_successful = (injector_return_value == self.get_local_ip())
+                            message_send_successful = (injector_return_value == Primitives.get_local_ip())
                             if message_send_successful and injector_return_value != "127.0.0.1":
 
                                 faulty_conn_disconnect_msg = str("Server -> Attempting to "
@@ -595,7 +578,7 @@ class Server:
 
             # Set parameters and global variables from their default values
 
-            address_string = self.get_local_ip()+":"+str(port)  # e.x 10.1.10.3:3705
+            address_string = Primitives.get_local_ip()+":"+str(port)  # e.x 10.1.10.3:3705
             net_injection = network_injection  # Didn't want to shadow variable names.
 
             Primitives.log("Initializing... ", in_log_level="Info")
@@ -631,7 +614,7 @@ class Server:
                         connection = (client, address)
 
                         # Our localhost connected, do localhost stuff;
-                        if address == self.get_local_ip() or address == "127.0.0.1":
+                        if address == Primitives.get_local_ip() or address == "127.0.0.1":
 
                             Primitives.log("Localhost has connected.", in_log_level="Info")
 
