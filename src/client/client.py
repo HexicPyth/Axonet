@@ -50,35 +50,10 @@ ADDR_ID = None  # Another 128-bit hexadecimal token that wil be salted with SALt
 original_path = os.path.dirname(os.path.realpath(__file__))
 os.chdir(original_path)
 sys.path.insert(0, '../inter/modules/')
-Primitives = primitives.Primitives(log_level, sub_node)
+Primitives = primitives.Primitives(sub_node, log_level)
 network_architecture = "complete"
 
 class Client:
-
-    @staticmethod
-    def log(log_message, in_log_level='Warning', subnode="Client"):
-        """ Process and deliver program output in an organized and
-        easy to read fashion. Never returns. """
-
-        # input verification
-        levels = ["Debug", "Info", "Warning"]
-
-        allowable_levels = []
-        allow_further_levels = False  # Allow all levels after the input.
-
-        for level in levels:
-            if allow_further_levels:
-                allowable_levels.append(level)
-
-            if level == log_level:
-                allowable_levels.append(level)
-                allow_further_levels = True
-
-        if in_log_level not in levels or in_log_level not in allowable_levels:
-            pass
-
-        else:
-            print(subnode, "->", in_log_level + ":", log_message)
 
     def get_local_ip(self):
         """Creates a temporary socket and connects to subnet,
@@ -94,7 +69,7 @@ class Client:
 
         except OSError:
             # Connect refused; there is likely no network connection.
-            self.log("Failed to identify local IP address. No network connection detected.",
+            Primitives.log("Failed to identify local IP address. No network connection detected.",
                      in_log_level="Warning")
             local_ip = "127.0.0.1"
 
@@ -207,7 +182,7 @@ class Client:
 
         # Connection not in network tuple, or socket is [closed]
         except ValueError:
-            self.log(str("Not removing non-existent connection: " + str(connection)), in_log_level="Warning")
+            Primitives.log(str("Not removing non-existent connection: " + str(connection)), in_log_level="Warning")
             return None
 
         # (Again) tuples are immutable; replace the old one with the new one
@@ -231,7 +206,7 @@ class Client:
             not_connecting_msg = str("Not connecting to " + connection[1],
                                      "We're already connected.")
 
-            self.log(not_connecting_msg, in_log_level="Warning")
+            Primitives.log(not_connecting_msg, in_log_level="Warning")
             self.remove((sock, address))
 
         # Do connect to nodes we are not already connected to
@@ -242,18 +217,18 @@ class Client:
 
                 if not local:
 
-                    self.log(str("Connecting to " + address), in_log_level="Info")
+                    Primitives.log(str("Connecting to " + address), in_log_level="Info")
                     sock.connect((address, port))
-                    self.log("Successfully connected.", in_log_level="Info")
+                    Primitives.log("Successfully connected.", in_log_level="Info")
                     connecting_to_server = False
 
                 elif local:
                     self.remove((sock, address))
 
-                    self.log("Connecting to localhost server...", in_log_level="Info")
+                    Primitives.log("Connecting to localhost server...", in_log_level="Info")
                     sock.connect((address, port))
 
-                    self.log("Successfully connected to localhost server", in_log_level="Info")
+                    Primitives.log("Successfully connected to localhost server", in_log_level="Info")
                     connecting_to_server = False
 
     def disconnect(self, connection, disallow_local_disconnect=True):
@@ -266,8 +241,8 @@ class Client:
             address_to_disconnect = connection[1]
 
         except TypeError:
-            self.log("Expected a connection tuple, got:", in_log_level="Warning")
-            self.log(str('\t') + str(connection), in_log_level="Warning")
+            Primitives.log("Expected a connection tuple, got:", in_log_level="Warning")
+            Primitives.log(str('\t') + str(connection), in_log_level="Warning")
             return None
 
         # 2. Try to disconnect from said node.
@@ -276,13 +251,13 @@ class Client:
             # Don't disconnect from localhost unless told to. That's done with self.terminate().
             if disallow_local_disconnect:
                 if address_to_disconnect == self.get_local_ip() or address_to_disconnect == "127.0.0.1":
-                    self.log("Not disconnecting from localhost dimwit.", in_log_level="Warning")
+                    Primitives.log("Not disconnecting from localhost dimwit.", in_log_level="Warning")
 
                 # Do disconnect from remote nodes. That sometimes makes sense.
                 else:
                     verbose_connection_msg = str("Disconnecting from " + address_to_disconnect
                                                  + "\n\t(  " + str(sock) + "  )")
-                    self.log(verbose_connection_msg, in_log_level="Info")
+                    Primitives.log(verbose_connection_msg, in_log_level="Info")
 
                     self.remove(connection)
 
@@ -293,14 +268,14 @@ class Client:
                         close_fail_msg = str("Failed to close the socket of "
                                              + address_to_disconnect
                                              + " -> OSError -> disconnect()")
-                        self.log(close_fail_msg, in_log_level="Warning")
+                        Primitives.log(close_fail_msg, in_log_level="Warning")
 
                     finally:
-                        self.log("Successfully disconnected.", in_log_level="Info")
+                        Primitives.log("Successfully disconnected.", in_log_level="Info")
 
         # Either the socket in question doesn't exist, or the socket is probably [closed].
         except (IndexError, ValueError):
-            self.log("Already disconnected from that address, passing...", in_log_level="Warning")
+            Primitives.log("Already disconnected from that address, passing...", in_log_level="Warning")
             pass
 
     """ The following three functions were written by StackOverflow user 
@@ -333,7 +308,7 @@ class Client:
             self.disconnect(connection)
 
     def broadcast(self, message):
-        self.log("Permuting the network tuple", in_log_level="Info")
+        Primitives.log("Permuting the network tuple", in_log_level="Info")
         self.permute_network_tuple()
         for connection in network_tuple:
             self.send(connection, message, sign=False)  # For each of them send the given message( = Broadcast)
@@ -350,7 +325,7 @@ class Client:
         global ADDR_ID
         """ Write data to a given pagefile by ID."""
 
-        self.log("Writing to page:" + page_id, in_log_level="Info")
+        Primitives.log("Writing to page:" + page_id, in_log_level="Info")
         os.chdir(original_path)
 
         """ Until we implement Asymmetric crypto, we'll identify ourselves 
@@ -400,7 +375,7 @@ class Client:
         # Don't respond to messages we've already responded to.
         if sig in message_list:
             not_responding_to_msg = str("Not responding to " + sig)
-            self.log(not_responding_to_msg, in_log_level="Debug")
+            Primitives.log(not_responding_to_msg, in_log_level="Debug")
 
         # Do respond to messages we have yet to respond to.
         elif sig not in message_list or sig == no_prop:
@@ -409,12 +384,12 @@ class Client:
             message_received_log = str('Received: ' + message
                                        + " (" + sig + ")" + " from: " + address)
 
-            self.log(message_received_log, in_log_level="Info")
+            Primitives.log(message_received_log, in_log_level="Info")
 
             if message == "echo":
                 """ Simple way to test our connection to a given node."""
 
-                self.log("echoing...", in_log_level="Info")
+                Primitives.log("echoing...", in_log_level="Info")
 
                 if network_architecture == "complete":
                     self.send(connection, no_prop + ':' + message, sign=False)  # If received, send back
@@ -434,7 +409,7 @@ class Client:
 
                 # Will return an socket if we're already connected to it.
                 connection_status = self.lookup_socket(connect_to_address)
-                self.log(str(network_tuple), in_log_level="Debug")
+                Primitives.log(str(network_tuple), in_log_level="Debug")
 
                 # If we're not already connected
                 if connection_status == 0:
@@ -443,16 +418,16 @@ class Client:
                     if connect_to_address == self.get_local_ip() or connect_to_address == "127.0.0.1":
                         not_connecting_msg = str("Not connecting to " + connect_to_address + "; That's localhost :P")
 
-                        self.log(not_connecting_msg, in_log_level="Warning")
+                        Primitives.log(not_connecting_msg, in_log_level="Warning")
 
                     else:
                         local_address = self.get_local_ip()
 
                         # Be verbose
-                        self.log(str("self.lookup_socket() indicates that "
+                        Primitives.log(str("self.lookup_socket() indicates that "
                                      "we're not connected to " + connect_to_address), in_log_level="Info")
 
-                        self.log(str("self.get_local_ip() indicates that localhost "
+                        Primitives.log(str("self.get_local_ip() indicates that localhost "
                                      "= " + local_address), in_log_level="Info")
 
                         new_socket = socket.socket()
@@ -469,7 +444,7 @@ class Client:
                                 """ Most Likely a Bad Fie Descriptor in self.connect().
                                 I don't know what to do about that, so we'll just warn the user."""
 
-                                self.log(str("Unable to connect to: " + str(connect_to_address)),
+                                Primitives.log(str("Unable to connect to: " + str(connect_to_address)),
                                          in_log_level="Warning")
 
                 # The address isn't foreign, don't re-connect to it.
@@ -478,13 +453,13 @@ class Client:
                                                 connect_to_address +
                                                 ";" +
                                                 "We're already connected.")
-                    self.log(already_connected_msg, "Warning")
+                    Primitives.log(already_connected_msg, "Warning")
 
             if message.startswith('exec:'):
                 # Assuming allow_command_execution is set, execute arbitrary UNIX commands in their own threads.
                 if allow_command_execution:
                     command = message[5:]
-                    self.log(str("executing: " + command), in_log_level="Info")
+                    Primitives.log(str("executing: " + command), in_log_level="Info")
 
                     # Warning: This is about to execute some arbitrary UNIX command in it's own nice little
                     # non-isolated fork of a process. That's very dangerous.
@@ -494,7 +469,7 @@ class Client:
 
                 # allow_command_execution is not set, don't execute arbitrary UNIX commands from the network.
                 else:
-                    self.log(("Not executing command: ", message[5:]), in_log_level="Info")
+                    Primitives.log(("Not executing command: ", message[5:]), in_log_level="Info")
 
             if message.startswith("newpage:"):
                 """ Create a new pagefile that we'll presumably do some 
@@ -502,7 +477,7 @@ class Client:
                 e.x newpage:(64-bit signature)"""
 
                 page_id = message[8:]
-                self.log("Creating new page with id: " + str(page_id), in_log_level="Info")
+                Primitives.log("Creating new page with id: " + str(page_id), in_log_level="Info")
 
                 os.chdir(original_path)
                 new_filename = str("../inter/mem/" + page_id + ".bin")
@@ -548,7 +523,7 @@ class Client:
                 page_id = message[5:][:16]
                 data = message[22:]
 
-                self.log("Syncing " + data + " into page:" + page_id, in_log_level="Info")
+                Primitives.log("Syncing " + data + " into page:" + page_id, in_log_level="Info")
 
                 file_path = "../inter/mem/" + page_id + ".bin"
 
@@ -559,7 +534,7 @@ class Client:
                     file_exists = True
 
                 except FileNotFoundError:
-                    self.log("Cannot open a non-existent page")
+                    Primitives.log("Cannot open a non-existent page")
                     existing_pagelines = []  # Stop my PyCharm from telling me this is referenced before assignment
 
                 if file_exists:
@@ -570,7 +545,7 @@ class Client:
                     for line in existing_pagelines:
                         if line == data and line[:32]:
                             duplicate = True
-                            self.log("Not writing duplicate data into page " + page_id)
+                            Primitives.log("Not writing duplicate data into page " + page_id)
                             break
 
                     if not duplicate:
@@ -610,7 +585,7 @@ class Client:
                     print(len(network_tuple))
 
                     # Wait for each node to contribute before doing module-specific I/O
-                    self.log("\n\t" + str(len(newlines)) + " Node(s) have contributed to the network.\n"
+                    Primitives.log("\n\t" + str(len(newlines)) + " Node(s) have contributed to the network.\n"
                                                            "The network tuple(+1) is of"
                                                            " length " + str(len(network_tuple) + 1),
                              in_log_level="Debug")
@@ -631,16 +606,16 @@ class Client:
 
             if message.startswith("file:"):
                 # file:(64-bit file hash):(32-bit file length):(128-bit origin address identifier)
-                self.log("Not doing anything with file request because they are not implemented yet.")
+                Primitives.log("Not doing anything with file request because they are not implemented yet.")
                 message_to_parse = message[5:]  # Remove "file:" from message string so we can parse it correctly.
                 file_hash = message_to_parse[:16]
                 file_length = message_to_parse[17:][:8]
                 origin_addr_id = message_to_parse[26:]
 
-                self.log("Our Address Identifier: "+ADDR_ID, in_log_level="Debug")
-                self.log("Received message destined for Address Identifier: "+origin_addr_id, in_log_level="Debug")
-                self.log("Checksum: " + file_hash)
-                self.log("File Size: "+str(file_length))
+                Primitives.log("Our Address Identifier: "+ADDR_ID, in_log_level="Debug")
+                Primitives.log("Received message destined for Address Identifier: "+origin_addr_id, in_log_level="Debug")
+                Primitives.log("Checksum: " + file_hash)
+                Primitives.log("File Size: "+str(file_length))
 
                 # ... If applicable, affirm the file request, and hopefully receive data through the proxy.
 
@@ -659,7 +634,7 @@ class Client:
                 file_list.append(file_tuple)
 
                 # Vote a proxy
-                self.log("Voting a proxy", in_log_level="Info")
+                Primitives.log("Voting a proxy", in_log_level="Info")
 
                 vote_msg = "vote:"+election_reason
                 self.broadcast(self.prepare(vote_msg))
@@ -681,32 +656,32 @@ class Client:
                         sock = self.lookup_socket(address_to_remove)
 
                         if sock:
-                            self.log("Remove -> Disconnecting from " + address_to_remove,
+                            Primitives.log("Remove -> Disconnecting from " + address_to_remove,
                                      in_log_level="Info")
 
                             # lookup the socket of the address we want to remove
                             connection_to_remove = (sock, address_to_remove)
-                            self.log(str("Who's connection is: " + str(connection_to_remove)),
+                            Primitives.log(str("Who's connection is: " + str(connection_to_remove)),
                                      in_log_level="Info")
                             self.disconnect(connection_to_remove)
 
                         else:
-                            self.log("Not disconnecting from a non-existent connection",
+                            Primitives.log("Not disconnecting from a non-existent connection",
                                      in_log_level="Warning")
 
                     else:
-                        self.log("Not disconnecting from localhost, dimwit.", in_log_level="Warning")
+                        Primitives.log("Not disconnecting from localhost, dimwit.", in_log_level="Warning")
 
                 except (ValueError, TypeError):
                     # Either the address we're looking for doesn't exist, or we're not connected it it.
-                    self.log(str("Sorry, we're not connected to " + address_to_remove),
+                    Primitives.log(str("Sorry, we're not connected to " + address_to_remove),
                              in_log_level="Warning")
                     pass
                 localhost_conn = (localhost, "127.0.0.1")
                 self.send(localhost_conn, no_prop+":"+message, sign=False)
 
             if message.startswith("vote:"):
-                self.log("Ongoing election: "+str(ongoing_election), in_log_level="Debug")
+                Primitives.log("Ongoing election: "+str(ongoing_election), in_log_level="Debug")
 
                 if not ongoing_election:
                     ongoing_election = True
@@ -718,7 +693,7 @@ class Client:
                     campaign_int = random.randint(1, 2**128)
                     our_campaign = campaign_int
 
-                    self.log("Campaigning for "+str(campaign_int), in_log_level="Info")
+                    Primitives.log("Campaigning for "+str(campaign_int), in_log_level="Info")
                     campaign_msg = self.prepare("campaign:"+reason+":"+str(campaign_int))
                     self.broadcast(campaign_msg)
 
@@ -747,10 +722,10 @@ class Client:
                                 winning_reason = campaign_tuple[0]
 
                         election_log_msg = str(winning_int) + " Won the election for: " + winning_reason
-                        self.log(election_log_msg, in_log_level="Info")
+                        Primitives.log(election_log_msg, in_log_level="Info")
 
                         if our_campaign == int(winning_int):
-                            self.log("We won the election for: "+winning_reason, in_log_level="Info")
+                            Primitives.log("We won the election for: "+winning_reason, in_log_level="Info")
                             elect_msg = self.prepare("elect:"+winning_reason+":"+str(self.get_local_ip()))
                             self.broadcast(elect_msg)
 
@@ -815,14 +790,14 @@ class Client:
                             WPABruteforce.respond_start(score, page_hash, ADDR_ID, network_tuple)
 
                         else:
-                            self.log("Not initiating a duplicate benchmark")
+                            Primitives.log("Not initiating a duplicate benchmark")
 
                     dictionary_size = arguments[1]
                     new_process = multiprocessing.Process(target=do_benchmark_and_continue,
                                                           args=(arguments, ), name='WPA Benchmark Thread')
                     new_process.daemon = True
                     new_process.start()
-                    self.log("Initiating benchmark...", in_log_level="Info")
+                    Primitives.log("Initiating benchmark...", in_log_level="Info")
 
             # Append signature(hash) to the message list, or in the case of sig=no_prop, do nothing.
             if sig != no_prop:
@@ -830,7 +805,7 @@ class Client:
 
                 # End of respond()
                 # Propagate the message to the rest of the network.
-                self.log(str('Broadcasting: ' + full_message), in_log_level="Debug")
+                Primitives.log(str('Broadcasting: ' + full_message), in_log_level="Debug")
                 self.broadcast(full_message)
 
     def listen(self, connection):
@@ -854,7 +829,7 @@ class Client:
                     conn_severed_msg = str("Connection to " + str(in_sock)
                                            + "was severed or disconnected."
                                            + "(TypeError: listen() -> listener_thread()")
-                    self.log(conn_severed_msg, in_log_level="Warning")
+                    Primitives.log(conn_severed_msg, in_log_level="Warning")
 
                     self.disconnect(conn)
                     listener_terminated = True
@@ -863,7 +838,7 @@ class Client:
                     self.disconnect(conn)
                     conn_not_existent_msg = str("Connection to " + str(in_sock) +
                                                 "doesn't exist, terminating listener_thread()")
-                    self.log(conn_not_existent_msg, in_log_level="Warning")
+                    Primitives.log(conn_not_existent_msg, in_log_level="Warning")
                     listener_terminated = True
 
         # Start listener in a new thread
@@ -877,28 +852,28 @@ class Client:
         global network_tuple
         global page_list
 
-        self.log("Safely terminating our connections...", in_log_level="Warning")
+        Primitives.log("Safely terminating our connections...", in_log_level="Warning")
 
         index = 0
         for file in page_list:
-            self.log("Closing pages..", in_log_level="Info")
+            Primitives.log("Closing pages..", in_log_level="Info")
             file.close()
 
             try:
                 os.remove(file.name)
 
             except FileNotFoundError:
-                self.log("Not removing non-existent page")
+                Primitives.log("Not removing non-existent page")
 
-            self.log(str("Terminating connection to "), in_log_level="Info")
+            Primitives.log(str("Terminating connection to "), in_log_level="Info")
 
         for connection in network_tuple:
             address = connection[1]
-            self.log(str("Terminating connection to " + address), in_log_level="Info")
+            Primitives.log(str("Terminating connection to " + address), in_log_level="Info")
             self.disconnect(connection, disallow_local_disconnect=False)
             index += 1
 
-        self.log("Quietly Dying...")
+        Primitives.log("Quietly Dying...")
         terminated = True
         return 0
 
@@ -927,7 +902,7 @@ class Client:
         log_level = default_log_level
         network_architecture = net_architecture
 
-        Primitives = primitives.Primitives(log_level, sub_node)
+        Primitives = primitives.Primitives(sub_node, log_level)
         SALT = secrets.token_hex(16)
         ADDR_ID = Primitives.gen_addr_id(SALT)
 
@@ -937,27 +912,27 @@ class Client:
             exec(import_str)
 
         # Stage 0
-        self.log("Initializing...", in_log_level="Info")
+        Primitives.log("Initializing...", in_log_level="Info")
         localhost_connection = (localhost, '127.0.0.1')
 
         try:
             self.connect(localhost_connection, 'localhost', port, local=True)
 
-            self.log("Connection to localhost successful", in_log_level="Info")
-            self.log("Starting listener on localhost...", in_log_level="Info")
+            Primitives.log("Connection to localhost successful", in_log_level="Info")
+            Primitives.log("Starting listener on localhost...", in_log_level="Info")
 
             self.listen(localhost_connection)
 
         except ConnectionRefusedError:
 
-            self.log("Connection to localhost was not successful; check that your server is "
+            Primitives.log("Connection to localhost was not successful; check that your server is "
                      "initialized, and try again later.", in_log_level="Warning")
             quit(1)
 
         except FileNotFoundError:
             pass
 
-        self.log("Attempting to connect to remote server(s)... (Initiating stage 1)",
+        Primitives.log("Attempting to connect to remote server(s)... (Initiating stage 1)",
                  in_log_level="Info")
 
         # Stage 1
@@ -972,7 +947,7 @@ class Client:
                     connection = (sock, remote_address)
                     self.connect(connection, remote_address, port)
 
-                    self.log(str("Starting listener on " + remote_address), in_log_level="Info")
+                    Primitives.log(str("Starting listener on " + remote_address), in_log_level="Info")
                     self.listen(connection)
 
                     # What does this do?
@@ -980,7 +955,7 @@ class Client:
                         self.send(connection, no_prop+":echo", sign=False)  # WIP
 
                 except ConnectionRefusedError:
-                    self.log("Unable to connect to remove server; Failed to bootstrap.",
+                    Primitives.log("Unable to connect to remove server; Failed to bootstrap.",
                              in_log_level="Warning")
         else:
-            self.log("Initializing with no remote connections...", in_log_level="Info")
+            Primitives.log("Initializing with no remote connections...", in_log_level="Info")

@@ -33,6 +33,9 @@ class Primitives:
 
         if in_log_level not in levels or in_log_level not in allowable_levels:
             pass
+            print(in_log_level)
+            print(levels)
+            print(allowable_levels)
 
         else:
             print(self.SUB_NODE, "->", in_log_level + ":", log_message)
