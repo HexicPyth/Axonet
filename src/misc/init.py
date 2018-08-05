@@ -13,7 +13,7 @@ sys.path.insert(0, '../client')  # TODO: Directory restructure; We shouldn't hav
 
 actions = ['server.py', 'client.py']
 PORT = 3705
-network_architecutre = "Complete"
+network_architecutre = "complete"
 
 
 def worker(action):  # Worker function
