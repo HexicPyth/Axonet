@@ -37,7 +37,7 @@ loaded_modules = []  # List of all modules loaded
 module_loaded = ""  # Current module being executed
 
 
-# Defaults and arguments. Not state.
+# Defaults and arguments and things to be set by self.initialize(). Not state.
 PORT = 3705
 allow_command_execution = False  # Don't execute arbitrary UNIX commands when casually asked, that's bad :]
 connecting_to_server = False
@@ -52,6 +52,7 @@ os.chdir(original_path)
 sys.path.insert(0, '../inter/modules/')
 Primitives = primitives.Primitives(sub_node, log_level)
 network_architecture = "complete"
+
 
 class Client:
 
@@ -644,12 +645,14 @@ class Client:
                 # Will be continued in self.init_file(stage=1), called during the elect: flag
 
             # Disconnect from some misbehaving node and pop it from out network tuple
+            # example message: remove:192.168.2.3
+
             if message.startswith("remove:"):
 
                 address_to_remove = message[7:]
 
                 try:
-
+                    # Disconnect from remote node.
                     # Don't disconnect from localhost. That's what self.terminate is for.
                     if address_to_remove != self.get_local_ip() and address_to_remove != "127.0.0.1":
 
@@ -657,17 +660,18 @@ class Client:
 
                         if sock:
                             Primitives.log("Remove -> Disconnecting from " + address_to_remove,
-                                     in_log_level="Info")
+                                           in_log_level="Info")
 
                             # lookup the socket of the address we want to remove
                             connection_to_remove = (sock, address_to_remove)
-                            Primitives.log(str("Who's connection is: " + str(connection_to_remove)),
-                                     in_log_level="Info")
+                            Primitives.log(str("\tWho's connection is: " + str(connection_to_remove)),
+                                           in_log_level="Debug")
+
                             self.disconnect(connection_to_remove)
 
                         else:
                             Primitives.log("Not disconnecting from a non-existent connection",
-                                     in_log_level="Warning")
+                                           in_log_level="Warning")
 
                     else:
                         Primitives.log("Not disconnecting from localhost, dimwit.", in_log_level="Warning")
@@ -675,8 +679,10 @@ class Client:
                 except (ValueError, TypeError):
                     # Either the address we're looking for doesn't exist, or we're not connected it it.
                     Primitives.log(str("Sorry, we're not connected to " + address_to_remove),
-                             in_log_level="Warning")
+                                   in_log_level="Warning")
                     pass
+
+                # Localhost needs to remove said node too! (see message propagation)
                 localhost_conn = (localhost, "127.0.0.1")
                 self.send(localhost_conn, no_prop+":"+message, sign=False)
 
@@ -686,7 +692,7 @@ class Client:
                 if not ongoing_election:
                     ongoing_election = True
                     reason = message[5:]
-                    print(reason)
+
                     election_tuple = (reason, "TBD")
                     election_list.append(election_tuple)
 
@@ -698,6 +704,8 @@ class Client:
                     self.broadcast(campaign_msg)
 
             if message.startswith("campaign:"):
+                # example message: campaign:do_stuff:01234566789
+
                 if ongoing_election:
                     import inject
                     Injector = inject.NetworkInjector()
@@ -717,6 +725,7 @@ class Client:
 
                         winning_int = max(campaign_ints)
                         winning_reason = ""
+
                         for campaign_tuple in campaign_list:
                             if campaign_tuple[1] == winning_int:
                                 winning_reason = campaign_tuple[0]
@@ -744,14 +753,18 @@ class Client:
                 # Parse arguments
                 Injector = inject.NetworkInjector()
                 args = Injector.parse_cmd(message)
+
                 reason = args[0]
                 new_leader = args[1]
+
+                # Index of tuple containing winning node
                 index = Primitives.find_election_index(election_list, reason)
 
                 election_list = Primitives.set_leader(election_list, index, new_leader)
                 ongoing_election = False
 
-                if reason.startswith('dfs'):
+                # We're electing a proxy for distributed file storage
+                if reason.startswith('dfs-'):
                     print("File proxy: "+new_leader)
                     file_proxy = new_leader
                     file_checksum = reason[4:]
@@ -764,6 +777,7 @@ class Client:
 
                         # Pass control to the file module
                         file.start(1, new_leader, file_checksum, localhost, file_list, network_tuple)
+
                 print("\n")
                 print(election_list)  # DEBUG
                 print("\n")
@@ -877,7 +891,7 @@ class Client:
         terminated = True
         return 0
 
-    def initialize(self, port=3705, net_architecture="Complete",
+    def initialize(self, port=3705, net_architecture="complete",
                    remote_addresses=None, command_execution=False,
                    file_storage=True, default_log_level="Debug", modules=None):
 

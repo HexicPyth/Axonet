@@ -612,7 +612,7 @@ class Server:
 
             except OSError:
                 Primitives.log(str("Failed to bind server on " + address_string +
-                             "; Please try again later."), in_log_level="Info")
+                                   "; Please try again later."), in_log_level="Info")
                 self.stop()
 
             if listening:
