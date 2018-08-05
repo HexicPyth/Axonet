@@ -56,29 +56,6 @@ network_architecture = "complete"
 
 class Client:
 
-    def get_local_ip(self):
-        """Creates a temporary socket and connects to subnet,
-           yielding our local address. Returns: (local ip address) -> str """
-
-        temp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-        try:
-            temp_socket.connect(('10.255.255.0', 0))
-
-            # Yield our local address
-            local_ip = temp_socket.getsockname()[0]
-
-        except OSError:
-            # Connect refused; there is likely no network connection.
-            Primitives.log("Failed to identify local IP address. No network connection detected.",
-                     in_log_level="Warning")
-            local_ip = "127.0.0.1"
-
-        finally:
-            temp_socket.close()
-
-        return local_ip
-
     @staticmethod
     def prepare(message):
         """ Assign unique hashes to messages ready for transport.
@@ -251,7 +228,7 @@ class Client:
 
             # Don't disconnect from localhost unless told to. That's done with self.terminate().
             if disallow_local_disconnect:
-                if address_to_disconnect == self.get_local_ip() or address_to_disconnect == "127.0.0.1":
+                if address_to_disconnect == Primitives.get_local_ip() or address_to_disconnect == "127.0.0.1":
                     Primitives.log("Not disconnecting from localhost dimwit.", in_log_level="Warning")
 
                 # Do disconnect from remote nodes. That sometimes makes sense.
@@ -416,19 +393,19 @@ class Client:
                 if connection_status == 0:
 
                     # Don't re-connect to localhost. All kinds of bad things happen if you do.
-                    if connect_to_address == self.get_local_ip() or connect_to_address == "127.0.0.1":
+                    if connect_to_address == Primitives.get_local_ip() or connect_to_address == "127.0.0.1":
                         not_connecting_msg = str("Not connecting to " + connect_to_address + "; That's localhost :P")
 
                         Primitives.log(not_connecting_msg, in_log_level="Warning")
 
                     else:
-                        local_address = self.get_local_ip()
+                        local_address = Primitives.get_local_ip()
 
                         # Be verbose
                         Primitives.log(str("self.lookup_socket() indicates that "
                                      "we're not connected to " + connect_to_address), in_log_level="Info")
 
-                        Primitives.log(str("self.get_local_ip() indicates that localhost "
+                        Primitives.log(str("Primitives.get_local_ip() indicates that localhost "
                                      "= " + local_address), in_log_level="Info")
 
                         new_socket = socket.socket()
@@ -551,7 +528,7 @@ class Client:
 
                     if not duplicate:
                         data_id = data[:16]
-                        local_id = sha3_224(self.get_local_ip().encode()).hexdigest()[:16]
+                        local_id = sha3_224(Primitives.get_local_ip().encode()).hexdigest()[:16]
                         if data_id == local_id:
                             # Don't re-write data from ourselves. We already did that with 'corecount'.
                             print("Not being hypocritical in page " + page_id)
@@ -654,7 +631,7 @@ class Client:
                 try:
                     # Disconnect from remote node.
                     # Don't disconnect from localhost. That's what self.terminate is for.
-                    if address_to_remove != self.get_local_ip() and address_to_remove != "127.0.0.1":
+                    if address_to_remove != Primitives.get_local_ip() and address_to_remove != "127.0.0.1":
 
                         sock = self.lookup_socket(address_to_remove)
 
@@ -735,7 +712,7 @@ class Client:
 
                         if our_campaign == int(winning_int):
                             Primitives.log("We won the election for: "+winning_reason, in_log_level="Info")
-                            elect_msg = self.prepare("elect:"+winning_reason+":"+str(self.get_local_ip()))
+                            elect_msg = self.prepare("elect:"+winning_reason+":"+str(Primitives.get_local_ip()))
                             self.broadcast(elect_msg)
 
                             cluster_rep = True
