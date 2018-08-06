@@ -5,7 +5,7 @@ import client
 port = 3705
 
 
-def init(network_architecture):
+def init(network_architecture="complete"):
     x = client.Client()
     x.initialize(port=port, net_architecture=network_architecture, remote_addresses=None,
                  command_execution=True, default_log_level="Debug", modules=["corecount"])
