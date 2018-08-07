@@ -736,7 +736,7 @@ class Client:
                             if campaign_tuple[1] == winning_int:
                                 winning_reason = campaign_tuple[0]
 
-                        election_log_msg = str(winning_int) + " Won the election for: " + winning_reason
+                        election_log_msg = str(winning_int) + " won the election for: " + winning_reason
                         Primitives.log(election_log_msg, in_log_level="Info")
 
                         if our_campaign == int(winning_int):
