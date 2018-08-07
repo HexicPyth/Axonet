@@ -683,6 +683,35 @@ class Client:
             if message.startswith("campaign:"):
                 # example message: campaign:do_stuff:01234566789
 
+                if not ongoing_election:
+                    # We probably received a campaign flag out of order(before a vote:). Let's start that election now.
+                    # ------------------------------------------------------
+                    # Intended vote flag: vote:reason (received out of order)
+                    # Received campaign flag: campaign:reason:token (will suffice)
+                    # See where I'm going now?
+
+                    Primitives.log("Received a campaign: flag out of order(i.e before the vote: flag)."
+                                   "Attempting to initiate our election protocal with any information we"
+                                   "can collect.", in_log_level="Warning")
+
+                    import inject
+                    Injector = inject.NetworkInjector()
+
+                    election_details = Injector.parse_cmd(message)  # [reason, token]
+                    this_reason = election_details[0]
+
+                    # Before we (hopefully) receive a vote flag: the elction list is empty. Populate it
+                    election_tuple = (this_reason, "TBD")
+                    election_list.append(election_tuple)
+                    campaign_tuple = tuple(Injector.parse_cmd(message))
+                    campaign_list.append(campaign_tuple)
+                    print(str(campaign_list))
+
+                    # Remember, we have not yet received the vote flag. Don't toggle ongoing_election as that will
+                    # prevent vote: from initiating all the fun stuff :P.
+
+                    # ongoing_election = True
+
                 if ongoing_election:
                     import inject
                     Injector = inject.NetworkInjector()
@@ -722,32 +751,6 @@ class Client:
                         # Cleanup
                         campaign_list = []
                         our_campaign = 0
-
-                if not ongoing_election:
-                    # We probably received a campaign flag out of order(before a vote:). Let's start that election now.
-                    # ------------------------------------------------------
-                    # Intended vote flag: vote:reason (received out of order)
-                    # Received campaign flag: campaign:reason:token (will suffice)
-                    # See where I'm going now?
-
-                    Primitives.log("Received a campaign: flag out of order(i.e before the vote: flag)."
-                                   "Attempting to initiate our election protocal with any information we"
-                                   "can collect.", in_log_level="Warning")
-
-                    import inject
-                    Injector = inject.NetworkInjector()
-
-                    election_details = Injector.parse_cmd(message)  # [reason, token]
-                    this_reason = election_details[0]
-
-                    # Before we (hopefully) receive a vote flag: the elction list is empty. Populate it
-                    election_tuple = (this_reason, "TBD")
-                    election_list.append(election_tuple)
-
-                    # Remember, we have not yet received the vote flag. Don't toggle ongoing_election as that will
-                    # prevent vote: from initiating all the fun stuff :P.
-
-                    # ongoing_election = True
 
 
             if message.startswith("elect:"):
