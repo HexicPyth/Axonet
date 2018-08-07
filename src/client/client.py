@@ -701,8 +701,8 @@ class Client:
                     this_reason = election_details[0]
 
                     # Before we (hopefully) receive a vote flag: the elction list is empty. Populate it
-                    election_tuple = (this_reason, "TBD")
-                    election_list.append(election_tuple)
+                    # election_tuple = (this_reason, "TBD")
+                    # election_list.append(election_tuple)
                     campaign_tuple = tuple(Injector.parse_cmd(message))
                     campaign_list.append(campaign_tuple)
                     print(str(campaign_list))
@@ -751,7 +751,6 @@ class Client:
                         # Cleanup
                         campaign_list = []
                         our_campaign = 0
-
 
             if message.startswith("elect:"):
                 # elect:reason:representative
