@@ -769,7 +769,7 @@ class Client:
                 election_list = Primitives.set_leader(election_list, index, new_leader)
                 ongoing_election = False
 
-                election_winner_msg = str(new_leader) + "won the election for:" + reason
+                election_winner_msg = str(new_leader) + " won the election for:" + reason
                 Primitives.log(election_winner_msg, in_log_level="Info")
 
                 # We're electing a proxy for distributed file storage
