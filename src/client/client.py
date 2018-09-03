@@ -24,16 +24,15 @@ election_list = []   # [(reason, representative), (another_reason, another_repre
 campaign_list = []  # [int, another_int, etc.]
 file_list = []  # [(file_size, path, checksum, proxy), (file_size2, path2, checksum2, proxy2), etc.]
 our_campaign = 0  # An integer between 0 and 2^128 (see voting algorithm)
-dictionary_size = 0  # Temporarily hold the dictionary_size value while we sync: (WPABruteForce)
+dictionary_size = 0  # Temporarily store the dictionary_size value while we sync: (WPABruteForce)
 network_tuple = ()  # ((socket, address), (another_socket, another_address))
-message_list = []
-page_list = []  # temporary file objects to close on stop
+message_list = []  # [message_hash, another_msg_hash, etc.]
+page_list = []  # temporary file objects to close and delete on stop()
 page_ids = []  # Used by some modules
 file_proxy = ""  # Temporarily store the most recently voted file proxy until it is appended to the file_list.
 terminated = False
 cluster_rep = False
 ongoing_election = False
-loaded_modules = []  # List of all modules loaded
 module_loaded = ""  # Current module being executed
 
 
@@ -52,6 +51,7 @@ os.chdir(original_path)
 sys.path.insert(0, '../inter/modules/')
 Primitives = primitives.Primitives(sub_node, log_level)
 network_architecture = "complete"
+loaded_modules = []  # List of all modules loaded
 
 
 class Client:
