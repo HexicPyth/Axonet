@@ -325,7 +325,7 @@ class Server:
                     proxy_message = proxy_message[:-19]
                     print(arguments)
                     proxy_message += Primitives.get_local_ip()
-                    self.broadcast(self.prepare(proxy_message))
+                    #self.broadcast(self.prepare(proxy_message))
                     print("Proxy msg: ", proxy_message)
 
                 elif proxy_message.startswith("file:"):

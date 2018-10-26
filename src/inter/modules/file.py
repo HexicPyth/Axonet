@@ -96,5 +96,5 @@ def start(stage, proxy, checksum, localhost, file_list, network_tuple):
         proxy_connection = (proxy_socket, proxy_address)
 
         print("Client -> Info: Passing control to proxy")
-        proxy_msg = no_prop + ":proxy:init_file_dist:" + checksum + ":" + file_tuple[0] + ":" + "YOUR_ADDR"
+        proxy_msg = no_prop + ":proxy:init_file_dist:" + checksum + ":" + file_tuple[0] + ":" + str(proxy_address)
         Client.send(proxy_connection, proxy_msg, sign=False)
