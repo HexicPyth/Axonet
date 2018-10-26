@@ -315,14 +315,14 @@ class Server:
                 Primitives.log("Being a proxy for "+host_addr, in_log_level="Info")
                 proxy_message = message[6:]
 
-                if proxy_message.startswith("init_file:"):
+                if proxy_message.startswith("init_file_dist:"):
                     # proxy:init_file:checksum:
                     arguments = injector.parse_cmd(proxy_message)
                     checksum = arguments[0]
                     proxy_tuple = (host_addr, checksum)
                     file_proxies.append(proxy_tuple)
 
-                    proxy_message = proxy_message[:-14]
+                    proxy_message = proxy_message[:-19]
                     print(arguments)
                     proxy_message += Primitives.get_local_ip()
                     self.broadcast(self.prepare(proxy_message))
