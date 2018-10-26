@@ -9,7 +9,7 @@ os.chdir(this_dir)
 sys.path.insert(0, '../../client/')
 sys.path.insert(0, '../../server/')
 no_prop = "ffffffffffffffff"
-
+file_path = []
 
 # The following md5sum function was adapted liberally from
 # "prologic" at BitBucket
@@ -17,9 +17,27 @@ no_prop = "ffffffffffffffff"
 # https://bitbucket.org/prologic/
 # Accessed 06/28/18 00:00 UTC
 
+
+def sift_data(data, n):
+    """"Split a lot of data into chunks of size n"""
+    segments = [data[i:i+n] for i in range(0, len(data), n)]
+    return segments
+
+
+def read_from_file(file_path, n=512000):
+    """Read lots of bytes from a file and return a list of bytes, in chunks('sectors') of size n"""
+    path = os.path.abspath(file_path)
+    data = open(path, "rb").read()
+
+    bin_data = data.hex()
+    sectors = sift_data(bin_data, n)
+
+
 def md5sum(filename):
+    global file_path
     hash_function = hashlib.md5()
     file_path = os.path.abspath(filename)
+
     with open(file_path, "rb") as f:
         for chunk in iter(lambda: f.read(128 * hash_function.block_size), b""):
             hash_function.update(chunk)
@@ -65,6 +83,7 @@ def start(stage, proxy, checksum, localhost, file_list, network_tuple):
 
     if stage == 1:
         print("Proxy: " + proxy)
+        print("File: "+str(file_path))
         file_tuple = Primitives.find_file_tuple(file_list, checksum)
 
         if proxy == Primitives.get_local_ip():
@@ -77,5 +96,5 @@ def start(stage, proxy, checksum, localhost, file_list, network_tuple):
         proxy_connection = (proxy_socket, proxy_address)
 
         print("Client -> Info: Passing control to proxy")
-        proxy_msg = no_prop + ":proxy:file:" + checksum + ":" + file_tuple[0] + ":" + "YOUR_ADDR"
+        proxy_msg = no_prop + ":proxy:init_file:" + checksum + ":" + file_tuple[0] + ":" + "YOUR_ADDR"
         Client.send(proxy_connection, proxy_msg, sign=False)

@@ -315,16 +315,24 @@ class Server:
                 Primitives.log("Being a proxy for "+host_addr, in_log_level="Info")
                 proxy_message = message[6:]
 
-                if proxy_message.startswith("file:"):
+                if proxy_message.startswith("init_file:"):
+                    # proxy:init_file:checksum:
                     arguments = injector.parse_cmd(proxy_message)
                     checksum = arguments[0]
                     proxy_tuple = (host_addr, checksum)
                     file_proxies.append(proxy_tuple)
 
-                    proxy_message = proxy_message[:-9]
+                    proxy_message = proxy_message[:-14]
                     print(arguments)
                     proxy_message += Primitives.get_local_ip()
                     self.broadcast(self.prepare(proxy_message))
+                    print("Proxy msg: ", proxy_message)
+
+                elif proxy_message.startswith("file:"):
+                    # proxy:file:size:checksum:__data__
+                    arguments = injector.parse_cmd(proxy_message)
+
+                    print("Receiving data from" + host_addr)
                     print(proxy_message)
 
             # We only broadcast messages with hashes we haven't already documented. That way the network doesn't
