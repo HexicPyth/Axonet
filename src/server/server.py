@@ -229,12 +229,12 @@ class Server:
         message = msg[17:]
 
         # Don't spit out hundreds of kilobits of data into the logs :).
-        if not message.startswith("proxy:file:"):
-            log_the_message = True
-        else:
+        if message.startswith("proxy:file"):
             log_the_message = False
+        else:
+            log_the_message = True
 
-        if log_msg:
+        if log_the_message:
             message_received_log_dbg = str("Received raw message: "+full_message)
             Primitives.log(message_received_log_dbg, in_log_level="Debug")
         else:
