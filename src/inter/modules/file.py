@@ -90,7 +90,7 @@ def respond_start(proxy_addr, checksum, file_list, network_tuple):
 
     for sector in sectors:
         # proxy:file:checksum:file_size:proxy_address:data
-        data_packet = (no_prop + "proxy:" + "file:" + checksum + str(file_tuple[0]), proxy_addr, sector)
+        data_packet = no_prop + "proxy:" + "file:" + checksum + str(file_tuple[0]), proxy_addr, sector
         Injector.send(proxy_connection, data_packet, sign=False)
 
 
