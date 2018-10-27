@@ -626,12 +626,18 @@ class Client:
 
             if message.startswith("notify:"):
                 import inject
+                import file
                 Injector = inject.NetworkInjector()
 
                 arguments = Injector.parse_cmd(message)
                 if arguments[0] == "proxy_ready":
-                    print("HEY THERE!")
-                    print("Checksum: "+arguments[1])
+                    # Proxy is ready for data; pass control back to file module
+
+                    file_checksum = arguments[1]
+                    Primitives.log("Proxy is ready", in_log_level="Info")
+                    Primitives.log("File checksum according to Proxy: "+arguments[1], in_log_level="Debug")
+                    proxy_addr = Primitives.find_representative(election_list, "dfs-"+arguments[1])
+                    file.respond_start(proxy_addr, file_checksum, network_tuple)
 
             if message.startswith("remove:"):
 

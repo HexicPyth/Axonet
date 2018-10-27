@@ -64,9 +64,11 @@ def initiate(net_tuple, arguments):
         pass
 
 
-def respond_start(proxy_addr, file_path, checksum, network_tuple):
+def respond_start(proxy_addr, checksum, network_tuple):
     """Called by the client's listener_thread when it received a file: flag"""
-    pass
+    print("Initiating data transfer to proxy...")
+    print("Proxy Address: "+proxy_addr)
+    print("Checksum: "+checksum)
 
 
 def start(stage, proxy, checksum, localhost, file_list, network_tuple):
