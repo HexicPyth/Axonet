@@ -637,7 +637,7 @@ class Client:
                     Primitives.log("Proxy is ready", in_log_level="Info")
                     Primitives.log("File checksum according to Proxy: "+arguments[1], in_log_level="Debug")
                     proxy_addr = Primitives.find_representative(election_list, "dfs-"+arguments[1])
-                    file.respond_start(proxy_addr, file_checksum, network_tuple)
+                    file.respond_start(proxy_addr, file_checksum, file_list, network_tuple)
 
             if message.startswith("remove:"):
 

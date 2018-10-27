@@ -31,6 +31,7 @@ def read_from_file(file_path, n=512000):
 
     bin_data = data.hex()
     sectors = sift_data(bin_data, n)
+    return sectors
 
 
 def md5sum(filename):
@@ -64,11 +65,33 @@ def initiate(net_tuple, arguments):
         pass
 
 
-def respond_start(proxy_addr, checksum, network_tuple):
+def respond_start(proxy_addr, checksum, file_list, network_tuple):
     """Called by the client's listener_thread when it received a file: flag"""
+    import primitives
+    import inject
+    import client
+
+    primitives = primitives.Primitives("Debug", "Client")
+    Injector = inject.NetworkInjector()
+    Client = client.Client()
+
     print("Initiating data transfer to proxy...")
     print("Proxy Address: "+proxy_addr)
     print("Checksum: "+checksum)
+
+    path_to_file = str(file_path)
+    sectors = read_from_file(file_path)
+
+    file_tuple = primitives.find_file_tuple(file_list, checksum)
+    file_size = file_tuple[0]
+    proxy_addr = file_tuple[3]
+    proxy_socket = Client.lookup_socket(proxy_addr, network_tuple)
+    proxy_connection = (proxy_socket, proxy_addr)
+
+    for sector in sectors:
+        # proxy:file:checksum:file_size:proxy_address:data
+        data_packet = (no_prop + "proxy:" + "file:" + checksum + str(file_tuple[0]), proxy_addr, sector)
+        Injector.send(proxy_connection, data_packet, sign=False)
 
 
 def start(stage, proxy, checksum, localhost, file_list, network_tuple):
