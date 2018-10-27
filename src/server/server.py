@@ -315,7 +315,7 @@ class Server:
                     host_addr = Primitives.get_local_ip()
 
                 proxy_message = message[6:]
-
+                print(proxy_message)
                 if proxy_message.startswith("init_file_dist:"):
                     Primitives.log("Being a proxy for " + host_addr, in_log_level="Info")
 
@@ -334,6 +334,7 @@ class Server:
                     self.send(host_connection, no_prop+":notify:proxy_ready:"+checksum, signing=False)
 
                 elif proxy_message.startswith("file:"):
+                    print("!!!")
                     import client
                     Client = client.Client()
                     # proxy:file:checksum:file_size:proxy_address:data
