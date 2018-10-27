@@ -314,10 +314,11 @@ class Server:
                 if host_addr == "127.0.0.1":
                     host_addr = Primitives.get_local_ip()
 
-                Primitives.log("Being a proxy for "+host_addr, in_log_level="Info")
                 proxy_message = message[6:]
 
                 if proxy_message.startswith("init_file_dist:"):
+                    Primitives.log("Being a proxy for " + host_addr, in_log_level="Info")
+
                     # proxy:init_file:checksum:file_size:proxy_address
                     arguments = injector.parse_cmd(proxy_message)
                     checksum = arguments[0]
@@ -341,7 +342,7 @@ class Server:
                     data = bytearray.fromhex(arguments[3]).decode()
 
                     print("Receiving data from" + host_addr)
-                    print(proxy_message)
+                    print(print(data[:16]))
                     print("Data Received")
 
                     os.chdir(original_path)
