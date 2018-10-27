@@ -230,9 +230,9 @@ class Server:
 
         # Don't spit out hundreds of kilobits of data into the logs :).
         if not message.startswith("proxy:file:"):
-            log_msg = True
+            log_the_message = True
         else:
-            log_msg = False
+            log_the_message = False
 
         if log_msg:
             message_received_log_dbg = str("Received raw message: "+full_message)
@@ -241,10 +241,10 @@ class Server:
             Primitives.log("Received raw message(output truncated): "+full_message[:50])
 
         if sig not in message_list:
-            if log_msg:
+            if log_the_message:
                 message_received_log_info = str('Server -> Received: ' + message + " (" + sig + ")")
                 Primitives.log(message_received_log_info, in_log_level="Info")
-            elif not log_msg:
+            elif not log_level:
                 message_received_log_info = str('Server -> Received(output truncated)'
                                                 ': ' + message[:50] + " (" + sig + ")")
                 Primitives.log(message_received_log_info, in_log_level="Info")
@@ -342,11 +342,15 @@ class Server:
                     file_proxies.append(proxy_tuple)
 
                     proxy_message = proxy_message[:-19]
-                    if log_msg:
+
+                    if log_the_message:
                         print(arguments)
+
                     proxy_message += Primitives.get_local_ip()
-                    if log_msg:
+
+                    if log_the_message:
                         print("Proxy msg: ", proxy_message)
+
                     host_connection = (self.lookup_socket(host_addr), host_addr)
                     print(host_connection)
                     self.send(host_connection, no_prop+":notify:proxy_ready:"+checksum, signing=False)
