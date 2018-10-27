@@ -2,8 +2,6 @@
 import os
 import sys
 import hashlib
-import time
-
 # Allow us to import the client
 this_dir = os.path.dirname(os.path.realpath(__file__))
 os.chdir(this_dir)
@@ -12,6 +10,7 @@ sys.path.insert(0, '../../server/')
 no_prop = "ffffffffffffffff"
 file_path = []
 current_file_sectors = []
+current_file_size = len(current_file_sectors)
 x = 0
 # The following md5sum function was adapted liberally from
 # "prologic" at BitBucket
@@ -26,7 +25,7 @@ def sift_data(data, n):
     return segments
 
 
-def read_from_file(file_path, n=5000):
+def read_from_file(file_path, n=500000):
     """Read lots of bytes from a file and return a list of bytes, in chunks('sectors') of size n"""
     path = os.path.abspath(file_path)
     data = open(path, "rb").read()
@@ -71,6 +70,9 @@ def respond_start(proxy_addr, checksum, file_list, network_tuple, init=True):
     """Called by the client's listener_thread when it received a file: flag"""
 
     global x
+    global current_file_sectors
+    global current_file_size
+
     import primitives
     import inject
     import client
@@ -85,27 +87,40 @@ def respond_start(proxy_addr, checksum, file_list, network_tuple, init=True):
 
     path_to_file = str(file_path)
     if init:
+        current_file_sectors = read_from_file(path_to_file)
+        current_file_size = len(current_file_sectors)
+
         x += 1
-        print(x)
+        print("Counter: "+str(x))
 
     elif not init:
+        print(type(current_file_sectors))
+        current_file_sectors.pop(0)
         x += 1
-        print(x)
+        print("Counter: "+str(x))
+        print("Transfering sector: "+str(len(current_file_sectors)) + " of "+str(current_file_size))
+        print(len(current_file_sectors))
 
-    file_tuple = primitives.find_file_tuple(file_list, checksum)
-    file_size = file_tuple[0]
-    proxy_addr = file_tuple[3]
-    proxy_socket = Client.lookup_socket(proxy_addr, network_tuple)
-    proxy_connection = (proxy_socket, proxy_addr)
+    try:
+        sector = current_file_sectors[0]
+        print()
+        print(sector[:16])
+        print()
 
+        file_tuple = primitives.find_file_tuple(file_list, checksum)
+        file_size = file_tuple[0]
+        proxy_addr = file_tuple[3]
+        proxy_socket = Client.lookup_socket(proxy_addr, network_tuple)
+        proxy_connection = (proxy_socket, proxy_addr)
 
-    # proxy:file:checksum:file_size:proxy_address:data
-    data = "ffffffffffffffffffff"
-    data_packet = ':'.join([no_prop, "proxy", "file", checksum, str(file_tuple[0]), proxy_addr, data])
-    print("Data packet made")
-    Client.send(proxy_connection, data_packet, sign=False)
-    print("Sent")
-
+        # Format: proxy:file:checksum:file_size:proxy_address:data
+        data = sector
+        data_packet = ':'.join([no_prop, "proxy", "file", checksum, str(file_tuple[0]), proxy_addr, data])
+        print("Data packet made")
+        Client.send(proxy_connection, data_packet, sign=False)
+        print("Sent")
+    except IndexError:
+        print("File Transfer complete!")
 
 def start(stage, proxy, checksum, localhost, file_list, network_tuple):
     import primitives

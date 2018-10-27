@@ -225,16 +225,32 @@ class Server:
 
         address = connection[1]
         full_message = str(msg)
-
-        message_received_log_dbg = str("Received raw message: "+full_message)
-        Primitives.log(message_received_log_dbg, in_log_level="Debug")
-
         sig = msg[:16]
         message = msg[17:]
 
+        # Don't spit out hundreds of kilobits of data into the logs :).
+        if not msg.startswith("proxy:file:"):
+            log_msg = True
+        else:
+            log_msg = False
+
+        if log_msg:
+            message_received_log_dbg = str("Received raw message: "+full_message)
+            Primitives.log(message_received_log_dbg, in_log_level="Debug")
+        else:
+            Primitives.log("Received raw message(output truncated): "+full_message[:100])
+
         if sig not in message_list:
-            message_received_log_info = str('Server -> Received: ' + message + " (" + sig + ")")
-            Primitives.log(message_received_log_info, in_log_level="Info")
+            if log_msg:
+                message_received_log_info = str('Server -> Received: ' + message + " (" + sig + ")")
+                Primitives.log(message_received_log_info, in_log_level="Info")
+            else:
+                message_received_log_info = str('Server -> Received(output truncated)'
+                                                ': ' + message[:100] + " (" + sig + ")")
+                Primitives.log(message_received_log_info, in_log_level="Info")
+
+
+
 
             if message == "echo":
                 # If received, two-way communication is functional
