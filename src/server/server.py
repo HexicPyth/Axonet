@@ -341,7 +341,7 @@ class Server:
                     arguments = injector.parse_cmd(proxy_message)
                     checksum = arguments[0]
                     print("\n Am I still alive? \n")
-                    data = bytearray.fromhex(arguments[3]).decode()
+                    data = arguments[3]   # This crashes the server WTF???
                     print("\n Am I STILL alive? \n")
                     print("Receiving data from" + host_addr)
                     print(print(data[:16]))
