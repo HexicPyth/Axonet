@@ -327,7 +327,9 @@ class Server:
                     proxy_message += Primitives.get_local_ip()
                     #self.broadcast(self.prepare(proxy_message))
                     print("Proxy msg: ", proxy_message)
-                    self.broadcast(no_prop+":notify:proxy_ready:"+checksum)
+                    host_connection = (self.lookup_socket(host_addr), host_addr)
+                    print(host_connection)
+                    self.send(host_connection, no_prop+":notify:proxy_ready:"+checksum, signing=False)
 
                 elif proxy_message.startswith("file:"):
                     # proxy:file:checksum:file_size:proxy_address:data
