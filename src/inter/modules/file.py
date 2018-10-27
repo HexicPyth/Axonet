@@ -2,6 +2,7 @@
 import os
 import sys
 import hashlib
+import time
 
 # Allow us to import the client
 this_dir = os.path.dirname(os.path.realpath(__file__))
@@ -24,7 +25,7 @@ def sift_data(data, n):
     return segments
 
 
-def read_from_file(file_path, n=512000):
+def read_from_file(file_path, n=5000):
     """Read lots of bytes from a file and return a list of bytes, in chunks('sectors') of size n"""
     path = os.path.abspath(file_path)
     data = open(path, "rb").read()
@@ -88,11 +89,14 @@ def respond_start(proxy_addr, checksum, file_list, network_tuple):
     proxy_socket = Client.lookup_socket(proxy_addr, network_tuple)
     proxy_connection = (proxy_socket, proxy_addr)
 
+    counter = 0
     for sector in sectors:
+        counter += 1
         # proxy:file:checksum:file_size:proxy_address:data
+        print("Sending segment", str(counter), "of", str(len(sectors)), "to proxy...")
         data_packet = ':'.join([no_prop, "proxy", "file", checksum, str(file_tuple[0]), proxy_addr, sector])
         Injector.send(proxy_connection, data_packet, sign=False)
-
+        time.sleep(0.25)
 
 def start(stage, proxy, checksum, localhost, file_list, network_tuple):
     import primitives

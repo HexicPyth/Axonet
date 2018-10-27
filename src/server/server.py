@@ -343,7 +343,7 @@ class Server:
                     print("Receiving data from" + host_addr)
                     print(proxy_message)
                     print("Data: "+str(data))
-                    self.broadcast("newpage: "+checksum)
+                    self.broadcast("d2623b76640f6bf2"+":"+"newpage: "+checksum)
                     time.sleep(0.25)  # Give client time to make new pagefile
                     Client.write_to_page(checksum, data, signing=False)
                     pass  # Do distribution stuff...
