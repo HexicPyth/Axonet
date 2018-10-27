@@ -338,7 +338,7 @@ class Server:
                     # proxy:file:checksum:file_size:proxy_address:data
                     arguments = injector.parse_cmd(proxy_message)
                     checksum = arguments[0]
-                    data = arguments[3]
+                    data = bytearray.fromhex(arguments[3]).decode()
 
                     print("Receiving data from" + host_addr)
                     print(proxy_message)
