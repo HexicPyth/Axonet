@@ -327,7 +327,6 @@ class Server:
                     proxy_message = proxy_message[:-19]
                     print(arguments)
                     proxy_message += Primitives.get_local_ip()
-                    #self.broadcast(self.prepare(proxy_message))
                     print("Proxy msg: ", proxy_message)
                     host_connection = (self.lookup_socket(host_addr), host_addr)
                     print(host_connection)
@@ -351,7 +350,10 @@ class Server:
                     newpage.write(data)
                     newpage.close()
                     print("Data Written")
-                    pass  # Do distribution stuff...
+
+                    host_connection = (self.lookup_socket(host_addr), host_addr)
+                    self.send(host_connection, no_prop+":notify:next_packet:"+checksum, signing=False)
+
 
             # We only broadcast messages with hashes we haven't already documented. That way the network doesn't
             # loop indefinitely broadcasting the same message. Also, Don't append no_prop to message_list.

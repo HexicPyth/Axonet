@@ -11,7 +11,7 @@ sys.path.insert(0, '../../client/')
 sys.path.insert(0, '../../server/')
 no_prop = "ffffffffffffffff"
 file_path = []
-
+current_file_sectors = []
 # The following md5sum function was adapted liberally from
 # "prologic" at BitBucket
 # https://bitbucket.org/prologic/tools/
@@ -66,7 +66,8 @@ def initiate(net_tuple, arguments):
         pass
 
 
-def respond_start(proxy_addr, checksum, file_list, network_tuple):
+def respond_start(proxy_addr, checksum, file_list, network_tuple, init=True):
+    global current_file_sectors
     """Called by the client's listener_thread when it received a file: flag"""
     import primitives
     import inject
@@ -81,7 +82,12 @@ def respond_start(proxy_addr, checksum, file_list, network_tuple):
     print("Checksum: "+checksum)
 
     path_to_file = str(file_path)
-    sectors = read_from_file(file_path)
+    if init:
+        sectors = read_from_file(file_path)
+        current_file_sectors = sectors
+
+    elif not init:
+        sectors = current_file_sectors
 
     file_tuple = primitives.find_file_tuple(file_list, checksum)
     file_size = file_tuple[0]
@@ -89,17 +95,15 @@ def respond_start(proxy_addr, checksum, file_list, network_tuple):
     proxy_socket = Client.lookup_socket(proxy_addr, network_tuple)
     proxy_connection = (proxy_socket, proxy_addr)
 
-    counter = 0
-    for sector in sectors:
-        counter += 1
-        # proxy:file:checksum:file_size:proxy_address:data
-        print("Sending segment", str(counter), "of", str(len(sectors)), "to proxy...")
-        data_packet = ':'.join([no_prop, "proxy", "file", checksum, str(file_tuple[0]), proxy_addr, sector])
-        print("Data packet made")
-        Client.send(proxy_connection, data_packet, sign=False)
-        print("Sent")
-        time.sleep(0.25)
-        print("Rinse; Repeat")
+
+    # proxy:file:checksum:file_size:proxy_address:data
+    data_packet = ':'.join([no_prop, "proxy", "file", checksum, str(file_tuple[0]), proxy_addr, sectors[0]])
+    print("Data packet made")
+    Client.send(proxy_connection, data_packet, sign=False)
+    print("Sent")
+    time.sleep(0.25)
+    print("Rinse; Repeat")
+    sectors.pop(0)
 
 def start(stage, proxy, checksum, localhost, file_list, network_tuple):
     import primitives

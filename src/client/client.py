@@ -637,7 +637,14 @@ class Client:
                     Primitives.log("Proxy is ready", in_log_level="Info")
                     Primitives.log("File checksum according to Proxy: "+arguments[1], in_log_level="Debug")
                     proxy_addr = Primitives.find_representative(election_list, "dfs-"+arguments[1])
-                    file.respond_start(proxy_addr, file_checksum, file_list, network_tuple)
+                    file.respond_start(proxy_addr, file_checksum, file_list, network_tuple, init=True)
+
+                if arguments[0] == "next_packet":
+                    # Proxy is ready for data; pass control back to file module
+                    Primitives.log("Next packet...", in_log_level="Info")
+                    file_checksum = arguments[1]
+                    proxy_addr = Primitives.find_representative(election_list, "dfs-"+arguments[1])
+                    file.respond_start(proxy_addr, file_checksum, file_list, network_tuple, init=False)
 
             if message.startswith("remove:"):
 
