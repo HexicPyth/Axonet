@@ -316,7 +316,7 @@ class Server:
                 proxy_message = message[6:]
 
                 if proxy_message.startswith("init_file_dist:"):
-                    # proxy:init_file:checksum:
+                    # proxy:init_file:checksum:file_size:proxy_address
                     arguments = injector.parse_cmd(proxy_message)
                     checksum = arguments[0]
                     proxy_tuple = (host_addr, checksum)
@@ -327,13 +327,16 @@ class Server:
                     proxy_message += Primitives.get_local_ip()
                     #self.broadcast(self.prepare(proxy_message))
                     print("Proxy msg: ", proxy_message)
+                    self.broadcast(no_prop+":notify:proxy_ready:"+checksum)
 
                 elif proxy_message.startswith("file:"):
-                    # proxy:file:size:checksum:__data__
+                    # proxy:file:checksum:file_size:proxy_address:data
                     arguments = injector.parse_cmd(proxy_message)
+                    data = arguments[3]
 
                     print("Receiving data from" + host_addr)
                     print(proxy_message)
+                    print("Data: "+str(data))
 
             # We only broadcast messages with hashes we haven't already documented. That way the network doesn't
             # loop indefinitely broadcasting the same message. Also, Don't append no_prop to message_list.

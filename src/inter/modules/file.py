@@ -66,10 +66,7 @@ def initiate(net_tuple, arguments):
 
 def respond_start(proxy_addr, file_path, checksum, network_tuple):
     """Called by the client's listener_thread when it received a file: flag"""
-    import inject
-    injector = inject.NetworkInjector()
-    msg = str(proxy_addr)+str(file_path)+str(checksum)
-    injector.broadcast(injector.prepare(msg), network_tuple)
+    pass
 
 
 def start(stage, proxy, checksum, localhost, file_list, network_tuple):

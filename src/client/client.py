@@ -624,6 +624,15 @@ class Client:
             # Disconnect from some misbehaving node and pop it from out network tuple
             # example message: remove:192.168.2.3
 
+            if message.startswith("notify:"):
+                import inject
+                Injector = inject.NetworkInjector()
+
+                arguments = Injector.parse_cmd(message)
+                if arguments[0] == "proxy_ready":
+                    print("HEY THERE!")
+                    print("Checksum: "+arguments[1])
+
             if message.startswith("remove:"):
 
                 address_to_remove = message[7:]
