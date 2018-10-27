@@ -342,9 +342,11 @@ class Server:
                     file_proxies.append(proxy_tuple)
 
                     proxy_message = proxy_message[:-19]
-                    print(arguments)
+                    if log_msg:
+                        print(arguments)
                     proxy_message += Primitives.get_local_ip()
-                    print("Proxy msg: ", proxy_message)
+                    if log_msg:
+                        print("Proxy msg: ", proxy_message)
                     host_connection = (self.lookup_socket(host_addr), host_addr)
                     print(host_connection)
                     self.send(host_connection, no_prop+":notify:proxy_ready:"+checksum, signing=False)
