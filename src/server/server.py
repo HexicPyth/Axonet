@@ -11,6 +11,7 @@ from hashlib import sha3_224
 sys.path.insert(0, '../misc/')
 
 import primitives
+import time
 
 # Globals
 localhost = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -332,13 +333,20 @@ class Server:
                     self.send(host_connection, no_prop+":notify:proxy_ready:"+checksum, signing=False)
 
                 elif proxy_message.startswith("file:"):
+                    import client
+                    Client = client.Client()
                     # proxy:file:checksum:file_size:proxy_address:data
                     arguments = injector.parse_cmd(proxy_message)
+                    checksum = arguments[0]
                     data = arguments[3]
 
                     print("Receiving data from" + host_addr)
                     print(proxy_message)
                     print("Data: "+str(data))
+                    self.broadcast("newpage: "+checksum)
+                    time.sleep(0.25)  # Give client time to make new pagefile
+                    Client.write_to_page(checksum, data, signing=False)
+                    pass  # Do distribution stuff...
 
             # We only broadcast messages with hashes we haven't already documented. That way the network doesn't
             # loop indefinitely broadcasting the same message. Also, Don't append no_prop to message_list.
