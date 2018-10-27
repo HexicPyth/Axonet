@@ -343,13 +343,14 @@ class Server:
 
                     print("Receiving data from" + host_addr)
                     print(proxy_message)
-                    print("Data: "+str(data))
+                    print("Data Received")
 
                     os.chdir(original_path)
                     new_filename = str("../inter/mem/" + checksum + ".bin")
                     newpage = open(new_filename, "a+")
-                    Client.write_to_page(checksum, data, signing=False)
+                    newpage.write(data)
                     newpage.close()
+                    print("Data Written")
                     pass  # Do distribution stuff...
 
             # We only broadcast messages with hashes we haven't already documented. That way the network doesn't
