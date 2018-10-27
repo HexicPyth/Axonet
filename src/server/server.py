@@ -39,6 +39,7 @@ sys.path.insert(0, '../misc/')
 
 # This will be reset with input values by init()
 Primitives = primitives.Primitives(sub_node, log_level)
+original_path = os.path.dirname(os.path.realpath(__file__))
 
 
 class Server:
@@ -343,9 +344,12 @@ class Server:
                     print("Receiving data from" + host_addr)
                     print(proxy_message)
                     print("Data: "+str(data))
-                    self.broadcast("d2623b76640f6bf2"+":"+"newpage: "+checksum)
-                    time.sleep(0.25)  # Give client time to make new pagefile
+
+                    os.chdir(original_path)
+                    new_filename = str("../inter/mem/" + checksum + ".bin")
+                    newpage = open(new_filename, "a+")
                     Client.write_to_page(checksum, data, signing=False)
+                    newpage.close()
                     pass  # Do distribution stuff...
 
             # We only broadcast messages with hashes we haven't already documented. That way the network doesn't

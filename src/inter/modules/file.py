@@ -95,8 +95,11 @@ def respond_start(proxy_addr, checksum, file_list, network_tuple):
         # proxy:file:checksum:file_size:proxy_address:data
         print("Sending segment", str(counter), "of", str(len(sectors)), "to proxy...")
         data_packet = ':'.join([no_prop, "proxy", "file", checksum, str(file_tuple[0]), proxy_addr, sector])
-        Injector.send(proxy_connection, data_packet, sign=False)
+        print("Data packet made")
+        Client.send(proxy_connection, data_packet, sign=False)
+        print("Sent")
         time.sleep(0.25)
+        print("Rinse; Repeat")
 
 def start(stage, proxy, checksum, localhost, file_list, network_tuple):
     import primitives
