@@ -338,11 +338,11 @@ class Server:
                     import client
                     Client = client.Client()
                     # proxy:file:checksum:file_size:proxy_address:data
-                    print("\n Am I still alive? \n")
                     arguments = injector.parse_cmd(proxy_message)
                     checksum = arguments[0]
+                    print("\n Am I still alive? \n")
                     data = bytearray.fromhex(arguments[3]).decode()
-
+                    print("\n Am I STILL alive? \n")
                     print("Receiving data from" + host_addr)
                     print(print(data[:16]))
                     print("Data Received")
