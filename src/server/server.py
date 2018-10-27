@@ -340,9 +340,9 @@ class Server:
                     # proxy:file:checksum:file_size:proxy_address:data
                     arguments = injector.parse_cmd(proxy_message)
                     checksum = arguments[0]
-                    print("\n Am I still alive? \n")
-                    data = arguments[3]   # This crashes the server WTF???
-                    print("\n Am I STILL alive? \n")
+
+                    data = bytearray.fromhex(arguments[3]).decode('latin-1')
+
                     print("Receiving data from" + host_addr)
                     print(print(data[:16]))
                     print("Data Received")
