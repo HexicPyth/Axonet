@@ -229,7 +229,7 @@ class Server:
         message = msg[17:]
 
         # Don't spit out hundreds of kilobits of data into the logs :).
-        if not msg.startswith("proxy:file:"):
+        if not message.startswith("proxy:file:"):
             log_msg = True
         else:
             log_msg = False
@@ -238,15 +238,15 @@ class Server:
             message_received_log_dbg = str("Received raw message: "+full_message)
             Primitives.log(message_received_log_dbg, in_log_level="Debug")
         else:
-            Primitives.log("Received raw message(output truncated): "+full_message[:100])
+            Primitives.log("Received raw message(output truncated): "+full_message[:50])
 
         if sig not in message_list:
             if log_msg:
                 message_received_log_info = str('Server -> Received: ' + message + " (" + sig + ")")
                 Primitives.log(message_received_log_info, in_log_level="Info")
-            else:
+            elif not log_msg:
                 message_received_log_info = str('Server -> Received(output truncated)'
-                                                ': ' + message[:100] + " (" + sig + ")")
+                                                ': ' + message[:50] + " (" + sig + ")")
                 Primitives.log(message_received_log_info, in_log_level="Info")
 
 
@@ -357,15 +357,14 @@ class Server:
                     arguments = injector.parse_cmd(proxy_message)
                     checksum = arguments[0]
 
-                    data = bytearray.fromhex(arguments[3]).decode('latin-1')
+                    data = bytearray.fromhex(arguments[3])
 
                     print("Receiving data from" + host_addr)
-                    print(print(data[:16]))
                     print("Data Received")
 
                     os.chdir(original_path)
                     new_filename = str("../inter/mem/" + checksum + ".bin")
-                    newpage = open(new_filename, "a+")
+                    newpage = open(new_filename, "wb")
                     newpage.write(data)
                     newpage.close()
                     print("Data Written")
