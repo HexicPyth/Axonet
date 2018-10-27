@@ -334,10 +334,11 @@ class Server:
                     self.send(host_connection, no_prop+":notify:proxy_ready:"+checksum, signing=False)
 
                 elif proxy_message.startswith("file:"):
-                    print("!!!")
+                    print("Received a file: sub-flag...")
                     import client
                     Client = client.Client()
                     # proxy:file:checksum:file_size:proxy_address:data
+                    print("\n Am I still alive? \n")
                     arguments = injector.parse_cmd(proxy_message)
                     checksum = arguments[0]
                     data = bytearray.fromhex(arguments[3]).decode()
