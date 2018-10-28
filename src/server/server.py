@@ -237,8 +237,11 @@ class Server:
         if log_the_message:
             message_received_log_dbg = str("Received raw message: "+full_message)
             Primitives.log(message_received_log_dbg, in_log_level="Debug")
+            print(log_the_message)
+
         else:
             Primitives.log("Received raw message(output truncated): "+full_message[:50])
+            print(log_the_message)
 
         if sig not in message_list:
             if log_the_message:
@@ -248,9 +251,6 @@ class Server:
                 message_received_log_info = str('Server -> Received(output truncated)'
                                                 ': ' + message[:50] + " (" + sig + ")")
                 Primitives.log(message_received_log_info, in_log_level="Info")
-
-
-
 
             if message == "echo":
                 # If received, two-way communication is functional
@@ -357,6 +357,7 @@ class Server:
 
                 elif proxy_message.startswith("file:"):
                     print("Received a file: sub-flag...")
+                    print(log_the_message)
                     import client
                     Client = client.Client()
                     # proxy:file:checksum:file_size:proxy_address:data
