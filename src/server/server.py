@@ -346,7 +346,7 @@ class Server:
                     proxy_message = proxy_message[:-19]
 
                     if log_the_message:
-                        self.log("Proxy Arguments: "+str(arguments), in_log_level="info")
+                        Primitives.log("Proxy Arguments: "+str(arguments), in_log_level="info")
 
                     proxy_message += Primitives.get_local_ip()
 
