@@ -332,7 +332,7 @@ class Server:
 
                 proxy_message = message[6:]
                 if log_the_message:
-                    primitives.log("Proxy Message: "+proxy_message, in_log_level="Info")
+                    Primitives.log("Proxy Message: "+proxy_message, in_log_level="Info")
 
                 if proxy_message.startswith("init_file_dist:"):
                     Primitives.log("Being a proxy for " + host_addr, in_log_level="Info")
