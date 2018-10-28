@@ -331,7 +331,9 @@ class Server:
                     host_addr = Primitives.get_local_ip()
 
                 proxy_message = message[6:]
-                print(proxy_message)
+                if log_the_message:
+                    primitives.log("Proxy Message: "+proxy_message, in_log_level="Info")
+
                 if proxy_message.startswith("init_file_dist:"):
                     Primitives.log("Being a proxy for " + host_addr, in_log_level="Info")
 
@@ -344,7 +346,7 @@ class Server:
                     proxy_message = proxy_message[:-19]
 
                     if log_the_message:
-                        print(arguments)
+                        self.log("Proxy Arguments: "+str(arguments), in_log_level="info")
 
                     proxy_message += Primitives.get_local_ip()
 
@@ -352,7 +354,7 @@ class Server:
                         print("Proxy msg: ", proxy_message)
 
                     host_connection = (self.lookup_socket(host_addr), host_addr)
-                    print(host_connection)
+                    Primitives.log("Host Connection: "+str(host_connection), in_log_level="Debug")
                     self.send(host_connection, no_prop+":notify:proxy_ready:"+checksum, signing=False)
 
                 elif proxy_message.startswith("file:"):

@@ -122,6 +122,7 @@ def respond_start(proxy_addr, checksum, file_list, network_tuple, init=True):
     except IndexError:
         print("File Transfer complete!")
 
+
 def start(stage, proxy, checksum, localhost, file_list, network_tuple):
     import primitives
     import client
