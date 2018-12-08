@@ -102,7 +102,7 @@ def respond_start(proxy_addr, checksum, file_list, network_tuple, init=True):
         print(len(current_file_sectors))
 
     try:
-        sector = current_file_sectors[len(current_file_sectors)]
+        sector = current_file_sectors[len(current_file_sectors)-1]
         print()
         print("Sector id: " + sector[:16])
         print()
