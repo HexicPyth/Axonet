@@ -98,7 +98,7 @@ def respond_start(proxy_addr, checksum, file_list, network_tuple, init=True):
         current_file_sectors.pop(0)
         x += 1
         print("Counter: "+str(x))
-        print("Transfering sector: "+str(len(current_file_sectors)) + " of "+str(current_file_size))
+        print("Transferring sector: "+str(len(current_file_sectors)+1) + " of "+str(current_file_size))
         print(len(current_file_sectors))
 
     try:

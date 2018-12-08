@@ -348,7 +348,8 @@ class Client:
 
         # Try to prevent race-conditions in case multiple threads
         # somehow receive the same message at the same time
-        sleep(random.uniform(0.008, 0.05))
+        sleep(random.uniform(0.008, 0.05))  # TODO: Is this neccesary?
+
 
         # Don't respond to messages we've already responded to.
         if sig in message_list:
@@ -394,16 +395,16 @@ class Client:
 
                     # Don't re-connect to localhost. All kinds of bad things happen if you do.
                     if connect_to_address == Primitives.get_local_ip() or connect_to_address == "127.0.0.1":
-                        not_connecting_msg = str("Not connecting to " + connect_to_address + "; That's localhost :P")
 
+                        not_connecting_msg = str("Not connecting to " + connect_to_address + "; That's localhost :P")
                         Primitives.log(not_connecting_msg, in_log_level="Warning")
 
                     else:
                         local_address = Primitives.get_local_ip()
 
                         # Be verbose
-                        Primitives.log(str("self.lookup_socket() indicates that "
-                                     "we're not connected to " + connect_to_address), in_log_level="Info")
+                        Primitives.log(str("self.lookup_socket() indicates that we're not"
+                                           " connected to " + connect_to_address), in_log_level="Info")
 
                         Primitives.log(str("Primitives.get_local_ip() indicates that localhost "
                                      "= " + local_address), in_log_level="Info")
@@ -455,10 +456,10 @@ class Client:
                 e.x newpage:(64-bit signature)"""
 
                 page_id = message[8:]
+                new_filename = str("../inter/mem/" + page_id + ".bin")
                 Primitives.log("Creating new page with id: " + str(page_id), in_log_level="Info")
 
                 os.chdir(original_path)
-                new_filename = str("../inter/mem/" + page_id + ".bin")
                 newpage = open(new_filename, "a+")
                 page_list.append(newpage)
 
@@ -563,10 +564,9 @@ class Client:
                     print(len(network_tuple))
 
                     # Wait for each node to contribute before doing module-specific I/O
-                    Primitives.log("\n\t" + str(len(newlines)) + " Node(s) have contributed to the network.\n"
-                                                           "The network tuple(+1) is of"
-                                                           " length " + str(len(network_tuple) + 1),
-                             in_log_level="Debug")
+                    Primitives.log("\n\t" + str(len(newlines)) + " Node(s) have contributed to the network."
+                                                                 "\n The network tuple(+1) is of length: "
+                                   + str(len(network_tuple) + 1), in_log_level="Debug")
 
                     if len(newlines) == len(network_tuple)+1:
                         # We've received contributions from very node on the network.
@@ -618,12 +618,11 @@ class Client:
                 self.broadcast(self.prepare(vote_msg))
 
                 proxy = Primitives.find_representative(election_list, election_reason)  # Doesn't work (race condition)
-
                 # Will be continued in self.init_file(stage=1), called during the elect: flag
 
-            # Disconnect from some misbehaving node and pop it from out network tuple
-            # example message: remove:192.168.2.3
-
+            # Provide server's a means of communicating readiness to clients. This is used during file proxying
+            # to form a feedback loop between the proxy and client, that way the client doesn't ever exceed the
+            # maximum channel capacity(i.e bandwidth) of it's connection to the proxy server.
             if message.startswith("notify:"):
                 import inject
                 import file
@@ -640,12 +639,14 @@ class Client:
                     file.respond_start(proxy_addr, file_checksum, file_list, network_tuple, init=True)
 
                 if arguments[0] == "next_packet":
-                    # Proxy is ready for data; pass control back to file module
+                    # Proxy is ready for data; pass control back to file module. (Feedback Loop)
                     Primitives.log("Next packet...", in_log_level="Info")
                     file_checksum = arguments[1]
                     proxy_addr = Primitives.find_representative(election_list, "dfs-"+arguments[1])
                     file.respond_start(proxy_addr, file_checksum, file_list, network_tuple, init=False)
 
+            # Disconnect from some misbehaving node and pop it from out network tuple
+            # example message: remove:192.168.2.3
             if message.startswith("remove:"):
 
                 address_to_remove = message[7:]
