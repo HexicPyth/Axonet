@@ -373,7 +373,7 @@ class Server:
 
                     os.chdir(original_path)
                     new_filename = str("../inter/mem/" + checksum + ".bin")
-                    newpage = open(new_filename, "wb")
+                    newpage = open(new_filename, "ab")
                     newpage.write(data)
                     newpage.close()
                     print("Data Written")
