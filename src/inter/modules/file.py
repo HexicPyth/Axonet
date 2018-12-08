@@ -102,9 +102,9 @@ def respond_start(proxy_addr, checksum, file_list, network_tuple, init=True):
         print(len(current_file_sectors))
 
     try:
-        sector = current_file_sectors[0]
+        sector = current_file_sectors[len(current_file_sectors)]
         print()
-        print(sector[:16])
+        print("Sector id: " + sector[:16])
         print()
 
         file_tuple = primitives.find_file_tuple(file_list, checksum)
