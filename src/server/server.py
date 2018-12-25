@@ -396,7 +396,12 @@ class Server:
                     print("Data Written")
 
                     if all_data_written:
+                        print("All Data Written")
+                        print(checksum)
+
                         our_checksum = str(file.md5sum(new_filename))
+                        print(our_checksum)
+
                         if our_checksum == checksum:
                             operation_complete = True
                         else:
