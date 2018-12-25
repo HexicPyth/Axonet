@@ -364,6 +364,7 @@ class Server:
                     print(log_the_message)
 
                     import client
+                    os.chdir(original_path)
                     import file
 
                     Client = client.Client()
