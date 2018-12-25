@@ -342,8 +342,8 @@ class Server:
                     arguments = injector.parse_cmd(proxy_message)
                     checksum = arguments[0]
                     file_size = arguments[1]
-                    proxy_tuple = (host_addr, checksum)
-                    file_proxies.append(proxy_tuple, file_size)
+                    proxy_tuple = (host_addr, checksum, file_size)
+                    file_proxies.append(proxy_tuple)
 
                     proxy_message = proxy_message[:-19]
 
