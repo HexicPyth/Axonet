@@ -365,7 +365,6 @@ class Server:
 
                     import client
                     os.chdir(original_path)
-                    import file
 
                     Client = client.Client()
 
@@ -380,7 +379,14 @@ class Server:
                     print("Data Received")
                     print("File "+checksum+" is of size: "+file_size+" bytes")
 
+                    os.chdir(os.path.abspath("../inter/mem"))
+                    try:
+                        import file
+                    except ModuleNotFoundError:
+                        print("!!!")
+
                     os.chdir(original_path)
+
                     new_filename = str("../inter/mem/" + checksum + ".bin")
 
                     newpage = open(new_filename, "ab")
