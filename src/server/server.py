@@ -335,13 +335,15 @@ class Server:
                     Primitives.log("Proxy Message: "+proxy_message, in_log_level="Info")
 
                 if proxy_message.startswith("init_file_dist:"):
+                    # ffffffffffffffff:proxy:init_file_dist:bea8252ff4e80f41719ea13cdf007273:14:192.168.2.11
                     Primitives.log("Being a proxy for " + host_addr, in_log_level="Info")
 
                     # proxy:init_file:checksum:file_size:proxy_address
                     arguments = injector.parse_cmd(proxy_message)
                     checksum = arguments[0]
+                    file_size = arguments[1]
                     proxy_tuple = (host_addr, checksum)
-                    file_proxies.append(proxy_tuple)
+                    file_proxies.append(proxy_tuple, file_size)
 
                     proxy_message = proxy_message[:-19]
 
@@ -360,28 +362,52 @@ class Server:
                 elif proxy_message.startswith("file:"):
                     print("Received a file: sub-flag...")
                     print(log_the_message)
+
                     import client
+                    import file
+
                     Client = client.Client()
+
                     # proxy:file:checksum:file_size:proxy_address:data
                     arguments = injector.parse_cmd(proxy_message)
                     checksum = arguments[0]
+                    file_size = arguments[1]
 
                     data = bytearray.fromhex(arguments[3])
 
-                    print("Receiving data from" + host_addr)
+                    print("Receiving data from: " + host_addr)
                     print("Data Received")
+                    print("File "+checksum+" is of size: "+file_size+" bytes")
 
                     os.chdir(original_path)
                     new_filename = str("../inter/mem/" + checksum + ".bin")
 
                     newpage = open(new_filename, "ab")
                     newpage.write(data)
+
+                    if len(newpage.read()) == file_size:
+                        all_data_written = True
+                    else:
+                        all_data_written = False
+
                     newpage.close()
 
                     print("Data Written")
 
-                    host_connection = (self.lookup_socket(host_addr), host_addr)
-                    self.send(host_connection, no_prop+":notify:next_packet:"+checksum, signing=False)
+                    if all_data_written:
+                        our_checksum = str(file.md5sum(new_filename))
+                        if our_checksum == checksum:
+                            operation_complete = True
+                        else:
+                            operation_complete = False
+
+                        if operation_complete:
+                            Primitives.log(str("Transfer from Host complete. TODO: Distribute this." +
+                                           "\nProxy Checksum: "+our_checksum + "\nHost Checksum: "+checksum))
+                    else:
+                        # ...NEED...MORE...Bites......      :)
+                        host_connection = (self.lookup_socket(host_addr), host_addr)
+                        self.send(host_connection, no_prop+":notify:next_packet:"+checksum, signing=False)
 
             # We only broadcast messages with hashes we haven't already documented. That way the network doesn't
             # loop indefinitely broadcasting the same message. Also, Don't append no_prop to message_list.
