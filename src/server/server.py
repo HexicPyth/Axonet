@@ -373,14 +373,15 @@ class Server:
 
                     os.chdir(original_path)
                     new_filename = str("../inter/mem/" + checksum + ".bin")
+
                     newpage = open(new_filename, "ab")
                     newpage.write(data)
                     newpage.close()
+
                     print("Data Written")
 
                     host_connection = (self.lookup_socket(host_addr), host_addr)
                     self.send(host_connection, no_prop+":notify:next_packet:"+checksum, signing=False)
-
 
             # We only broadcast messages with hashes we haven't already documented. That way the network doesn't
             # loop indefinitely broadcasting the same message. Also, Don't append no_prop to message_list.
@@ -400,10 +401,13 @@ class Server:
                 if message[:5] == "sync:":
                     # This is marked no_prop, however, localhost needs to know about sync calls.
                     # Propagate to localhost(and localhost only)
+
                     Primitives.log("Violating the no_prop policy for localhost", in_log_level="Warning")
+
                     localhost_address = "127.0.0.1"
                     localhost_socket = self.lookup_socket(localhost_address)
                     localhost_connection = (localhost_socket, localhost_address)
+
                     self.send(localhost_connection, full_message, signing=False)
 
     def disconnect(self, connection, disallow_local_disconnect=True):

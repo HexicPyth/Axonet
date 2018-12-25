@@ -135,7 +135,7 @@ class Primitives:
             # Something corrupted in transit. Let's just ignore the bad pieces for now.
             except UnicodeDecodeError:
 
-                if len(raw_packet) == 4:  # raw_packet should not be referenced before assignment. TODO: will it?
+                if len(raw_packet) == 4:  # raw_packet should not be referenced before assignment. TODO: will it be?
 
                     # The first four bytes of a message are it's binary length(see self.send); it'll almost never
                     # decode anyway; ignore it. (Fix issue #22)

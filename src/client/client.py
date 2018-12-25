@@ -996,7 +996,6 @@ class Client:
                     Primitives.log(str("Starting listener on " + remote_address), in_log_level="Info")
                     self.listen(connection)
 
-                    # What does this do?
                     if network_architecture == "complete":
                         self.send(connection, no_prop+":echo", sign=False)  # WIP
 
