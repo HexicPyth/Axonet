@@ -380,8 +380,7 @@ class Server:
                     print("Data Received")
                     print("File "+checksum+" is of size: "+file_size+" bytes")
 
-                    os.chdir(this_dir)
-                    new_filename = str("../inter/mem/" + checksum + ".bin")
+                    new_filename = str("../mem/" + checksum + ".bin")
 
                     try:
                         newpage = open(new_filename, "ab")
