@@ -413,7 +413,8 @@ class Server:
 
                         if operation_complete:
                             Primitives.log(str("Transfer from Host complete. TODO: Distribute this." +
-                                           "\nProxy Checksum: "+our_checksum + "\nHost Checksum: "+checksum))
+                                           "\nProxy Checksum: "+our_checksum + "\nHost Checksum: "+checksum),
+                                           in_log_level="Info")
                     else:
                         # ...NEED...MORE...Bites......      :)
                         host_connection = (self.lookup_socket(host_addr), host_addr)
