@@ -382,16 +382,7 @@ class Server:
 
                     new_filename = str("../mem/" + checksum + ".bin")
 
-                    try:
-                        newpage = open(new_filename, "ab")
-
-                    # 'ab' mode(append binary) does not create a new file in case is does not exist.
-                    # If the file does not exist, load with 'wb' and write the first segment without any negative
-                    # effects. Every segment after that will write perfectly fine with 'ab' mode.
-
-                    except FileNotFoundError:
-
-                        newpage = open(os.path.abspath(new_filename), "ab+")
+                    newpage = open(new_filename, "ab")
 
                     newpage.write(data)
 
