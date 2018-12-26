@@ -391,7 +391,7 @@ class Server:
 
                     except FileNotFoundError:
 
-                        newpage = open(new_filename, "wb")
+                        newpage = open(new_filename, "ab+")
 
                     newpage.write(data)
 
