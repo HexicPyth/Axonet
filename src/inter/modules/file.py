@@ -98,28 +98,28 @@ def respond_start(proxy_addr, checksum, file_list, network_tuple, init=True):
         current_file_sectors.pop(0)
         x += 1
         print("Counter: "+str(x))
-        print("Transferring sector: "+str(len(current_file_sectors)+1) + " of "+str(current_file_size))
+        print("Transferring sector: "+str(len(current_file_sectors)) + " of "+str(current_file_size))
         print(len(current_file_sectors))
 
-    try:
-        sector = current_file_sectors[0]
-        print()
-        print("Sector id: " + sector[:16])
-        print()
+    sector = current_file_sectors[0]
+    print()
+    print("Sector id: " + sector[:16])
+    print()
 
-        file_tuple = primitives.find_file_tuple(file_list, checksum)
-        file_size = file_tuple[0]
-        proxy_addr = file_tuple[3]
-        proxy_socket = Client.lookup_socket(proxy_addr, network_tuple)
-        proxy_connection = (proxy_socket, proxy_addr)
+    file_tuple = primitives.find_file_tuple(file_list, checksum)
+    file_size = file_tuple[0]
+    proxy_addr = file_tuple[3]
+    proxy_socket = Client.lookup_socket(proxy_addr, network_tuple)
+    proxy_connection = (proxy_socket, proxy_addr)
 
-        # Format: proxy:file:checksum:file_size:proxy_address:data
-        data = sector
-        data_packet = ':'.join([no_prop, "proxy", "file", checksum, str(file_tuple[0]), proxy_addr, data])
-        print("Data packet made")
-        Client.send(proxy_connection, data_packet, sign=False)
-        print("Sent")
-    except IndexError:
+    # Format: proxy:file:checksum:file_size:proxy_address:data
+    data = sector
+    data_packet = ':'.join([no_prop, "proxy", "file", checksum, str(file_tuple[0]), proxy_addr, data])
+    print("Data packet made")
+    Client.send(proxy_connection, data_packet, sign=False)
+    print("Sent")
+
+    if x == 1:
         print("File Transfer complete!")
 
 
