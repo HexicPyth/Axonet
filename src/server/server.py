@@ -8,6 +8,8 @@ import struct
 import datetime
 import threading
 from hashlib import sha3_224
+sys.path.insert(0, '../inter/')
+sys.path.insert(0, '../inter/modules/')
 sys.path.insert(0, '../misc/')
 
 import primitives
@@ -34,6 +36,7 @@ loaded_modules = []
 this_dir = os.path.dirname(os.path.realpath(__file__))
 os.chdir(this_dir)
 sys.path.insert(0, '../inter/modules/')
+import file
 sys.path.insert(0, '../misc/')
 
 
@@ -380,11 +383,6 @@ class Server:
                     print("File "+checksum+" is of size: "+file_size+" bytes")
 
                     os.chdir(os.path.abspath("../inter/mem"))
-                    try:
-                        import file
-                    except ModuleNotFoundError:
-                        print("!!!")
-
                     os.chdir(original_path)
 
                     new_filename = str("../inter/mem/" + checksum + ".bin")
