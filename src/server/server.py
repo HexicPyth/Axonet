@@ -380,7 +380,7 @@ class Server:
                     print("Data Received")
                     print("File "+checksum+" is of size: "+file_size+" bytes")
 
-                    os.chdir(original_path)
+                    os.chdir(this_dir)
                     new_filename = str("../inter/mem/" + checksum + ".bin")
 
                     try:
