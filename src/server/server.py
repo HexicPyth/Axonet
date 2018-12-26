@@ -395,20 +395,20 @@ class Server:
 
                     newpage.write(data)
 
+                    newpage.close()
+
+                    print("Data Written")
+
                     print("...")
                     our_file_size = os.stat(os.path.abspath(new_filename)).st_size
 
                     print("Our file is of size: " + str(our_file_size))
                     print("File size should equal: " + str(file_size))
-
                     if our_file_size == file_size:
                         all_data_written = True
                     else:
                         all_data_written = False
 
-                    newpage.close()
-
-                    print("Data Written")
                     if all_data_written:
                         print("All Data Written")
                         print(checksum)
