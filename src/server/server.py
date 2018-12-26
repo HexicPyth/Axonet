@@ -396,10 +396,12 @@ class Server:
                     newpage.write(data)
 
                     if len(newpage.read()) == file_size:
+                        all_data_written = True
                         print("Our file is of size: "+str(len(newpage.read())))
                         print("File size should equal: "+str(file_size))
-                        all_data_written = True
                     else:
+                        print("Our file is of size: "+str(len(newpage.read())))
+                        print("File size should equal: "+str(file_size))
                         all_data_written = False
 
                     newpage.close()
