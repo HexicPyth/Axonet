@@ -367,8 +367,6 @@ class Server:
                     print(log_the_message)
 
                     import client
-                    os.chdir(original_path)
-
                     Client = client.Client()
 
                     # proxy:file:checksum:file_size:proxy_address:data
