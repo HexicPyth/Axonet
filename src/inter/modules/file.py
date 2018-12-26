@@ -121,9 +121,6 @@ def respond_start(proxy_addr, checksum, file_list, network_tuple, init=True):
             Client.send(proxy_connection, data_packet, sign=False)
             print("Sent")
 
-            if x == 0:
-                print("File Transfer complete!")
-
         except IndexError:
             print("File Transfer complete!")
 
