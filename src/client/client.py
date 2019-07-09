@@ -45,7 +45,7 @@ log_level = ""  # "Debug", "Info", or "Warning"; To be set by init
 sub_node = "Client"
 no_prop = "ffffffffffffffff"  # True:[message] = No message propagation.
 SALT = None  # Will be set to a 128-bit hexadecimal token(by self.init) for making address identifiers
-ADDR_ID = None  # Another 128-bit hexadecimal token that wil be salted with SALt, and set by init()
+ADDR_ID = None  # Another 128-bit hexadecimal token that wil be salted with SALT, and set by init()
 original_path = os.path.dirname(os.path.realpath(__file__))
 os.chdir(original_path)
 sys.path.insert(0, '../inter/modules/')
@@ -77,7 +77,7 @@ class Client:
     def lookup_socket(address, ext_net_tuple=None):  # TODO: optimize me
         """Brute force search the network tuple for a socket associated with a given address.
             Return socket object if found.
-            Returns 0(-> int) id not found
+            Returns 0(-> int) if not found
         """
         if ext_net_tuple:
             net_tuple = ext_net_tuple
@@ -144,7 +144,8 @@ class Client:
         # (Again) tuples are immutable; replace the old one with the new one
         network_tuple = tuple(network_list)
 
-    def remove(self, connection):
+    @staticmethod
+    def remove(connection):
         """ Remove a given connection object(tuple of (socket, address)) from the network tuple.
             Doesn't return """
 
@@ -299,7 +300,8 @@ class Client:
         os.system(command)
         return 0
 
-    def write_to_page(self, page_id, data, signing=True):
+    @staticmethod
+    def write_to_page(page_id, data, signing=True):
         global ADDR_ID
         """ Write data to a given pagefile by ID."""
 
@@ -347,9 +349,8 @@ class Client:
         address = connection[1]
 
         # Try to prevent race-conditions in case multiple threads
-        # somehow receive the same message at the same time
+        # somehow receive the same message at the same time (not likely)
         sleep(random.uniform(0.008, 0.05))  # TODO: Is this neccesary?
-
 
         # Don't respond to messages we've already responded to.
         if sig in message_list:
@@ -406,8 +407,8 @@ class Client:
                         Primitives.log(str("self.lookup_socket() indicates that we're not"
                                            " connected to " + connect_to_address), in_log_level="Info")
 
-                        Primitives.log(str("Primitives.get_local_ip() indicates that localhost "
-                                     "= " + local_address), in_log_level="Info")
+                        Primitives.log(str("Primitives.get_local_ip() indicates that"
+                                           " localhost = " + local_address), in_log_level="Info")
 
                         new_socket = socket.socket()
 
@@ -424,7 +425,7 @@ class Client:
                                 I don't know what to do about that, so we'll just warn the user."""
 
                                 Primitives.log(str("Unable to connect to: " + str(connect_to_address)),
-                                         in_log_level="Warning")
+                                               in_log_level="Warning")
 
                 # The address isn't foreign, don't re-connect to it.
                 elif connection_status != 0:
@@ -569,7 +570,7 @@ class Client:
                                    + str(len(network_tuple) + 1), in_log_level="Debug")
 
                     if len(newlines) == len(network_tuple)+1:
-                        # We've received contributions from very node on the network.
+                        # We've received contributions from every node on the network.
                         # Now do module-specific I/O
                         if module_loaded == "corecount":
                             os.chdir(original_path)
@@ -591,7 +592,8 @@ class Client:
                 origin_addr_id = message_to_parse[26:]
 
                 Primitives.log("Our Address Identifier: "+ADDR_ID, in_log_level="Debug")
-                Primitives.log("Received message destined for Address Identifier: "+origin_addr_id, in_log_level="Debug")
+                Primitives.log("Received message destined for Address Identifier: "+origin_addr_id,
+                               in_log_level="Debug")
                 Primitives.log("Checksum: " + file_hash)
                 Primitives.log("File Size: "+str(file_length))
 
@@ -617,7 +619,6 @@ class Client:
                 vote_msg = "vote:"+election_reason
                 self.broadcast(self.prepare(vote_msg))
 
-                proxy = Primitives.find_representative(election_list, election_reason)  # Doesn't work (race condition)
                 # Will be continued in self.init_file(stage=1), called during the elect: flag
 
             # Provide server's a means of communicating readiness to clients. This is used during file proxying
@@ -714,26 +715,18 @@ class Client:
                     # See where I'm going now?
 
                     Primitives.log("Received a campaign: flag out of order(i.e before the vote: flag)."
-                                   "Attempting to initiate our election protocal with any information we"
+                                   "Attempting to initiate our election protocol with any information we"
                                    "can collect.", in_log_level="Warning")
 
                     import inject
                     Injector = inject.NetworkInjector()
 
                     election_details = Injector.parse_cmd(message)  # [reason, token]
-                    this_reason = election_details[0]
 
                     # Before we (hopefully) receive a vote flag: the elction list is empty. Populate it
-                    # election_tuple = (this_reason, "TBD")
-                    # election_list.append(election_tuple)
                     campaign_tuple = tuple(Injector.parse_cmd(message))
                     campaign_list.append(campaign_tuple)
                     print(str(campaign_list))
-
-                    # Remember, we have not yet received the vote flag. Don't toggle ongoing_election as that will
-                    # prevent vote: from initiating all the fun stuff :P.
-
-                    # ongoing_election = True
 
                 if ongoing_election:
                     import inject
@@ -972,14 +965,14 @@ class Client:
         except ConnectionRefusedError:
 
             Primitives.log("Connection to localhost was not successful; check that your server is "
-                     "initialized, and try again later.", in_log_level="Warning")
+                           "initialized, and try again later.", in_log_level="Warning")
             quit(1)
 
         except FileNotFoundError:
             pass
 
         Primitives.log("Attempting to connect to remote server(s)... (Initiating stage 1)",
-                 in_log_level="Info")
+                       in_log_level="Info")
 
         # Stage 1
         if remote_addresses:

@@ -8,12 +8,15 @@ import struct
 import datetime
 import threading
 from hashlib import sha3_224
+
+# Add to PATH
 sys.path.insert(0, '../inter/')
 sys.path.insert(0, '../inter/modules/')
 sys.path.insert(0, '../misc/')
 
+# Imports from PATH
 import primitives
-import time
+import file
 
 # Globals
 localhost = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -36,7 +39,6 @@ loaded_modules = []
 this_dir = os.path.dirname(os.path.realpath(__file__))
 os.chdir(this_dir)
 sys.path.insert(0, '../inter/modules/')
-import file
 sys.path.insert(0, '../misc/')
 
 
@@ -99,7 +101,7 @@ class Server:
             if in_sock == discovered_socket:
                 return item[1]
 
-    """ The three functions below were written by StackOverflow user 
+    """ The two functions below were written by StackOverflow user 
     Adam Rosenfield and modified by me, HexicPyth.
     https://stackoverflow.com/a/17668009
     https://stackoverflow.com/users/9530/adam-rosenfield """
