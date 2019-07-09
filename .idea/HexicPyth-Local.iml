@@ -9,7 +9,7 @@
       <sourceFolder url="file://$MODULE_DIR$/src/client" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/src" isTestSource="false" />
     </content>
-    <orderEntry type="jdk" jdkName="Python 3.6 (HexicPyth-Local)" jdkType="Python SDK" />
+    <orderEntry type="jdk" jdkName="Python 3.7 (HexicPyth-Local)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
   <component name="TestRunnerService">
