@@ -26,7 +26,6 @@ def worker(action):  # Worker function
         print("Initializing server...")
         # Apparently multiprocessing doesn't like starting things that include while loops in the main process,
         # so instead, we'll start the server in a thread (of a child process of a process)
-
         thread = threading.Thread(target=init_server.init, args=(network_architecture,))
         thread.start()
         print('Server has been successfully initialized')

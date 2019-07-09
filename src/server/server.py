@@ -36,8 +36,16 @@ log_level = ""  # "Debug", "Info", or "Warning"; will be set by self.initialize(
 sub_node = "Server"
 loaded_modules = []
 
-this_dir = os.path.dirname(os.path.realpath(__file__))
-os.chdir(this_dir)
+this_dir = os.path.dirname(os.path.abspath(__file__))
+
+try:
+    # This works when manually executing init_server.py
+    os.chdir(this_dir)
+
+except FileNotFoundError:
+    # This works when launching with the src/misc/init.py script
+    os.chdir("../../server")
+
 sys.path.insert(0, '../inter/modules/')
 sys.path.insert(0, '../misc/')
 
