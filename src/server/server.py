@@ -335,6 +335,7 @@ class Server:
                 self.broadcast(fetch_msg)
 
             if message.startswith("proxy"):
+                os.chdir(original_path)
                 import inject
                 injector = inject.NetworkInjector()
 
@@ -550,6 +551,8 @@ class Server:
             # Start one instance of the network injector and run it until another client connects.
             # Note: The injector itself (i.e inject.py) returns any address that throws a BrokenPipeError on broadcast.
             # This function returns nothing.
+
+            os.chdir(original_path)
 
             import inject
             injector = inject.NetworkInjector()
