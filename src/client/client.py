@@ -49,6 +49,8 @@ ADDR_ID = None  # Another 128-bit hexadecimal token that wil be salted with SALT
 original_path = os.path.dirname(os.path.realpath(__file__))
 os.chdir(original_path)
 sys.path.insert(0, '../inter/modules/')
+sys.path.insert(0, '../server/')
+
 Primitives = primitives.Primitives(sub_node, log_level)
 network_architecture = "complete"
 loaded_modules = []  # List of all modules loaded
@@ -717,7 +719,7 @@ class Client:
                     Primitives.log("Received a campaign: flag out of order(i.e before the vote: flag)."
                                    "Attempting to initiate our election protocol with any information we"
                                    "can collect.", in_log_level="Warning")
-
+                    os.chdir(original_path)
                     import inject
                     Injector = inject.NetworkInjector()
 

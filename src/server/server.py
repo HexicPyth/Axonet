@@ -46,9 +46,9 @@ except FileNotFoundError:
     # This works when launching with the src/misc/init.py script
     os.chdir("../../server")
 
+
 sys.path.insert(0, '../inter/modules/')
 sys.path.insert(0, '../misc/')
-
 
 # This will be reset with input values by init()
 Primitives = primitives.Primitives(sub_node, log_level)
