@@ -396,7 +396,7 @@ class Server:
                     print("File "+checksum+" is of size: "+file_size+" bytes")
 
                     Primitives.log("Current Directory: "+os.getcwd(), in_log_level="Debug")
-                    new_filename = str("../../mem/" + checksum + ".bin")
+                    new_filename = str("../inter/mem/" + checksum + ".bin")
 
                     newpage = open(new_filename, "wb+")
 
