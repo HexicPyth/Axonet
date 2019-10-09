@@ -350,6 +350,12 @@ class Client:
         sig = full_message[:16]  # Just the signature
         address = connection[1]
 
+        if address == "127.0.0.1":
+            Primitives.log("Received message from 127.0.0.1; This is a violation of protocol; "
+                           "replacing address with Local IP.", in_log_level="Debug")
+            # Replying to localhost is strictly disallowed. Replace localhost with actual local IP.
+            address = Primitives.get_local_ip()
+
         # Try to prevent race-conditions in case multiple threads
         # somehow receive the same message at the same time (not likely)
         sleep(random.uniform(0.008, 0.05))  # TODO: Is this neccesary?
