@@ -395,7 +395,7 @@ class Server:
                     print("Data Received")
                     print("File "+checksum+" is of size: "+file_size+" bytes")
 
-                    new_filename = str("../mem/" + checksum + ".bin")
+                    new_filename = str("../../mem/" + checksum + ".bin")
 
                     newpage = open(new_filename, "wb+")
 
