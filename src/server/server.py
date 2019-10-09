@@ -369,7 +369,7 @@ class Server:
                     if log_the_message:
                         print("Proxy msg: ", proxy_message)
 
-                    if host_addr == Primitives.get_local_ip() or "127.0.0.1":
+                    if host_addr == str(Primitives.get_local_ip()) or host_addr == "127.0.0.1":
                         Primitives.log("This node will not proxy for itself; this will result in a fatal crash.",
                                        in_log_level="Info")
                     else:
