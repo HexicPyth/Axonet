@@ -397,7 +397,7 @@ class Server:
 
                     new_filename = str("../mem/" + checksum + ".bin")
 
-                    newpage = open(new_filename, "wb")
+                    newpage = open(new_filename, "wb+")
 
                     newpage.write(data)
 
