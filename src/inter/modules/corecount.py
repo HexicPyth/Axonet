@@ -61,19 +61,15 @@ def start(page_id, raw_lines, newlines):
 
     formatted_cores = []
 
-    print("Corecount log: almost_formatted_cores = " + str(almost_formatted_cores))
-
     for core_string in almost_formatted_cores:
         try:
             core_int = int(core_string)
-            print("Corecount log: core_int = " + str(core_int))
 
             formatted_cores.append(core_int)
 
         except ValueError:
             pass
 
-    print("Corecount log: formatted_cores = "+str(formatted_cores))
     cores = sum(formatted_cores)
     # e.x: ##cores: 8
     corecount_string = str("##cores:" + str(cores))
