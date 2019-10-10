@@ -56,19 +56,24 @@ def start(page_id, raw_lines, newlines):
     Client = client.Client()
 
     print(page_id)
-    almost_formatted_cores = [parse_line[17:].rstrip("\n") for parse_line
+    almost_formatted_cores = [parse_line[33:].rstrip("\n") for parse_line
                               in raw_lines if parse_line != "\n"]
 
     formatted_cores = []
 
+    print("Corecount log: almost_formatted_cores = " + str(almost_formatted_cores))
+
     for core_string in almost_formatted_cores:
         try:
             core_int = int(core_string)
+            print("Corecount log: core_int = " + str(core_int))
+
             formatted_cores.append(core_int)
 
         except ValueError:
             pass
 
+    print("Corecount log: formatted_cores = "+str(formatted_cores))
     cores = sum(formatted_cores)
     # e.x: ##cores: 8
     corecount_string = str("##cores:" + str(cores))
