@@ -145,6 +145,7 @@ class Client:
 
         # (Again) tuples are immutable; replace the old one with the new one
         network_tuple = tuple(network_list)
+        print("\n\n\n" + str(network_tuple))
 
     @staticmethod
     def remove(connection):
@@ -194,6 +195,8 @@ class Client:
         else:
             # Also don't try to connect to multiple servers at once in the same thread.
             if not connecting_to_server:
+                # connecting_to_server is a mutex which prevents this function
+                # from making external connections when it's not supposed to.
                 connecting_to_server = True
 
                 if not local:
@@ -207,7 +210,13 @@ class Client:
                     self.remove((sock, address))
 
                     Primitives.log("Connecting to localhost server...", in_log_level="Info")
-                    sock.connect((address, port))
+
+                    sock.connect(("127.0.0.1", port))
+                    self.append(sock, "127.0.0.1")
+                    # The socket object we apppended earlier was automatically
+                    # destroyed by the OS because connections to 0.0.0.0 are illegal...
+                    # Connect to localhost with raddr=127.0.0.1...
+
 
                     Primitives.log("Successfully connected to localhost server", in_log_level="Info")
                     connecting_to_server = False
@@ -395,7 +404,7 @@ class Client:
                 self.terminate()
 
             if message.startswith("ConnectTo:"):
-                connect_to_address = message[10:]  # len("ConnectTo:") = 10
+                connect_to_address = message[10:]  # remove first ten characters; len("ConnectTo:") = 10
 
                 # Will return an socket if we're already connected to it.
                 connection_status = self.lookup_socket(connect_to_address)
@@ -407,8 +416,12 @@ class Client:
                     # Don't re-connect to localhost unless we're not connected yet.
                     # All kinds of bad things happen if you do.
 
-                    if self.lookup_socket("127.0.0.1") != 0:
-                        if connect_to_address == Primitives.get_local_ip() or connect_to_address == "127.0.0.1":
+                    overide_localhost_failsafe = False
+
+                    remote_adress_not_localhost = connect_to_address == Primitives.get_local_ip() or \
+                                                  connect_to_address == "127.0.0.1"
+
+                    if remote_adress_not_localhost and not overide_localhost_failsafe:
 
                             not_connecting_msg = str("Not connecting to " + connect_to_address + "; That's localhost :P")
                             Primitives.log(not_connecting_msg, in_log_level="Warning")
@@ -969,6 +982,7 @@ class Client:
 
         try:
             self.connect(localhost_connection, 'localhost', port, local=True)
+
 
             Primitives.log("Connection to localhost successful", in_log_level="Info")
             Primitives.log("Starting listener on localhost...", in_log_level="Info")
