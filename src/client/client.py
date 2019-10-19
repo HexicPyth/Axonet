@@ -404,12 +404,14 @@ class Client:
                 # If we're not already connected
                 if connection_status == 0:
 
-                    # Don't re-connect to localhost. All kinds of bad things happen if you do.
-                    if (connect_to_address == Primitives.get_local_ip() or connect_to_address == "127.0.0.1")\
-                            and self.lookup_socket("127.0.0.1") != 0:
+                    # Don't re-connect to localhost unless we're not connected yet.
+                    # All kinds of bad things happen if you do.
 
-                        not_connecting_msg = str("Not connecting to " + connect_to_address + "; That's localhost :P")
-                        Primitives.log(not_connecting_msg, in_log_level="Warning")
+                    if self.lookup_socket("127.0.0.1") != 0:
+                        if connect_to_address == Primitives.get_local_ip() or connect_to_address == "127.0.0.1":
+
+                            not_connecting_msg = str("Not connecting to " + connect_to_address + "; That's localhost :P")
+                            Primitives.log(not_connecting_msg, in_log_level="Warning")
 
                     else:
                         local_address = Primitives.get_local_ip()
