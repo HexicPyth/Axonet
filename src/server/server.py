@@ -39,7 +39,7 @@ loaded_modules = []
 this_dir = os.path.dirname(os.path.abspath(__file__))
 
 try:
-    # This works when manually executing init_server.py
+    # This works when manually executing init_server.py from the current directory
     os.chdir(this_dir)
 
 except FileNotFoundError:
@@ -241,7 +241,7 @@ class Server:
         sig = msg[:16]
         message = msg[17:]
 
-        # Don't spit out hundreds of kilobits of data into the logs :).
+        # Don't spit out hundreds of kilobytes of data into the logs :).
         if message.startswith("proxy:file"):
             log_the_message = False
         else:
@@ -256,10 +256,13 @@ class Server:
             Primitives.log("Received raw message(output truncated): "+full_message[:50])
             print(log_the_message)
 
+        # Server received a unique message. Respond accordingly.
         if sig not in message_list:
+
             if log_the_message:
                 message_received_log_info = str('Server -> Received: ' + message + " (" + sig + ")")
                 Primitives.log(message_received_log_info, in_log_level="Info")
+
             elif not log_level:
                 message_received_log_info = str('Server -> Received(output truncated)'
                                                 ': ' + message[:50] + " (" + sig + ")")
@@ -311,8 +314,8 @@ class Server:
             if message.startswith("retrieve:"):
                 """
                 Opposite of write_page() function. This isn't a function because we need access to
-                the network to propagate. Typically sent from the network injector and received from
-                 a client, not from a client directly.
+                the network to propagate the file contents. Typically sent by a network injector and
+                 received from a client, not from a client directly.
 
                 e.x retrieve:(64-bit hash)
                 """
@@ -432,7 +435,7 @@ class Server:
                                            "\nProxy Checksum: "+our_checksum + "\nHost Checksum: "+checksum),
                                            in_log_level="Info")
                     else:
-                        # ...NEED...MORE...Bites......      :)
+                        # ...NEED...MORE...Bytes......      :)
                         host_connection = (self.lookup_socket(host_addr), host_addr)
                         self.send(host_connection, no_prop+":notify:next_packet:"+checksum, signing=False)
 
@@ -452,8 +455,8 @@ class Server:
 
             if sig == no_prop:
                 if message[:5] == "sync:":
-                    # This is marked no_prop, however, localhost needs to know about sync calls.
-                    # Propagate to localhost(and localhost only)
+                    # This was received with the no_prop flag, however, the Server can't do anything with sync: calls.
+                    # Send this to localhost Client.
 
                     Primitives.log("Violating the no_prop policy for localhost", in_log_level="Warning")
 
@@ -464,7 +467,7 @@ class Server:
                     self.send(localhost_connection, full_message, signing=False)
 
     def disconnect(self, connection, disallow_local_disconnect=True):
-        """Try our best to cleanly disconnect from a socket.
+        """Try to disconnect from a socket as cleanly as possible.
            Doesn't return anything. """
 
         sock = connection[0]
@@ -736,6 +739,11 @@ class Server:
                             self.listen(connection)
                             Primitives.log("Listening on localhost...", in_log_level="Info")
 
+                            # Make the client connect back to localhost if network_architecture=mesh
+                            localhost_socket = self.lookup_socket("127.0.0.1")
+                            localhost_connection = (localhost_socket, "127.0.0.1")
+                            self.send(localhost_connection, no_prop + ":ConnectTo:" + address, signing=False)
+
                         # A remote client connected, handle them and send an echo, because why not?
                         else:
                             Primitives.log(str(address + " has connected."), in_log_level="Info")
@@ -751,6 +759,15 @@ class Server:
                             # Hence, when a new node connects, we broadcast it's address to the  entire network so
                             # every other node can try to connect to it (i.e 'complete' the network).
                             self.broadcast(no_prop + ':ConnectTo:' + address)
+
+                        elif network_architecture == "mesh":
+                            # In mesh configuration, tell localhost client to connect back to the server
+                            # of any remote client which connects to localhost server.
+
+                            localhost_socket = self.lookup_socket("127.0.0.1")
+                            localhost_connection = (localhost_socket, "127.0.0.1")
+                            self.send(localhost_connection, no_prop + ":ConnectTo:" + address, signing=False)
+
 
                     elif terminated:
                         sys.exit(0)

@@ -358,7 +358,9 @@ class Client:
 
         # Try to prevent race-conditions in case multiple threads
         # somehow receive the same message at the same time (not likely)
-        sleep(random.uniform(0.008, 0.05))  # TODO: Is this neccesary?
+        # Also improves network mixing anonymity because the randodom delay makes it more difficult to analyse
+        # message paths via timing analysis alone.
+        sleep(random.uniform(0.008, 0.05))  # 8mS - 50mS
 
         # Don't respond to messages we've already responded to.
         if sig in message_list:
@@ -403,7 +405,8 @@ class Client:
                 if connection_status == 0:
 
                     # Don't re-connect to localhost. All kinds of bad things happen if you do.
-                    if connect_to_address == Primitives.get_local_ip() or connect_to_address == "127.0.0.1":
+                    if (connect_to_address == Primitives.get_local_ip() or connect_to_address == "127.0.0.1")\
+                            and self.lookup_socket("127.0.0.1") != 0:
 
                         not_connecting_msg = str("Not connecting to " + connect_to_address + "; That's localhost :P")
                         Primitives.log(not_connecting_msg, in_log_level="Warning")
