@@ -353,6 +353,7 @@ class Client:
         global file_proxy
         global SALT
         global dictionary_size
+        global network_architecture
 
         full_message = str(msg)
         message = full_message[17:]  # Message without signature
@@ -404,6 +405,7 @@ class Client:
                 self.terminate()
 
             if message.startswith("ConnectTo:"):
+
                 connect_to_address = message[10:]  # remove first ten characters; len("ConnectTo:") = 10
 
                 # Will return an socket if we're already connected to it.
@@ -411,6 +413,7 @@ class Client:
                 Primitives.log(str(network_tuple), in_log_level="Debug")
 
                 # If we're not already connected
+
                 if connection_status == 0:
 
                     # Don't re-connect to localhost unless we're not connected yet.
@@ -418,40 +421,45 @@ class Client:
 
                     overide_localhost_failsafe = False
 
-                    remote_adress_not_localhost = connect_to_address == Primitives.get_local_ip() or \
+                    remote_adress_is_localhost = connect_to_address == Primitives.get_local_ip() or \
                                                   connect_to_address == "127.0.0.1"
 
-                    if remote_adress_not_localhost and not overide_localhost_failsafe:
+                    if remote_adress_is_localhost and not overide_localhost_failsafe:
 
                             not_connecting_msg = str("Not connecting to " + connect_to_address + "; That's localhost :P")
                             Primitives.log(not_connecting_msg, in_log_level="Warning")
 
                     else:
-                        local_address = Primitives.get_local_ip()
+                        mesh_network = network_architecture == "mesh"
+                        received_packet_from_localhost = (address == "127.0.0.1" or address == Primitives.get_local_ip())
 
-                        # Be verbose
-                        Primitives.log(str("self.lookup_socket() indicates that we're not"
-                                           " connected to " + connect_to_address), in_log_level="Info")
+                        if (mesh_network and received_packet_from_localhost) or not mesh_network:
 
-                        Primitives.log(str("Primitives.get_local_ip() indicates that"
-                                           " localhost = " + local_address), in_log_level="Info")
+                            local_address = Primitives.get_local_ip()
 
-                        new_socket = socket.socket()
+                            # Be verbose
+                            Primitives.log(str("self.lookup_socket() indicates that we're not"
+                                               " connected to " + connect_to_address), in_log_level="Info")
 
-                        new_connection = (new_socket, connect_to_address)
+                            Primitives.log(str("Primitives.get_local_ip() indicates that"
+                                               " localhost = " + local_address), in_log_level="Info")
 
-                        # If we're not connected to said node
-                        if not connection_status:
-                            try:
-                                self.connect(new_connection, connect_to_address, PORT)
-                                self.listen(new_connection)
+                            new_socket = socket.socket()
 
-                            except OSError:
-                                """ Most Likely a Bad Fie Descriptor in self.connect().
-                                I don't know what to do about that, so we'll just warn the user."""
+                            new_connection = (new_socket, connect_to_address)
 
-                                Primitives.log(str("Unable to connect to: " + str(connect_to_address)),
-                                               in_log_level="Warning")
+                            # If we're not connected to said node
+                            if not connection_status:
+                                try:
+                                    self.connect(new_connection, connect_to_address, PORT)
+                                    self.listen(new_connection)
+
+                                except OSError:
+                                    """ Most Likely a Bad Fie Descriptor in self.connect().
+                                    I don't know what to do about that, so we'll just warn the user."""
+
+                                    Primitives.log(str("Unable to connect to: " + str(connect_to_address)),
+                                                   in_log_level="Warning")
 
                 # The address isn't foreign, don't re-connect to it.
                 elif connection_status != 0:
