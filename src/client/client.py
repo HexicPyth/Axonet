@@ -437,6 +437,7 @@ class Client:
                         received_packet_from_localhost = (address == "127.0.0.1" or address == Primitives.get_local_ip())
 
                         print('\n\n')
+                        print("\tNetwork Architecture: "+network_architecture)
                         print("\tNetwork Architecture is mesh: "+str(mesh_network))
                         print("\tRemote Address is Localhost: " + str(remote_adress_is_localhost))
                         print("\tReceived packet from Localhost: " + str(received_packet_from_localhost))
