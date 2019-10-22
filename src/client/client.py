@@ -51,8 +51,9 @@ os.chdir(original_path)
 sys.path.insert(0, '../inter/modules/')
 sys.path.insert(0, '../server/')
 
+# Will be reset later
 Primitives = primitives.Primitives(sub_node, log_level)
-network_architecture = "complete"
+network_architecture = ""
 loaded_modules = []  # List of all modules loaded
 
 
