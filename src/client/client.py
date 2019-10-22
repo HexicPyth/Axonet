@@ -424,14 +424,23 @@ class Client:
                     remote_adress_is_localhost = connect_to_address == Primitives.get_local_ip() or \
                                                   connect_to_address == "127.0.0.1"
 
+
+
                     if remote_adress_is_localhost and not overide_localhost_failsafe:
 
                             not_connecting_msg = str("Not connecting to " + connect_to_address + "; That's localhost :P")
                             Primitives.log(not_connecting_msg, in_log_level="Warning")
 
                     else:
+
                         mesh_network = network_architecture == "mesh"
                         received_packet_from_localhost = (address == "127.0.0.1" or address == Primitives.get_local_ip())
+
+                        print('\n\n')
+                        print("\tNetwork Architecture is mesh: "+str(mesh_network))
+                        print("\tRemote Address is Localhost: " + str(remote_adress_is_localhost))
+                        print("\tReceived packet from Localhost: " + str(received_packet_from_localhost))
+                        print("\n\n")
 
                         if (mesh_network and received_packet_from_localhost) or not mesh_network:
 
