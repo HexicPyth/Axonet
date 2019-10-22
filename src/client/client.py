@@ -367,7 +367,7 @@ class Client:
 
         # Try to prevent race-conditions in case multiple threads
         # somehow receive the same message at the same time (not likely)
-        # Also improves network mixing anonymity because the randodom delay makes it more difficult to analyse
+        # Also improves network mixing anonymity because the random delay makes it more difficult to analyse
         # message paths via timing analysis alone.
         sleep(random.uniform(0.008, 0.05))  # 8mS - 50mS
 
