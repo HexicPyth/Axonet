@@ -12,12 +12,6 @@ file_path = []
 current_file_sectors = []
 current_file_size = len(current_file_sectors)
 segment_counter = 0
-# The following md5sum function was adapted liberally from
-# "prologic" at BitBucket
-# https://bitbucket.org/prologic/tools/
-# https://bitbucket.org/prologic/
-# Accessed 06/28/18 00:00 UTC
-
 
 def sift_data(data, n):
     """"Split a lot of data into chunks of size n"""
@@ -34,6 +28,12 @@ def read_from_file(file_path, n=500000):
     sectors = sift_data(bin_data, n)
     return sectors
 
+
+# The following md5sum function was adapted liberally from
+# "prologic" at BitBucket
+# https://bitbucket.org/prologic/tools/
+# https://bitbucket.org/prologic/
+# Accessed 06/28/18 00:00 UTC
 
 def md5sum(filename):
     global file_path

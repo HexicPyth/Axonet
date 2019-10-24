@@ -13,4 +13,4 @@ def init(network_architecture="complete"):
 
 
 if __name__ == "__main__":
-    init()
+    init(network_architecture="mesh")
