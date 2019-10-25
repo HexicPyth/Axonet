@@ -37,13 +37,14 @@ module_loaded = ""  # Current module being executed
 PORT = 3705
 allow_command_execution = False  # Don't execute arbitrary UNIX commands when casually asked, that's bad :]
 connecting_to_server = False
-allow_file_storage = True
 log_level = ""  # "Debug", "Info", or "Warning"; To be set by init
 sub_node = "Client"
 no_prop = "ffffffffffffffff"  # True:[message] = No message propagation.
 SALT = None  # Will be set to a 128-bit hexadecimal token(by self.init) for making address identifiers
 ADDR_ID = None  # Another 128-bit hexadecimal token that wil be salted with SALT, and set by init()
 original_path = os.path.dirname(os.path.realpath(__file__))
+network_size = 0
+
 os.chdir(original_path)
 sys.path.insert(0, '../inter/modules/')
 sys.path.insert(0, '../server/')
@@ -877,12 +878,12 @@ class Client:
 
     def initialize(self, port=3705, net_architecture="complete",
                    remote_addresses=None, command_execution=False,
-                   file_storage=True, default_log_level="Debug", modules=None):
+                   file_storage=True, default_log_level="Debug", modules=None,
+                   networkSize = 0):
 
         # Initialize the client, set any global variable that need to be set, etc.
 
         global allow_command_execution
-        global allow_file_storage
         global localhost
         global log_level
         global PORT
@@ -892,13 +893,14 @@ class Client:
         global SALT
         global ADDR_ID
         global network_architecture
+        global network_size
 
         # Global variable assignment
         PORT = port
         allow_command_execution = command_execution
-        allow_file_storage = file_storage
         log_level = default_log_level
         network_architecture = net_architecture
+        network_size = networkSize
 
         Primitives = primitives.Primitives(sub_node, log_level)
         SALT = secrets.token_hex(16)
