@@ -22,14 +22,11 @@ localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes 
 # State
 election_list = []   # [(reason, representative), (another_reason, another_representative)]
 campaign_list = []  # [int, another_int, etc.]
-file_list = []  # [(file_size, path, checksum, proxy), (file_size2, path2, checksum2, proxy2), etc.]
 our_campaign = 0  # An integer between 0 and 2^128 (see voting algorithm)
-dictionary_size = 0  # Temporarily store the dictionary_size value while we sync: (WPABruteForce)
 network_tuple = ()  # ((socket, address), (another_socket, another_address))
 message_list = []  # [message_hash, another_msg_hash, etc.]
 page_list = []  # temporary file objects to close and delete on stop()
 page_ids = []  # Used by some modules
-file_proxy = ""  # Temporarily store the most recently voted file proxy until it is appended to the file_list.
 terminated = False
 cluster_rep = False
 ongoing_election = False
@@ -352,7 +349,6 @@ class Client:
         global page_list
         global election_list
         global campaign_list
-        global file_list
         global our_campaign
         global ongoing_election
         global page_ids
@@ -360,6 +356,7 @@ class Client:
         global file_proxy
         global dictionary_size
         global network_architecture
+        global module_loaded
 
         full_message = str(msg)
         message = full_message[17:]  # Message without signature
@@ -413,11 +410,11 @@ class Client:
             if message.startswith("ConnectTo:"):
 
                 """ConnectTo: Instructs external clients to connect to remote servers.
-                ConnectTo: is sent by each node being connected to when a new node joins the network, with one
-                ConnectTo: flag per node in their network table], instructing the new node to connect to 
-                [each node in their network table]. As long as all nodes respond to ConnectTo: flags,
-                (if network_architecture = "complete" in init_client/init_server)
-                the network will always be fully-connected.
+                In fully-connected mode,  ConnectTo: is sent by each node being connected to when a new node 
+                joins the network, with one ConnectTo: flag per node in their network table], instructing the new node 
+                to connect to  [each node in their network table]. As long as all nodes respond to ConnectTo: flags,
+                (if network_architecture = "complete" in init_client/init_server) the 
+                network will always be fully-connected.
                 
                 Elsewhere in the documentation and code, this bootstrapping mechanism is
                 referred to as "address propagation"
@@ -433,14 +430,12 @@ class Client:
                 # If we're not already connected and making this connection won't break anything, connect now.
                 if connection_status == 0:
 
-                    overide_localhost_failsafe = False
-
                     remote_adress_is_localhost = connect_to_address == Primitives.get_local_ip() or \
                                                   connect_to_address == "127.0.0.1"
 
-                    # Don't re-connect to localhost unless we're not connected yet.
+                    # Don't connect to localhost multiple times;
                     # All kinds of bad things happen if you do.
-                    if remote_adress_is_localhost and not overide_localhost_failsafe:
+                    if remote_adress_is_localhost:
 
                             not_connecting_msg = str("Not connecting to " + connect_to_address + "; That's localhost :P")
                             Primitives.log(not_connecting_msg, in_log_level="Warning")
@@ -456,6 +451,11 @@ class Client:
                         print("\tRemote Address is Localhost: " + str(remote_adress_is_localhost))
                         print("\tReceived packet from Localhost: " + str(received_packet_from_localhost))
                         print("\n\n")
+
+                        """ In a fully-connected network, act on all ConnectTo: packets;
+                            In a mesh network, only act on ConnectTo: packets originating from localhost
+                            (ConnectTo: is never sent with message propagation -- ConnectTo: packets received from
+                             localhost always really originate from localhost) """
 
                         if (mesh_network and received_packet_from_localhost) or not mesh_network:
 
@@ -521,13 +521,6 @@ class Client:
                 os.chdir(original_path)
                 newpage = open(new_filename, "a+")
                 page_list.append(newpage)
-
-            if message.startswith("corecount:"):
-                global module_loaded
-                import corecount
-
-                module_loaded = "corecount"
-                corecount.respond_start(page_ids, message)
 
             if message.startswith("fetch:"):
                 """ Broadcast the contents of [page id] to maintain distributed memory """
@@ -629,54 +622,9 @@ class Client:
                     if len(newlines) == len(network_tuple)+1:
                         # We've received contributions from every node on the network.
                         # Now do module-specific I/O
-                        if module_loaded == "corecount":
-                            os.chdir(original_path)
-                            import corecount
-                            corecount.start(page_id, raw_lines, newlines)
-                            module_loaded = ""
+                        if module_loaded == "something":
 
-                        elif module_loaded == "WPABruteForce":
-                            os.chdir(original_path)
-                            import WPABruteforce
-                            WPABruteforce.start(page_id, raw_lines, dictionary_size, ADDR_ID)
-
-            if message.startswith("file:"):
-                # file:(64-bit file hash):(32-bit file length):(128-bit origin address identifier)
-                Primitives.log("Not doing anything with file request because they are not implemented yet.")
-                message_to_parse = message[5:]  # Remove "file:" from message string so we can parse it correctly.
-                file_hash = message_to_parse[:16]
-                file_length = message_to_parse[17:][:8]
-                origin_addr_id = message_to_parse[26:]
-
-                Primitives.log("Our Address Identifier: "+ADDR_ID, in_log_level="Debug")
-                Primitives.log("Received message destined for Address Identifier: "+origin_addr_id,
-                               in_log_level="Debug")
-                Primitives.log("Checksum: " + file_hash)
-                Primitives.log("File Size: "+str(file_length))
-
-                # ... If applicable, affirm the file request, and hopefully receive data through the proxy.
-
-            if message.startswith("init_file:"):
-                os.chdir(original_path)
-                import inject
-                import file
-                injector = inject.NetworkInjector()
-                arguments = injector.parse_cmd(message)
-                file_path = arguments[0]
-                file_size = arguments[1]
-                checksum = str(file.md5sum(file_path))
-                election_reason = 'dfs-'+checksum
-
-                file_tuple = (file_size, file_path, checksum, "TBD")
-                file_list.append(file_tuple)
-
-                # Vote a proxy
-                Primitives.log("Voting a proxy", in_log_level="Info")
-
-                vote_msg = "vote:"+election_reason
-                self.broadcast(self.prepare(vote_msg))
-
-                # Will be continued in self.init_file(stage=1), called during the elect: flag
+                            pass  # Do stuff for module 'something' here
 
             # Provide server's a means of communicating readiness to clients. This is used during file proxying
             # to form a feedback loop between the proxy and client, that way the client doesn't ever exceed the
@@ -687,21 +635,10 @@ class Client:
                 Injector = inject.NetworkInjector()
 
                 arguments = Injector.parse_cmd(message)
-                if arguments[0] == "proxy_ready":
-                    # Proxy is ready for data; pass control back to file module
 
-                    file_checksum = arguments[1]
-                    Primitives.log("Proxy is ready", in_log_level="Info")
-                    Primitives.log("File checksum according to Proxy: "+arguments[1], in_log_level="Debug")
-                    proxy_addr = Primitives.find_representative(election_list, "dfs-"+arguments[1])
-                    file.respond_start(proxy_addr, file_checksum, file_list, network_tuple, init=True)
+                if arguments[0] == "something":
 
-                if arguments[0] == "next_packet":
-                    # Proxy is ready for data; pass control back to file module. (Feedback Loop)
-                    Primitives.log("Next packet...", in_log_level="Info")
-                    file_checksum = arguments[1]
-                    proxy_addr = Primitives.find_representative(election_list, "dfs-"+arguments[1])
-                    file.respond_start(proxy_addr, file_checksum, file_list, network_tuple, init=False)
+                    pass  # Do something about it
 
             # Disconnect from some misbehaving node and pop it from out network tuple
             # example message: remove:192.168.2.3
@@ -769,7 +706,7 @@ class Client:
                     # ------------------------------------------------------
                     # Intended vote flag: vote:reason (received out of order)
                     # Received campaign flag: campaign:reason:token (will suffice)
-                    # See where I'm going now?
+                    # Reconstruct the lost vote: from the campaign: arguments
 
                     Primitives.log("Received a campaign: flag out of order(i.e before the vote: flag)."
                                    "Attempting to initiate our election protocol with any information we"
@@ -845,57 +782,22 @@ class Client:
                 election_winner_msg = str(new_leader) + " won the election for:" + reason
                 Primitives.log(election_winner_msg, in_log_level="Info")
 
-                # We're electing a proxy for distributed file storage
-                if reason.startswith('dfs-'):
-                    print("File proxy: "+new_leader)
-                    file_proxy = new_leader
-                    file_checksum = reason[4:]
-
-                    if Primitives.find_file_tuple(file_list, file_checksum) != -1:
-                        import file
-                        file_tuple = Primitives.find_file_tuple(file_list, file_checksum)
-                        file_index = file_list.index(file_tuple)
-                        file_list[file_index] = Primitives.set_file_proxy(file_checksum, file_list, file_proxy)
-
-                        # Pass control to the file module
-                        file.start(1, new_leader, file_checksum, localhost, file_list, network_tuple)
+                if reason.startswith('thing-'):
+                    pass  # Do something upon completion of 'thing' election
 
                 print("\n")
                 print(election_list)  # DEBUG
                 print("\n")
 
             if message.startswith("benchmark:"):
-                module_loaded = "WPABruteForce"
                 os.chdir(original_path)
                 import inject
-                import WPABruteforce
                 arguments = inject.NetworkInjector().parse_cmd(message)
 
-                if arguments[0] == "WPA":
+                if arguments[0] == "thing":
+                    pass   # Benchmark this node's performance for task 'thing'
 
-                    def do_benchmark_and_continue(in_arguments):
-                        global dictionary_size
-                        global score
-                        global page_ids
-
-                        page_hash = arguments[2]
-                        dict_size = arguments[1]
-                        if page_hash not in page_ids:
-                            page_ids.append(page_hash)
-                            score = WPABruteforce.do_wpa_benchmark()
-                            WPABruteforce.respond_start(score, page_hash, ADDR_ID, network_tuple)
-
-                        else:
-                            Primitives.log("Not initiating a duplicate benchmark")
-
-                    dictionary_size = arguments[1]
-                    new_process = multiprocessing.Process(target=do_benchmark_and_continue,
-                                                          args=(arguments, ), name='WPA Benchmark Thread')
-                    new_process.daemon = True
-                    new_process.start()
-                    Primitives.log("Initiating benchmark...", in_log_level="Info")
-
-            # Append signature(hash) to the message list, or in the case of sig=no_prop, do nothing.
+            # Append message signature to the message list, or in the case of sig=no_prop, do nothing.
             if sig != no_prop:
                 message_list.append(sig)
 
@@ -1051,6 +953,6 @@ class Client:
 
                 except ConnectionRefusedError:
                     Primitives.log("Unable to connect to remove server; Failed to bootstrap.",
-                             in_log_level="Warning")
+                                   in_log_level="Warning")
         else:
             Primitives.log("Initializing with no remote connections...", in_log_level="Info")

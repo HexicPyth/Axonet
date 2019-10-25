@@ -23,8 +23,6 @@ localhost = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes TIME_WAIT-ing. Add SO_REUSEADDR.
 
 network_tuple = ()  # Global lookup of (sockets, addresses)
-file_tuple = ()  # (hash, remote_host, index)
-file_proxies = []  # Addresses we are proxying for
 message_list = []   # List of message hashes
 no_prop = "ffffffffffffffff"  # a message with a true hash indicates that no message propagation is needed.
 file_index = 0
@@ -232,41 +230,17 @@ class Server:
 
         global no_prop  # default: 0xffffffffffffffff
         global message_list
-        global file_tuple  # (hash, remote_host, node)
-        global file_index
-        global file_proxies
 
         address = connection[1]
         full_message = str(msg)
         sig = msg[:16]
         message = msg[17:]
 
-        # Don't spit out hundreds of kilobytes of data into the logs :).
-        if message.startswith("proxy:file"):
-            log_the_message = False
-        else:
-            log_the_message = True
-
-        if log_the_message:
-            message_received_log_dbg = str("Received raw message: "+full_message)
-            Primitives.log(message_received_log_dbg, in_log_level="Debug")
-            print(log_the_message)
-
-        else:
-            Primitives.log("Received raw message(output truncated): "+full_message[:50])
-            print(log_the_message)
-
         # Server received a unique message. Respond accordingly.
         if sig not in message_list:
 
-            if log_the_message:
-                message_received_log_info = str('Server -> Received: ' + message + " (" + sig + ")")
-                Primitives.log(message_received_log_info, in_log_level="Info")
-
-            elif not log_level:
-                message_received_log_info = str('Server -> Received(output truncated)'
-                                                ': ' + message[:50] + " (" + sig + ")")
-                Primitives.log(message_received_log_info, in_log_level="Info")
+            message_received_log_info = str('Server -> Received: ' + message + " (" + sig + ")")
+            Primitives.log(message_received_log_info, in_log_level="Info")
 
             if message == "echo":
                 # If received, two-way communication is functional
@@ -336,108 +310,6 @@ class Server:
 
                 fetch_msg = self.prepare("fetch:"+target_page)
                 self.broadcast(fetch_msg)
-
-            if message.startswith("proxy"):
-                os.chdir(original_path)
-                import inject
-                injector = inject.NetworkInjector()
-
-                host_addr = address
-
-                if host_addr == "127.0.0.1":
-                    host_addr = Primitives.get_local_ip()
-
-                proxy_message = message[6:]
-                if log_the_message:
-                    Primitives.log("Proxy Message: "+proxy_message, in_log_level="Info")
-
-                if proxy_message.startswith("init_file_dist:"):
-                    # ffffffffffffffff:proxy:init_file_dist:bea8252ff4e80f41719ea13cdf007273:14:192.168.2.11
-                    Primitives.log("Being a proxy for " + host_addr, in_log_level="Info")
-
-                    # proxy:init_file:checksum:file_size:proxy_address
-                    arguments = injector.parse_cmd(proxy_message)
-                    checksum = arguments[0]
-                    file_size = arguments[1]
-                    proxy_tuple = (host_addr, checksum, file_size)
-                    file_proxies.append(proxy_tuple)
-
-                    proxy_message = proxy_message[:-19]
-
-                    if log_the_message:
-                        Primitives.log("Proxy Arguments: "+str(arguments), in_log_level="info")
-
-                    proxy_message += Primitives.get_local_ip()
-
-                    if log_the_message:
-                        print("Proxy msg: ", proxy_message)
-
-                    if host_addr == str(Primitives.get_local_ip()) or host_addr == "127.0.0.1":
-                        Primitives.log("This node will not proxy for itself; this will result in a fatal crash.",
-                                       in_log_level="Info")
-                    else:
-                        host_connection = (self.lookup_socket(host_addr), host_addr)
-                        Primitives.log("Host Connection: "+str(host_connection), in_log_level="Debug")
-                        self.send(host_connection, no_prop+":notify:proxy_ready:"+checksum, signing=False)
-
-                elif proxy_message.startswith("file:"):
-                    print("Received a file: sub-flag...")
-                    print(log_the_message)
-
-                    import client
-                    Client = client.Client()
-
-                    # proxy:file:checksum:file_size:proxy_address:data
-                    arguments = injector.parse_cmd(proxy_message)
-                    checksum = arguments[0]
-                    file_size = arguments[1]
-
-                    data = bytearray.fromhex(arguments[3])
-
-                    print("Receiving data from: " + host_addr)
-                    print("Data Received")
-                    print("File "+checksum+" is of size: "+file_size+" bytes")
-
-                    Primitives.log("Current Directory: "+os.getcwd(), in_log_level="Debug")
-                    new_filename = str("../inter/mem/" + checksum + ".bin")
-
-                    newpage = open(new_filename, "wb+")
-
-                    newpage.write(data)
-
-                    newpage.close()
-
-                    print("Data Written")
-
-                    our_file_size = os.stat(os.path.abspath(new_filename)).st_size
-
-                    print("Our file is of size: " + str(our_file_size))
-                    print("File size should equal: " + str(file_size))
-                    if int(our_file_size) == int(file_size):
-                        all_data_written = True
-                    else:
-                        all_data_written = False
-
-                    if all_data_written:
-                        print("All Data Written")
-                        print(checksum)
-
-                        our_checksum = str(file.md5sum(new_filename))
-                        print(our_checksum)
-
-                        if our_checksum == checksum:
-                            operation_complete = True
-                        else:
-                            operation_complete = False
-
-                        if operation_complete:
-                            Primitives.log(str("Transfer from Host complete. TODO: Distribute this." +
-                                           "\nProxy Checksum: "+our_checksum + "\nHost Checksum: "+checksum),
-                                           in_log_level="Info")
-                    else:
-                        # ...NEED...MORE...Bytes......      :)
-                        host_connection = (self.lookup_socket(host_addr), host_addr)
-                        self.send(host_connection, no_prop+":notify:next_packet:"+checksum, signing=False)
 
             # We only broadcast messages with hashes we haven't already documented. That way the network doesn't
             # loop indefinitely broadcasting the same message. Also, Don't append no_prop to message_list.
