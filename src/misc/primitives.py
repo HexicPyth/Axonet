@@ -33,6 +33,9 @@ class Primitives:
 
         if in_log_level not in levels or in_log_level not in allowable_levels:
             pass
+            print(in_log_level)
+            print(levels)
+            print(allowable_levels)
 
         else:
             print(self.SUB_NODE, "->", in_log_level + ":", log_message)
@@ -132,7 +135,7 @@ class Primitives:
             # Something corrupted in transit. Let's just ignore the bad pieces for now.
             except UnicodeDecodeError:
 
-                if len(raw_packet) == 4:  # raw_packet should not be referenced before assignment. TODO: will it?
+                if len(raw_packet) == 4:  # raw_packet should not be referenced before assignment. TODO: will it be?
 
                     # The first four bytes of a message are it's binary length(see self.send); it'll almost never
                     # decode anyway; ignore it. (Fix issue #22)
@@ -213,4 +216,3 @@ class Primitives:
                 file_tuple = f_tuple
                 return file_tuple
         return -1
-

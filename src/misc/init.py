@@ -13,23 +13,26 @@ sys.path.insert(0, '../client')  # TODO: Directory restructure; We shouldn't hav
 
 actions = ['server.py', 'client.py']
 PORT = 3705
+network_architecture = "complete"
 
 
 def worker(action):  # Worker function
     import init_server
     import init_client
+    global network_architecture
+
     print('action:', action)
     if action == 'server.py':
         print("Initializing server...")
         # Apparently multiprocessing doesn't like starting things that include while loops in the main process,
         # so instead, we'll start the server in a thread (of a child process of a process)
-        thread = threading.Thread(target=init_server.init)
+        thread = threading.Thread(target=init_server.init, args=(network_architecture,))
         thread.start()
         print('Server has been successfully initialized')
 
     elif action == 'client.py':
         print("Initializing client...")
-        thread = threading.Thread(target=init_client.init)
+        thread = threading.Thread(target=init_client.init, args=(network_architecture,))
         thread.start()
         print('Client has been successfully initialized')
 

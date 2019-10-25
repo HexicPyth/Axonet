@@ -8,17 +8,21 @@ import struct
 import datetime
 import threading
 from hashlib import sha3_224
+
+# Add to PATH
+sys.path.insert(0, '../inter/')
+sys.path.insert(0, '../inter/modules/')
 sys.path.insert(0, '../misc/')
 
+# Imports from PATH
 import primitives
+import file
 
 # Globals
 localhost = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes TIME_WAIT-ing. Add SO_REUSEADDR.
 
 network_tuple = ()  # Global lookup of (sockets, addresses)
-file_tuple = ()  # (hash, remote_host, index)
-file_proxies = []  # Addresses we are proxying for
 message_list = []   # List of message hashes
 no_prop = "ffffffffffffffff"  # a message with a true hash indicates that no message propagation is needed.
 file_index = 0
@@ -30,66 +34,27 @@ log_level = ""  # "Debug", "Info", or "Warning"; will be set by self.initialize(
 sub_node = "Server"
 loaded_modules = []
 
-this_dir = os.path.dirname(os.path.realpath(__file__))
-os.chdir(this_dir)
+this_dir = os.path.dirname(os.path.abspath(__file__))
+
+try:
+    # This works when manually executing init_server.py from the current directory
+    os.chdir(this_dir)
+
+except FileNotFoundError:
+    # This works when launching with the src/misc/init.py script
+    os.chdir("../../server")
+
+
 sys.path.insert(0, '../inter/modules/')
 sys.path.insert(0, '../misc/')
 
-
 # This will be reset with input values by init()
-Primitives = primitives.Primitives(log_level, sub_node)
+Primitives = primitives.Primitives(sub_node, log_level)
+original_path = os.path.dirname(os.path.realpath(__file__))
 
 
 class Server:
-
-    @staticmethod
-    def log(log_message, in_log_level='Warning', subnode="Server"):
-        """ Process and deliver program output in an organized and
-        easy to read fashion. Never returns. """
-
-        # input verification
-        levels = ["Debug", "Info", "Warning"]
-
-        allowable_levels = []
-        allow_further_levels = False  # Allow all levels after the input.
-
-        for level in levels:
-            if allow_further_levels:
-                allowable_levels.append(level)
-
-            if level == log_level:
-                allowable_levels.append(level)
-                allow_further_levels = True
-
-        if in_log_level not in levels or in_log_level not in allowable_levels:
-            pass
-
-        else:
-            print(subnode, "->", in_log_level + ":", log_message)
-
-    def get_local_ip(self):
-        """Creates a temporary socket and connects to subnet,
-           yielding our local address. Returns: (local ip address) -> str """
-
-        temp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-        try:
-            temp_socket.connect(('10.255.255.0', 0))
-
-            # Yield our local address
-            local_ip = temp_socket.getsockname()[0]
-
-        except OSError:
-            # Connect refused; there is likely no network connection.
-            self.log("Failed to identify local IP address; No network connection detected", in_log_level="Warning")
-
-            local_ip = "127.0.0.1"
-
-        finally:
-            temp_socket.close()
-
-        return local_ip
-
+    
     @staticmethod
     def prepare(message):
         """ Assign unique hashes to messages ready for transport.
@@ -142,7 +107,7 @@ class Server:
             if in_sock == discovered_socket:
                 return item[1]
 
-    """ The three functions below were written by StackOverflow user 
+    """ The two functions below were written by StackOverflow user 
     Adam Rosenfield and modified by me, HexicPyth.
     https://stackoverflow.com/a/17668009
     https://stackoverflow.com/users/9530/adam-rosenfield """
@@ -163,10 +128,10 @@ class Server:
             sock.sendall(msg)
 
         except (BrokenPipeError, OSError, AttributeError):
-            if address != self.get_local_ip() and address != "127.0.0.1":
+            if address != () and address != "127.0.0.1":
 
                 log_msg = str("Errors occurred sending to " + address + "; Disconnecting...")
-                self.log(log_msg, in_log_level="Warning")
+                Primitives.log(log_msg, in_log_level="Warning")
 
                 self.disconnect(connection)
 
@@ -176,7 +141,7 @@ class Server:
             # Lookup address of client from the network_tuple
 
             log_msg = str("Sending to: "+address)
-            self.log(log_msg, in_log_level="Debug")
+            Primitives.log(log_msg, in_log_level="Debug")
 
             self.send(connection, message, signing=False)  # For each of them send the given message( = Broadcast)
 
@@ -209,7 +174,7 @@ class Server:
         # Connection not in network tuple, or socket is [closed]
         except ValueError:
             log_msg = str("Not removing non-existent connection: "+str(connection))
-            self.log(log_msg, in_log_level="Warning")
+            Primitives.log(log_msg, in_log_level="Warning")
 
         # (Again) tuples are immutable; replace the old one with the new one
         network_tuple = tuple(network_list)
@@ -225,26 +190,26 @@ class Server:
         self.send(localhost_connection, "stop")
 
         log_msg = "Attempting to gracefully disconnect and disassociate from all clients..."
-        self.log(log_msg, in_log_level="Info")
+        Primitives.log(log_msg, in_log_level="Info")
 
         for connection in network_tuple:
             log_msg = str("Trying to disconnect from socket: " + str(connection[0]))
-            self.log(log_msg, in_log_level="Debug")
+            Primitives.log(log_msg, in_log_level="Debug")
 
             try:
                 self.disconnect(connection, disallow_local_disconnect=True)
 
             except OSError:
                 another_log_msg = str("Failed to disconnect from socket: "+str(connection[0]))
-                self.log(another_log_msg, in_log_level="Warning")
+                Primitives.log(another_log_msg, in_log_level="Warning")
 
             finally:
-                self.log("Successfully disconnected", in_log_level="Debug")
+                Primitives.log("Successfully disconnected", in_log_level="Debug")
 
         localhost_sock_name = localhost.getsockname()
         localhost.close()
 
-        self.log("Exiting gracefully;", in_log_level="Info")
+        Primitives.log("Exiting gracefully;", in_log_level="Info")
 
         terminated = True
         injector_terminated = True
@@ -265,31 +230,26 @@ class Server:
 
         global no_prop  # default: 0xffffffffffffffff
         global message_list
-        global file_tuple  # (hash, remote_host, node)
-        global file_index
-        global file_proxies
 
         address = connection[1]
         full_message = str(msg)
-
-        message_received_log_dbg = str("Received raw message: "+full_message)
-        self.log(message_received_log_dbg, in_log_level="Debug")
-
         sig = msg[:16]
         message = msg[17:]
 
+        # Server received a unique message. Respond accordingly.
         if sig not in message_list:
+
             message_received_log_info = str('Server -> Received: ' + message + " (" + sig + ")")
-            self.log(message_received_log_info, in_log_level="Info")
+            Primitives.log(message_received_log_info, in_log_level="Info")
 
             if message == "echo":
                 # If received, two-way communication is functional
                 echo_received_log = str("Two-Way communication with " + address +
                                         " established and/or tested functional")
-                self.log(echo_received_log, in_log_level="Info")
+                Primitives.log(echo_received_log, in_log_level="Info")
 
             if message == "stop":
-                self.log("Exiting Cleanly", in_log_level="Info")
+                Primitives.log("Exiting Cleanly", in_log_level="Info")
                 self.stop()
 
             if message.startswith("remove:"):
@@ -298,38 +258,38 @@ class Server:
                 try:
 
                     # Don't disconnect from localhost. That's what self.terminate is for.
-                    if address_to_remove != self.get_local_ip() and address_to_remove != "127.0.0.1":
+                    if address_to_remove != Primitives.get_local_ip() and address_to_remove != "127.0.0.1":
 
                         sock = self.lookup_socket(address_to_remove)
 
                         if sock:
-                            self.log("Remove -> Disconnecting from " + address_to_remove,
+                            Primitives.log("Remove -> Disconnecting from " + address_to_remove,
                                      in_log_level="Info")
 
                             # lookup the socket of the address we want to remove
                             connection_to_remove = (sock, address_to_remove)
-                            self.log(str("\t--who's connection is: " + str(connection_to_remove)),
+                            Primitives.log(str("\t--who's connection is: " + str(connection_to_remove)),
                                      in_log_level="Info")
                             self.disconnect(connection_to_remove)
 
                         else:
-                            self.log("Not disconnecting from a non-existent connection",
+                            Primitives.log("Not disconnecting from a non-existent connection",
                                      in_log_level="Warning")
 
                     else:
-                        self.log("Not disconnecting from localhost, dimwit.", in_log_level="Warning")
+                        Primitives.log("Not disconnecting from localhost, dimwit.", in_log_level="Warning")
 
                 except (ValueError, TypeError):
                     # Either the address we're looking for doesn't exist, or we're not connected it it.
-                    self.log(str("Sorry, we're not connected to " + address_to_remove),
+                    Primitives.log(str("Sorry, we're not connected to " + address_to_remove),
                              in_log_level="Warning")
                     pass
 
             if message.startswith("retrieve:"):
                 """
                 Opposite of write_page() function. This isn't a function because we need access to
-                the network to propagate. Typically sent from the network injector and received from
-                 a client, not from a client directly.
+                the network to propagate the file contents. Typically sent by a network injector and
+                 received from a client, not from a client directly.
 
                 e.x retrieve:(64-bit hash)
                 """
@@ -351,30 +311,6 @@ class Server:
                 fetch_msg = self.prepare("fetch:"+target_page)
                 self.broadcast(fetch_msg)
 
-            if message.startswith("proxy"):
-                import inject
-                injector = inject.NetworkInjector()
-
-                host_addr = address
-
-                if host_addr == "127.0.0.1":
-                    host_addr = self.get_local_ip()
-
-                self.log("Being a proxy for "+host_addr, in_log_level="Info")
-                proxy_message = message[6:]
-
-                if proxy_message.startswith("file:"):
-                    arguments = injector.parse_cmd(proxy_message)
-                    checksum = arguments[0]
-                    proxy_tuple = (host_addr, checksum)
-                    file_proxies.append(proxy_tuple)
-
-                    proxy_message = proxy_message[:-9]
-                    print(arguments)
-                    proxy_message += self.get_local_ip()
-                    self.broadcast(self.prepare(proxy_message))
-                    print(proxy_message)
-
             # We only broadcast messages with hashes we haven't already documented. That way the network doesn't
             # loop indefinitely broadcasting the same message. Also, Don't append no_prop to message_list.
             # That would be bad.
@@ -383,57 +319,60 @@ class Server:
                 message_list.append(sig)
 
                 broadcast_notice = str("Broadcasting "+full_message)
-                self.log(broadcast_notice, in_log_level="Info")
+                Primitives.log(broadcast_notice, in_log_level="Info")
                 self.broadcast(full_message)
 
-                self.log("Permuting the Network Tuple", in_log_level="Info")
+                Primitives.log("Permuting the Network Tuple", in_log_level="Info")
                 self.permute_network_tuple()
 
             if sig == no_prop:
                 if message[:5] == "sync:":
-                    # This is marked no_prop, however, localhost needs to know about sync calls.
-                    # Propagate to localhost(and localhost only)
-                    self.log("Violating the no_prop policy for localhost", in_log_level="Warning")
+                    # This was received with the no_prop flag, however, the Server can't do anything with sync: calls.
+                    # Send this to localhost Client.
+
+                    Primitives.log("Violating the no_prop policy for localhost", in_log_level="Warning")
+
                     localhost_address = "127.0.0.1"
                     localhost_socket = self.lookup_socket(localhost_address)
                     localhost_connection = (localhost_socket, localhost_address)
+
                     self.send(localhost_connection, full_message, signing=False)
 
     def disconnect(self, connection, disallow_local_disconnect=True):
-        """Try our best to cleanly disconnect from a socket.
+        """Try to disconnect from a socket as cleanly as possible.
            Doesn't return anything. """
 
         sock = connection[0]
         address = connection[1]
         try:
             if disallow_local_disconnect:
-                self.log("Terminated:"+str(terminated), in_log_level="Debug")
+                Primitives.log("Terminated:"+str(terminated), in_log_level="Debug")
 
-                if address == self.get_local_ip() and not terminated:
+                if address == Primitives.get_local_ip() and not terminated:
 
-                    self.log("(Bug) Refusing to disconnect from localhost;"
+                    Primitives.log("(Bug) Refusing to disconnect from localhost;"
                              " that's a terrible idea...", in_log_level="Warning")
                     return None
 
                 else:
 
-                    self.log("\n\tSelf.disconnect() called.\n", in_log_level="Info")
+                    Primitives.log("\n\tSelf.disconnect() called.\n", in_log_level="Info")
 
                     verbose_connection_msg = str("Disconnecting from " + address
                                                  + "\n\t(  " + str(sock) + "  )")
 
-                    self.log(verbose_connection_msg, in_log_level="Info")
+                    Primitives.log(verbose_connection_msg, in_log_level="Info")
 
                     conn_remove_msg = str("Server -> Removing " + str(sock) + " from network_tuple")
-                    self.log(conn_remove_msg, in_log_level="Info")
+                    Primitives.log(conn_remove_msg, in_log_level="Info")
                     self.remove(connection)
                     sock.close()
 
-                    self.log("Successfully Disconnected.", in_log_level="Info")
+                    Primitives.log("Successfully Disconnected.", in_log_level="Info")
 
         # Socket not in network_tuple. Probably already disconnected, or the socket was [closed]
         except IndexError:
-            self.log("Already disconnected from that address; passing;", in_log_level="Warning")
+            Primitives.log("Already disconnected from that address; passing;", in_log_level="Warning")
 
     def listen(self, connection):
         """Listen for incoming messages in one thread, manage the network injector in another.
@@ -452,7 +391,7 @@ class Server:
                     if incoming:
                         self.respond(incoming, conn)
 
-                except (OSError, TypeError):
+                except (OverflowError, TabError):  # OSError, TypeError
                     # OSError - Something terrible happened trying to receive from a node
                     # TypeError - A socket is apparently NoneType now. That's bad
 
@@ -460,22 +399,28 @@ class Server:
                         client = conn[0]
                         address = conn[1]
 
-                        if address == self.get_local_ip() or address == "127.0.0.1":
-                            self.log("Something happened to localhost; not disconnecting",
-                                     in_log_level="Warning")
+                        print("TERMINATED: "+str(terminated))
+                        if address == Primitives.get_local_ip() or address == "127.0.0.1" and not terminated:
+                                Primitives.log("Something happened to localhost; not disconnecting",
+                                         in_log_level="Warning")
+                                print("TERMINATED: "+str(terminated))
                         else:
                             try:
                                 self.disconnect(conn)
                             except ValueError:
-                                self.log("Socket Closed", in_log_level="Warning")
+                                Primitives.log("Socket Closed", in_log_level="Warning")
                             finally:
                                 connection_down_msg = str("Server -> Connection to " + str(client)
                                                           + "probably down or terminated;")
 
-                                self.log(connection_down_msg, in_log_level="Warning")
+                                Primitives.log(connection_down_msg, in_log_level="Warning")
 
                                 # Don't leave zombie listeners running
                                 listener_terminated = True
+                                
+                            if terminated:
+                                os._exit(0)
+                                
                     except OSError:
                         pass
 
@@ -486,6 +431,8 @@ class Server:
             # Start one instance of the network injector and run it until another client connects.
             # Note: The injector itself (i.e inject.py) returns any address that throws a BrokenPipeError on broadcast.
             # This function returns nothing.
+
+            os.chdir(original_path)
 
             import inject
             injector = inject.NetworkInjector()
@@ -517,7 +464,7 @@ class Server:
                             doesn't have proper error handling because it's a disposable thread
                             and a waste of lines, so we'll handle it here """
 
-                            message_send_successful = (injector_return_value == self.get_local_ip())
+                            message_send_successful = (injector_return_value == Primitives.get_local_ip())
                             if message_send_successful and injector_return_value != "127.0.0.1":
 
                                 faulty_conn_disconnect_msg = str("Server -> Attempting to "
@@ -525,15 +472,15 @@ class Server:
                                                                  " connection: "
                                                                  + injector_return_value)
 
-                                self.log(faulty_conn_disconnect_msg, in_log_level="Warning")
+                                Primitives.log(faulty_conn_disconnect_msg, in_log_level="Warning")
 
                                 # Find the address of the disconnected or otherwise faulty node.
                                 sock = self.lookup_socket(injector_return_value)
 
-                                self.log(str("\tLooking up socket for "+injector_return_value),
+                                Primitives.log(str("\tLooking up socket for "+injector_return_value),
                                          in_log_level="Warning")
 
-                                self.log(str("\tFound socket: " + str(sock)), in_log_level="Info")
+                                Primitives.log(str("\tFound socket: " + str(sock)), in_log_level="Info")
 
                                 if sock:
                                     # Be really verbose.
@@ -542,25 +489,25 @@ class Server:
 
                                     found_connection_msg = str("\tAs part of connection: " +
                                                                str(connection_to_disconnect))
-                                    self.log(found_connection_msg, in_log_level="Info")
+                                    Primitives.log(found_connection_msg, in_log_level="Info")
 
                                     disconnect_attempt_msg = str("Trying to disconnect from: " +
                                                                  str(connection_to_disconnect))
 
-                                    self.log(disconnect_attempt_msg, in_log_level="Info")
+                                    Primitives.log(disconnect_attempt_msg, in_log_level="Info")
 
                                     self.disconnect(connection_to_disconnect)
 
                             else:
-                                self.log("Not disconnecting from localhost, dimwit.", in_log_level="Warning")
+                                Primitives.log("Not disconnecting from localhost, dimwit.", in_log_level="Warning")
 
                         # The injector ran cleanly and we still have a multi-node network. Continue as normal.
                         if injector_return_value == 0 and len(network_tuple) >= 1:
 
                             try:
-                                self.log(str(network_tuple), in_log_level="Debug")
-                                self.log("Permuting the network tuple... ", in_log_level="Info")
-                                self.log(str(network_tuple), in_log_level="Debug")
+                                Primitives.log(str(network_tuple), in_log_level="Debug")
+                                Primitives.log("Permuting the network tuple... ", in_log_level="Info")
+                                Primitives.log(str(network_tuple), in_log_level="Debug")
 
                                 # Eww nested loops.
                                 injector_return_value = injector.init(network_tuple, loaded_modules)
@@ -577,18 +524,18 @@ class Server:
                         # The size of the network_tuple changed. Either we have remote connections, or a clean
                         # disconnect just occurred. Stop the loop so we can act accordingly.
                         elif len(network_tuple) > 1 or len(network_tuple) != current_network_size:
-                            self.log("Remote connections detected, stopping the network injector...",
+                            Primitives.log("Remote connections detected, stopping the network injector...",
                                      in_log_level="Info")
                             break  # We have remote connections...
 
                         else:
                             break
             elif injector_terminated:
-                self.log("Terminating the Network Injector", in_log_level="Info")
+                Primitives.log("Terminating the Network Injector", in_log_level="Info")
                 return
 
         # Start listener in a new thread
-        self.log("Starting a new listener thread", in_log_level="Info")
+        Primitives.log("Starting a new listener thread", in_log_level="Info")
         threading.Thread(target=listener, name='listener_thread', args=(connection,)).start()
 
         # If applicable, start a new instance of the network injector, killing any other running ones.
@@ -610,7 +557,8 @@ class Server:
             global sub_node
             global Primitives
 
-            Primitives = primitives.Primitives(log_level, sub_node)
+            log_level = default_log_level
+            Primitives = primitives.Primitives(sub_node, log_level)
 
             for item in modules:
                 import_str = "import " + item
@@ -619,13 +567,12 @@ class Server:
 
             # Set parameters and global variables from their default values
 
-            address_string = self.get_local_ip()+":"+str(port)  # e.x 10.1.10.3:3705
+            address_string = Primitives.get_local_ip()+":"+str(port)  # e.x 10.1.10.3:3705
             net_injection = network_injection  # Didn't want to shadow variable names.
-            log_level = default_log_level
 
-            self.log("Initializing... ", in_log_level="Info")
+            Primitives.log("Initializing... ", in_log_level="Info")
 
-            self.log(str("Server -> Binding server on: " + address_string + "..."),
+            Primitives.log(str("Server -> Binding server on: " + address_string + "..."),
                      in_log_level="Info")
 
             # First, try to bind the server to (this address) port (port). If that doesn't work, exit cleanly.
@@ -633,22 +580,21 @@ class Server:
             try:
                 localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
                 localhost.bind(('', port))
-                self.log(str("Successfully bound server on port: " + str(port)), in_log_level="Info")
+                Primitives.log(str("Successfully bound server on port: " + str(port)), in_log_level="Info")
 
             except OSError:
-                self.log(str("Failed to bind server on " + address_string +
-                             "; Please try again later."), in_log_level="Info")
+                Primitives.log(str("Failed to bind server on " + address_string +
+                                   "; Please try again later."), in_log_level="Info")
                 self.stop()
 
             if listening:
-                self.log("Server -> Now Listening for incoming connections...", in_log_level="Info")
+                Primitives.log("Server -> Now Listening for incoming connections...", in_log_level="Info")
 
             # Listen for incoming connections.
             while listening:
                 try:
 
                     localhost.listen(5)
-
                     client, address_tuple = localhost.accept()
 
                     if not terminated:
@@ -657,19 +603,24 @@ class Server:
                         connection = (client, address)
 
                         # Our localhost connected, do localhost stuff;
-                        if address == self.get_local_ip() or address == "127.0.0.1":
+                        if address == Primitives.get_local_ip() or address == "127.0.0.1":
 
-                            self.log("Localhost has connected.", in_log_level="Info")
+                            Primitives.log("Localhost has connected.", in_log_level="Info")
 
                             self.send(connection, str(no_prop+':'+"echo"), signing=False)
                             self.listen(connection)
-                            self.log("Listening on localhost...", in_log_level="Info")
+                            Primitives.log("Listening on localhost...", in_log_level="Info")
+
+                            # Make the client connect back to localhost if network_architecture=mesh
+                            localhost_socket = self.lookup_socket("127.0.0.1")
+                            localhost_connection = (localhost_socket, "127.0.0.1")
+                            self.send(localhost_connection, no_prop + ":ConnectTo:" + address, signing=False)
 
                         # A remote client connected, handle them and send an echo, because why not?
                         else:
-                            self.log(str(address + " has connected."), in_log_level="Info")
+                            Primitives.log(str(address + " has connected."), in_log_level="Info")
 
-                            self.log(str("Listening on: "+address), in_log_level="Info")
+                            Primitives.log(str("Listening on: "+address), in_log_level="Info")
                             self.listen(connection)
 
                             if network_architecture == "complete":
@@ -681,8 +632,21 @@ class Server:
                             # every other node can try to connect to it (i.e 'complete' the network).
                             self.broadcast(no_prop + ':ConnectTo:' + address)
 
+                        elif network_architecture == "mesh":
+                            # In mesh configuration, tell localhost client to connect back to the server
+                            # of any remote client which connects to localhost server.
+
+                            localhost_socket = self.lookup_socket("127.0.0.1")
+                            localhost_connection = (localhost_socket, "127.0.0.1")
+                            self.send(localhost_connection, no_prop + ":ConnectTo:" + address, signing=False)
+
+
                     elif terminated:
                         sys.exit(0)
 
-                except ConnectionResetError:
-                    self.log("Server -> localhost has disconnected", in_log_level="Warning")
+                except (ConnectionResetError):
+                    Primitives.log("Server -> localhost has disconnected", in_log_level="Warning")
+
+                # OSError will occur on Windows Systems we try to terminate. Handle that.
+                except OSError:
+                    sys.exit(0)

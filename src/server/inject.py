@@ -167,7 +167,7 @@ class NetworkInjector(multiprocessing.Process):
             try:
                 file_to_read = open(file, 'r+')
 
-            except IsADirectoryError:
+            except (IsADirectoryError, PermissionError):
                 do_continue = False
 
             finally:

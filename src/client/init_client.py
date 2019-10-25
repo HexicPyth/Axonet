@@ -5,11 +5,11 @@ import client
 port = 3705
 
 
-def init():
+def init(network_architecture):
     x = client.Client()
-    x.initialize(port=port, net_architecture="Complete", remote_addresses=None,
+    x.initialize(port=port, net_architecture=network_architecture, remote_addresses=None,
                  command_execution=True, default_log_level="Debug", modules=["corecount"])
 
 
 if __name__ == "__main__":
-    init()
+    init("mesh")
