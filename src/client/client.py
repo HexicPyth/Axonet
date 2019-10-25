@@ -354,10 +354,9 @@ class Client:
         global ongoing_election
         global page_ids
         global ADDR_ID
-        global file_proxy
-        global dictionary_size
         global network_architecture
         global module_loaded
+        global network_size
 
         full_message = str(msg)
         message = full_message[17:]  # Message without signature
@@ -407,6 +406,35 @@ class Client:
 
                 # Do so ourselves
                 self.terminate()
+
+            if message.startswith('config:'):
+
+                arguments = Primitives.parse_cmd(message)  # arguments[0] = variable to configure; [1] = value
+                print(str(arguments))
+
+                if arguments[0] == "network_size":
+
+                    try:
+                        new_network_size = int(arguments[1])
+                        network_size = new_network_size
+                        Primitives.log("Successfully set network_size to: "+str(network_size), in_log_level="Info")
+
+                    except TypeError:
+
+                        Primitives.log("config: target value not int; ignoring...", in_log_level="Warning")
+
+                elif arguments[0] == "network_architecture":
+                    # Changes from any architecture --> mesh must be done while network size <= 2
+                    # any architecture --> fully-connected should always work
+
+                    new_network_architecture = arguments[1]
+
+                    if type(new_network_architecture) == str:
+                        network_architecture = new_network_architecture
+                        Primitives.log("Successfully set network_architecture to: "+network_architecture,
+                                       in_log_level="Info")
+
+
 
             if message.startswith("ConnectTo:"):
 
@@ -631,11 +659,8 @@ class Client:
             # to form a feedback loop between the proxy and client, that way the client doesn't ever exceed the
             # maximum channel capacity(i.e bandwidth) of it's connection to the proxy server.
             if message.startswith("notify:"):
-                import inject
-                import file
-                Injector = inject.NetworkInjector()
 
-                arguments = Injector.parse_cmd(message)
+                arguments = Primitives.parse_cmd(message)
 
                 if arguments[0] == "something":
 
@@ -713,21 +738,18 @@ class Client:
                                    "Attempting to initiate our election protocol with any information we"
                                    "can collect.", in_log_level="Warning")
                     os.chdir(original_path)
-                    import inject
-                    Injector = inject.NetworkInjector()
-
-                    election_details = Injector.parse_cmd(message)  # [reason, token]
+                    election_details = Primitives.parse_cmd(message)  # [reason, token]
 
                     # Before we (hopefully) receive a vote flag: the elction list is empty. Populate it
-                    campaign_tuple = tuple(Injector.parse_cmd(message))
+                    campaign_tuple = tuple(election_details)
                     campaign_list.append(campaign_tuple)
                     print(str(campaign_list))
 
                 if ongoing_election:
-                    import inject
-                    Injector = inject.NetworkInjector()
 
-                    campaign_tuple = tuple(Injector.parse_cmd(message))
+                    election_details = Primitives.parse_cmd(message)  # [reason, token]
+
+                    campaign_tuple = tuple(election_details)
                     campaign_list.append(campaign_tuple)
 
                     print(str(campaign_list))
@@ -765,11 +787,9 @@ class Client:
 
             if message.startswith("elect:"):
                 # elect:reason:representative
-                import inject
 
                 # Parse arguments
-                Injector = inject.NetworkInjector()
-                args = Injector.parse_cmd(message)
+                args = Primitives.parse_cmd(message)
 
                 reason = args[0]
                 new_leader = args[1]
@@ -824,7 +844,7 @@ class Client:
                     if incoming:
                         self.respond(conn, raw_message)
 
-                except TypeError:
+                except ArithmeticError:  # DEBUG TypeError
                     conn_severed_msg = str("Connection to " + str(in_sock)
                                            + "was severed or disconnected."
                                            + "(TypeError: listen() -> listener_thread()")

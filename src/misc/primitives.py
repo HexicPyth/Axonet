@@ -216,3 +216,32 @@ class Primitives:
                 file_tuple = f_tuple
                 return file_tuple
         return -1
+
+    @staticmethod
+    def parse_cmd(in_cmd):
+        """Parse an input command for arguments and return them in a List"""
+        args = []
+
+        # Find the command substring and remove it from the input
+        cmd_index = in_cmd.find(":")
+        in_cmd = in_cmd[cmd_index + 1:]
+
+        number_of_args = in_cmd.count(":") + 1
+
+        # All arguments are separated by colons.
+        # Find colon index -> Read until next colon -> append argument to list -> remove argument -> repeat.
+
+        for i in range(0, number_of_args):
+            argument_index = in_cmd.find(":")
+
+            if argument_index != -1:
+
+                argument = in_cmd[:argument_index]
+                args.append(argument)
+
+                in_cmd = in_cmd[argument_index + 1:]
+
+            else:
+                args.append(in_cmd)
+        return args
+
