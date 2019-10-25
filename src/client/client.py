@@ -410,11 +410,11 @@ class Client:
             if message.startswith("ConnectTo:"):
 
                 """ConnectTo: Instructs external clients to connect to remote servers.
-                ConnectTo: is sent by each node being connected to when a new node joins the network, with one
-                ConnectTo: flag per node in their network table], instructing the new node to connect to 
-                [each node in their network table]. As long as all nodes respond to ConnectTo: flags,
-                (if network_architecture = "complete" in init_client/init_server)
-                the network will always be fully-connected.
+                In fully-connected mode,  ConnectTo: is sent by each node being connected to when a new node 
+                joins the network, with one ConnectTo: flag per node in their network table], instructing the new node 
+                to connect to  [each node in their network table]. As long as all nodes respond to ConnectTo: flags,
+                (if network_architecture = "complete" in init_client/init_server) the 
+                network will always be fully-connected.
                 
                 Elsewhere in the documentation and code, this bootstrapping mechanism is
                 referred to as "address propagation"
@@ -430,14 +430,12 @@ class Client:
                 # If we're not already connected and making this connection won't break anything, connect now.
                 if connection_status == 0:
 
-                    overide_localhost_failsafe = False
-
                     remote_adress_is_localhost = connect_to_address == Primitives.get_local_ip() or \
                                                   connect_to_address == "127.0.0.1"
 
-                    # Don't re-connect to localhost unless we're not connected yet.
+                    # Don't connect to localhost multiple times;
                     # All kinds of bad things happen if you do.
-                    if remote_adress_is_localhost and not overide_localhost_failsafe:
+                    if remote_adress_is_localhost:
 
                             not_connecting_msg = str("Not connecting to " + connect_to_address + "; That's localhost :P")
                             Primitives.log(not_connecting_msg, in_log_level="Warning")
@@ -453,6 +451,11 @@ class Client:
                         print("\tRemote Address is Localhost: " + str(remote_adress_is_localhost))
                         print("\tReceived packet from Localhost: " + str(received_packet_from_localhost))
                         print("\n\n")
+
+                        """ In a fully-connected network, act on all ConnectTo: packets;
+                            In a mesh network, only act on ConnectTo: packets originating from localhost
+                            (ConnectTo: is never sent with message propagation -- ConnectTo: packets received from
+                             localhost always really originate from localhost) """
 
                         if (mesh_network and received_packet_from_localhost) or not mesh_network:
 
@@ -623,7 +626,6 @@ class Client:
 
                             pass  # Do stuff for module 'something' here
 
-
             # Provide server's a means of communicating readiness to clients. This is used during file proxying
             # to form a feedback loop between the proxy and client, that way the client doesn't ever exceed the
             # maximum channel capacity(i.e bandwidth) of it's connection to the proxy server.
@@ -780,8 +782,6 @@ class Client:
                 election_winner_msg = str(new_leader) + " won the election for:" + reason
                 Primitives.log(election_winner_msg, in_log_level="Info")
 
-                # We're electing a proxy for distributed file storage
-
                 if reason.startswith('thing-'):
                     pass  # Do something upon completion of 'thing' election
 
@@ -790,7 +790,6 @@ class Client:
                 print("\n")
 
             if message.startswith("benchmark:"):
-                module_loaded = "WPABruteForce"
                 os.chdir(original_path)
                 import inject
                 arguments = inject.NetworkInjector().parse_cmd(message)
@@ -954,6 +953,6 @@ class Client:
 
                 except ConnectionRefusedError:
                     Primitives.log("Unable to connect to remove server; Failed to bootstrap.",
-                             in_log_level="Warning")
+                                   in_log_level="Warning")
         else:
             Primitives.log("Initializing with no remote connections...", in_log_level="Info")
