@@ -269,8 +269,8 @@ class Client:
             Primitives.log("Already disconnected from that address, passing...", in_log_level="Warning")
             pass
 
-    """ The following three functions were written by StackOverflow user 
-    Adam Rosenfield then modified by me, HexicPyth.
+    """ The following function was written by StackOverflow user 
+    Adam Rosenfield, then modified by me, HexicPyth.
     https://stackoverflow.com/a/17668009
     https://stackoverflow.com/users/9530/adam-rosenfield """
 
@@ -294,7 +294,7 @@ class Client:
             sock.sendall(msg)
 
         # Socket probably disconnected, let's do the same and remove it
-        # from the network tuple so it can't cause issues.
+        # from the network tuple to avoid conflict.
         except OSError:
             self.disconnect(connection)
 
@@ -302,11 +302,12 @@ class Client:
         Primitives.log("Permuting the network tuple", in_log_level="Info")
         self.permute_network_tuple()
         for connection in network_tuple:
-            self.send(connection, message, sign=False)  # For each of them send the given message( = Broadcast)
+            self.send(connection, message, sign=False)  # Send a message to each node( = Broadcast)
 
     @staticmethod
     def run_external_command(command):
         # Given a string containing a UNIX command, execute it.
+        # Disable this by setting command_execution=False
         # Returns 0 -> (int)
 
         os.system(command)
@@ -320,14 +321,19 @@ class Client:
         Primitives.log("Writing to page:" + page_id, in_log_level="Info")
         os.chdir(original_path)
 
-        """ Until we implement Asymmetric crypto, we'll identify ourselves 
-        with a hash of our address. That's actually convenient because other
-        nodes can reliably tell who (didn't) send a given message """
-
+        # Write page data pseudonymously with ADDR_ID
         if signing:
+
+            """ADDR_ID is a cryptographic hash of this node''s externally reachable IP address, salted with a unique
+               random token generated upon initialization. ADDR_ID is used as an anonymous, common identifier
+               which external nodes can use to direct messages to anonymous destination nodes without requiring them
+               to reveal their identity."""
+
             data_line = str(ADDR_ID + ":" + data + "\n")
 
+        # Write data completely anonymously
         else:
+
             data_line = str(data + "\n")
 
         file_path = ("../inter/mem/" + page_id + ".bin")
@@ -338,7 +344,7 @@ class Client:
 
     def respond(self, connection, msg):
         """ We received a message, reply with an appropriate response.
-            Doesn't return anything. """
+            Doesn't return. """
 
         # Eww... I smell a global state lurking somewhere.
         global message_list
@@ -352,7 +358,6 @@ class Client:
         global page_ids
         global ADDR_ID
         global file_proxy
-        global SALT
         global dictionary_size
         global network_architecture
 
@@ -367,14 +372,14 @@ class Client:
             # Replying to localhost is strictly disallowed. Replace localhost with actual local IP.
             address = Primitives.get_local_ip()
 
-        # Try to prevent race-conditions in case multiple threads
-        # somehow receive the same message at the same time (not likely)
-        # Also improves network mixing anonymity because the random delay makes it more difficult to analyse
-        # message paths via timing analysis alone.
+        # Introduce additional network mixing anonymity by introducing a random delay makes it difficult or
+        # impossible to derive message paths through timing analysis alone.
+
         sleep(random.uniform(0.008, 0.05))  # 8mS - 50mS
 
         # Don't respond to messages we've already responded to.
         if sig in message_list:
+
             not_responding_to_msg = str("Not responding to " + sig)
             Primitives.log(not_responding_to_msg, in_log_level="Debug")
 
@@ -407,26 +412,34 @@ class Client:
 
             if message.startswith("ConnectTo:"):
 
-                connect_to_address = message[10:]  # remove first ten characters; len("ConnectTo:") = 10
+                """ConnectTo: Instructs external clients to connect to remote servers.
+                ConnectTo: is sent by each node being connected to when a new node joins the network, with one
+                ConnectTo: flag per node in their network table], instructing the new node to connect to 
+                [each node in their network table]. As long as all nodes respond to ConnectTo: flags,
+                (if network_architecture = "complete" in init_client/init_server)
+                the network will always be fully-connected.
+                
+                Elsewhere in the documentation and code, this bootstrapping mechanism is
+                referred to as "address propagation"
+                """
 
-                # Will return an socket if we're already connected to it.
+                # remove the 'ConnectTo:' flag from the message, leaving only the external address to connect to.
+                connect_to_address = message[10:]
+
+                # lookup_socket will return 0 if we're not already connected to said address (above)
                 connection_status = self.lookup_socket(connect_to_address)
                 Primitives.log(str(network_tuple), in_log_level="Debug")
 
-                # If we're not already connected
-
+                # If we're not already connected and making this connection won't break anything, connect now.
                 if connection_status == 0:
-
-                    # Don't re-connect to localhost unless we're not connected yet.
-                    # All kinds of bad things happen if you do.
 
                     overide_localhost_failsafe = False
 
                     remote_adress_is_localhost = connect_to_address == Primitives.get_local_ip() or \
                                                   connect_to_address == "127.0.0.1"
 
-
-
+                    # Don't re-connect to localhost unless we're not connected yet.
+                    # All kinds of bad things happen if you do.
                     if remote_adress_is_localhost and not overide_localhost_failsafe:
 
                             not_connecting_msg = str("Not connecting to " + connect_to_address + "; That's localhost :P")
@@ -434,7 +447,7 @@ class Client:
 
                     else:
 
-                        mesh_network = network_architecture == "mesh"
+                        mesh_network = (network_architecture == "mesh")  # True if network architecture is mesh
                         received_packet_from_localhost = (address == "127.0.0.1" or address == Primitives.get_local_ip())
 
                         print('\n\n')
@@ -472,7 +485,7 @@ class Client:
                                     Primitives.log(str("Unable to connect to: " + str(connect_to_address)),
                                                    in_log_level="Warning")
 
-                # The address isn't foreign, don't re-connect to it.
+                # Don't connect to an address we're already connected to...
                 elif connection_status != 0:
                     already_connected_msg = str("Not connecting to " +
                                                 connect_to_address +
@@ -499,7 +512,7 @@ class Client:
             if message.startswith("newpage:"):
                 """ Create a new pagefile that we'll presumably do some 
                 parallel or distributed operations with.
-                e.x newpage:(64-bit signature)"""
+                e.x newpage:(64-bit identifier provided by sender)"""
 
                 page_id = message[8:]
                 new_filename = str("../inter/mem/" + page_id + ".bin")
@@ -517,8 +530,7 @@ class Client:
                 corecount.respond_start(page_ids, message)
 
             if message.startswith("fetch:"):
-                """ send the contents of page [page_id] to broadcast. We cannot reply directly to
-                sender because of message propagation.   . """
+                """ Broadcast the contents of [page id] to maintain distributed memory """
 
                 page_id = message[6:]
 
@@ -539,13 +551,13 @@ class Client:
                 self.broadcast(sync_msg)
 
             if message.startswith("sync:"):
-                """ Update our pagefile with information from other node's completed work
-                Translation: write to page 
+                """ Update our pagefile with data from another node (such as another node's completed work)
+                Translation: write arbitrary data to page [page id] 
                 Syntax: sync:(page id):(data)
                 """
 
                 os.chdir(original_path)
-                page_id = message[5:][:16]
+                page_id = message[5:][:16] # First 16 bytes after removing the 'sync:' flag
                 data = message[22:]
 
                 Primitives.log("Syncing " + data + " into page:" + page_id, in_log_level="Info")
@@ -591,7 +603,7 @@ class Client:
 
                     # https://stackoverflow.com/a/1216544
                     # https://stackoverflow.com/users/146442/marcell
-                    # The following two lines of SLOC are the work of "Marcel" from StackOverflow
+                    # The following two lines of code are the work were written by "Marcel" from StackOverflow.
 
                     # Cleanup after sync
 
@@ -909,7 +921,7 @@ class Client:
                     if incoming:
                         self.respond(conn, raw_message)
 
-                except ArithmeticError:  # TypeError
+                except TypeError:
                     conn_severed_msg = str("Connection to " + str(in_sock)
                                            + "was severed or disconnected."
                                            + "(TypeError: listen() -> listener_thread()")
@@ -1002,7 +1014,6 @@ class Client:
         try:
             self.connect(localhost_connection, 'localhost', port, local=True)
 
-
             Primitives.log("Connection to localhost successful", in_log_level="Info")
             Primitives.log("Starting listener on localhost...", in_log_level="Info")
 
@@ -1010,7 +1021,7 @@ class Client:
 
         except ConnectionRefusedError:
 
-            Primitives.log("Connection to localhost was not successful; check that your server is "
+            Primitives.log("Connection to localhost unsuccessful; check that your server is "
                            "initialized, and try again later.", in_log_level="Warning")
             quit(1)
 
