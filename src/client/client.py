@@ -755,7 +755,8 @@ class Client:
                     print(str(campaign_list))
 
                     # Wait for all votes to be cast
-                    if len(campaign_list) == len(network_tuple)+1:
+                    if len(campaign_list) == network_size:
+                        print("\n\n: Debug: "+str(len(network_tuple)+1) + "\n\n")
                         campaign_ints = []
 
                         for campaign_tuple in campaign_list:
