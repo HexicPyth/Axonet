@@ -238,6 +238,11 @@ class NetworkInjector(multiprocessing.Process):
                 args = self.parse_cmd(in_cmd)
                 WPABruteforce.initiate(net_tuple, args)
 
+            elif in_cmd.startswith("discover"):
+                os.chdir(original_path)
+                import discover
+                discover.initiate(net_tuple)
+
     def init(self, network_tuple, loaded_modules, msg=None):
 
         # 1. Load any modules loaded by server

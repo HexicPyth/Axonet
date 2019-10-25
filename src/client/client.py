@@ -803,20 +803,44 @@ class Client:
                 election_winner_msg = str(new_leader) + " won the election for:" + reason
                 Primitives.log(election_winner_msg, in_log_level="Info")
 
-                if reason.startswith('thing-'):
-                    pass  # Do something upon completion of 'thing' election
+                if reason.startswith('discovery-'):
+                    os.chdir(original_path)
+                    import discover
+                    op_id = reason[10:]
+                    discover.respond_start(network_tuple, op_id, cluster_rep)
 
                 print("\n")
                 print(election_list)  # DEBUG
                 print("\n")
 
             if message.startswith("benchmark:"):
-                os.chdir(original_path)
-                import inject
-                arguments = inject.NetworkInjector().parse_cmd(message)
+                arguments = Primitives.parse_cmd(message)
 
                 if arguments[0] == "thing":
                     pass   # Benchmark this node's performance for task 'thing'
+
+            if message.startswith("sharepeers:"):
+                os.chdir(original_path)
+                import discover
+
+                arguments = Primitives.parse_cmd(message)  # arguments[0] = op_id = name of pagefile
+
+                op_id = arguments[0]
+
+                # Get a list of all remote addresses
+                addresses = [item[1] for item in network_tuple if item[1] != "127.0.0.1" or Primitives.get_local_ip()]
+
+                # Turn it into a string containing each address separated by newlines
+                data = '\n'.join(addresses)
+
+                # Write it to page [op_id]
+
+                self.write_to_page(op_id, data, signing=False)
+
+                # Callback to discover module
+
+                discover.start(network_tuple, op_id)
+
 
             # Append message signature to the message list, or in the case of sig=no_prop, do nothing.
             if sig != no_prop:

@@ -12,6 +12,8 @@ from hashlib import sha3_224
 # Add to PATH
 sys.path.insert(0, '../inter/')
 sys.path.insert(0, '../inter/modules/')
+sys.path.insert(0, '../inter/modules/scripts/')
+
 sys.path.insert(0, '../misc/')
 
 # Imports from PATH

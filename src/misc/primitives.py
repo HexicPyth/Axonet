@@ -12,7 +12,6 @@ class Primitives:
         self.SUB_NODE = sub_node
 
     def log(self, log_message, in_log_level='Warning'):
-        # TODO: This doesn't work. Fix it
 
         """ Process and deliver program output in an organized and
         easy to read fashion. Never returns. """
