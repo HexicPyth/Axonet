@@ -44,6 +44,7 @@ SALT = None  # Will be set to a 128-bit hexadecimal token(by self.init) for maki
 ADDR_ID = None  # Another 128-bit hexadecimal token that wil be salted with SALT, and set by init()
 original_path = os.path.dirname(os.path.realpath(__file__))
 network_size = 0
+output_node = ""   # Address of one remote node from init_client
 
 os.chdir(original_path)
 sys.path.insert(0, '../inter/modules/')
@@ -357,6 +358,7 @@ class Client:
         global network_architecture
         global module_loaded
         global network_size
+        global output_node
 
         full_message = str(msg)
         message = full_message[17:]  # Message without signature
@@ -841,6 +843,16 @@ class Client:
 
                 discover.start(network_tuple, op_id)
 
+            if message.startswith("bootstrap:"):
+                arguments = Primitives.parse_cmd(message)
+
+                # arguments[0] = network architecture to boostrap into (e.x "mesh")
+                # arguments[1] = c_ext
+
+                hosts_pagefile = ''.join([item[0][10:] for item in election_list if item[0][:10] == "discovery-"])
+                Primitives.log("Hosts pagefile is "+hosts_pagefile+".bin", in_log_level="Info")
+                print("Output node: "+output_node)
+
 
             # Append message signature to the message list, or in the case of sig=no_prop, do nothing.
             if sig != no_prop:
@@ -938,6 +950,7 @@ class Client:
         global ADDR_ID
         global network_architecture
         global network_size
+        global output_node
 
         # Global variable assignment
         PORT = port
@@ -945,6 +958,11 @@ class Client:
         log_level = default_log_level
         network_architecture = net_architecture
         network_size = networkSize
+
+        if remote_addresses:
+            output_node = random.choice(remote_addresses)
+        else:
+            output_node = None
 
         Primitives = primitives.Primitives(sub_node, log_level)
         SALT = secrets.token_hex(16)
