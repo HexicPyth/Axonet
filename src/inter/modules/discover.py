@@ -33,7 +33,7 @@ def respond_start(net_tuple, op_id, cluster_rep):
     if cluster_rep:
         injector = inject.NetworkInjector()
         injector.broadcast("newpage:"+op_id, net_tuple)  # Create a pagefile to store peer addresses in
-        injector.broadcast("sharepeers:"+op_id)          # Instruct nodes to append all peer addresses to this pagefile
+        injector.broadcast("sharepeers:"+op_id, net_tuple)          # Instruct nodes to append all peer addresses to this pagefile
 
 
 
