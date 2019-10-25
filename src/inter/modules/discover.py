@@ -40,4 +40,8 @@ def respond_start(net_tuple, op_id, cluster_rep):
 
 def start(net_tuple, op_id):
     """(Optional) Called after addresses are written to page [op-id] """
-    pass  # (not used)
+    import inject
+
+    injector = inject.NetworkInjector()
+    injector.broadcast("fetch:" + op_id, net_tuple)  # Create a pagefile to store peer addresses in
+
