@@ -10,10 +10,10 @@ import threading
 from hashlib import sha3_224
 
 # Add to PATH
-sys.path.insert(0, (os.path.abspath('../../inter/')))
-sys.path.insert(0, (os.path.abspath('../../inter/scripts')))
-sys.path.insert(0, (os.path.abspath('../../inter/modules')))
-sys.path.insert(0, (os.path.abspath('../../inter/misc')))
+sys.path.insert(0, (os.path.abspath('../inter/')))
+sys.path.insert(0, (os.path.abspath('../inter/scripts')))
+sys.path.insert(0, (os.path.abspath('../inter/modules')))
+sys.path.insert(0, (os.path.abspath('../inter/misc')))
 sys.path.insert(0, (os.path.abspath('../misc')))
 
 # Imports from PATH
