@@ -874,6 +874,8 @@ class Client:
 
                 potential_peers = pagefile.readlines()
 
+                chosen_peers = []
+
                 for peer in potential_peers:
                     if peer == Primitives.get_local_ip()+"\n":  # Do not try to pick ourselves as a remote node
                         potential_peers.remove(peer)
@@ -884,6 +886,7 @@ class Client:
 
                     this_node = (localhost, "127.0.0.1")
 
+                    # Disconnect from everything other than localhost
                     for peer in network_tuple:
 
                         if peer != this_node:
@@ -892,7 +895,18 @@ class Client:
                         else:
                             pass  # Don't disconnect from localhost
 
+                    # Select remote peers to bootstrap with
+                    for i in range(0, c_ext):
+                        chosen_peer = random.choice(potential_peers)
+                        potential_peers.remove(chosen_peer)
+                        chosen_peers.append(chosen_peer.strip("\n"))
+
                     Primitives.log("Disassociation successful. Ready for bootstrap...", in_log_level="Info")
+
+                    # Bootstrap!
+                    for peer_address in chosen_peers:
+                        external_connection = (socket.socket(), peer_address)
+                        self.connect(external_connection, peer_address, PORT)
 
 
             # Append message signature to the message list, or in the case of sig=no_prop, do nothing.

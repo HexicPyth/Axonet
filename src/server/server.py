@@ -387,11 +387,12 @@ class Server:
                 try:
                     incoming = Primitives.receive(conn)
 
-                    # Primitives.receive() returns none if something goes wrong.
-                    if incoming:
+                    if type(incoming) == int:
+                        pass
+                    else:
                         self.respond(incoming, conn)
 
-                except (OverflowError, TabError):  # OSError, TypeError
+                except (OSError, TypeError):
                     # OSError - Something terrible happened trying to receive from a node
                     # TypeError - A socket is apparently NoneType now. That's bad
 
@@ -454,6 +455,7 @@ class Server:
 
                         if terminated:
                             injector_terminated = True
+                            print("Injector terminated!!")
                             break
 
                         if current_network_size != network_size:
@@ -529,6 +531,7 @@ class Server:
                             break  # We have remote connections...
 
                         else:
+                            print("Network injector terminated!")
                             break
             elif injector_terminated:
                 Primitives.log("Terminating the Network Injector", in_log_level="Info")
