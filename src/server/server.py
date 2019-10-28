@@ -17,6 +17,7 @@ sys.path.insert(0, '../inter/modules/scripts/')
 sys.path.insert(0, '../misc/')
 
 # Imports from PATH
+
 import primitives
 import file
 
@@ -251,6 +252,7 @@ class Server:
                 Primitives.log(echo_received_log, in_log_level="Info")
 
             if message == "stop":
+                self.broadcast(no_prop + ":" + message)
                 Primitives.log("Exiting Cleanly", in_log_level="Info")
                 self.stop()
 

@@ -436,8 +436,6 @@ class Client:
                         Primitives.log("Successfully set network_architecture to: "+network_architecture,
                                        in_log_level="Info")
 
-
-
             if message.startswith("ConnectTo:"):
 
                 """ConnectTo: Instructs external clients to connect to remote servers.
@@ -540,7 +538,7 @@ class Client:
                 else:
                     Primitives.log(("Not executing command: ", message[5:]), in_log_level="Info")
 
-            if message.startswith("newpage:"):
+            if message.startswith("newpage`:"):
                 """ Create a new pagefile that we'll presumably do some 
                 parallel or distributed operations with.
                 e.x newpage:(64-bit identifier provided by sender)"""
@@ -668,8 +666,8 @@ class Client:
 
                     pass  # Do something about it
 
-            # Disconnect from some misbehaving node and pop it from out network tuple
-            # example message: remove:192.168.2.3
+            # Disconnect from some misbehaving node and pop it from network tuple
+            # example: remove:192.168.2.3
             if message.startswith("remove:"):
 
                 address_to_remove = message[7:]
@@ -812,7 +810,7 @@ class Client:
                     discover.respond_start(network_tuple, op_id, cluster_rep)
 
                 print("\n")
-                print(election_list)  # DEBUG
+                print(election_list)
                 print("\n")
 
             if message.startswith("benchmark:"):
@@ -851,14 +849,25 @@ class Client:
 
                 hosts_pagefile = ''.join([item[0][10:] for item in election_list if item[0][:10] == "discovery-"])
                 Primitives.log("Hosts pagefile is "+hosts_pagefile+".bin", in_log_level="Info")
-                print("Output node: "+output_node)
 
+                print("Output node: "+str(output_node))
+
+                pagefile = open("../inter/mem/" + hosts_pagefile + ".bin", "r+")
+
+                potential_peers = pagefile.readlines()
+
+                for peer in potential_peers:
+                    if peer == Primitives.get_local_ip():  # Do not try to pick ourselves as a remote node
+                        potential_peers.remove(peer)
+
+                print(str(potential_peers))
 
             # Append message signature to the message list, or in the case of sig=no_prop, do nothing.
             if sig != no_prop:
                 message_list.append(sig)
 
                 # End of respond()
+
                 # Propagate the message to the rest of the network.
                 Primitives.log(str('Broadcasting: ' + full_message), in_log_level="Debug")
                 self.broadcast(full_message)
@@ -880,7 +889,7 @@ class Client:
                     if incoming:
                         self.respond(conn, raw_message)
 
-                except ArithmeticError:  # DEBUG TypeError
+                except TypeError:
                     conn_severed_msg = str("Connection to " + str(in_sock)
                                            + "was severed or disconnected."
                                            + "(TypeError: listen() -> listener_thread()")
@@ -923,6 +932,7 @@ class Client:
             Primitives.log(str("Terminating connection to "), in_log_level="Info")
 
         for connection in network_tuple:
+
             address = connection[1]
             Primitives.log(str("Terminating connection to " + address), in_log_level="Info")
             self.disconnect(connection, disallow_local_disconnect=False)
@@ -968,6 +978,7 @@ class Client:
         SALT = secrets.token_hex(16)
         ADDR_ID = Primitives.gen_addr_id(SALT)
 
+        # Import loaded modules
         for item in modules:
             import_str = "import " + item
             loaded_modules.append(item)
@@ -1001,7 +1012,7 @@ class Client:
         if remote_addresses:
 
             for remote_address in remote_addresses:
-                # Bootstrap into the network
+                # Join the network if one already exists...
 
                 sock = socket.socket()
 
@@ -1013,7 +1024,7 @@ class Client:
                     self.listen(connection)
 
                     if network_architecture == "complete":
-                        self.send(connection, no_prop+":echo", sign=False)  # WIP
+                        self.send(connection, no_prop+":echo", sign=False)  # TODO: why?
 
                 except ConnectionRefusedError:
                     Primitives.log("Unable to connect to remove server; Failed to bootstrap.",

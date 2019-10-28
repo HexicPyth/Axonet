@@ -30,7 +30,7 @@ class NetworkInjector(multiprocessing.Process):
         return out
 
     # Send a given message to a specific node
-    # Slightly modified compared to the server's send method
+    # Slightly modified version of the server's send method
     @staticmethod
     def send(connection, msg, sign=True):
         sock = connection[0]
@@ -114,7 +114,7 @@ class NetworkInjector(multiprocessing.Process):
             if type(send_status) == str:
                 return_code = send_status
 
-        # This message has been send successfully
+        # This message has been sent successfully
         current_message = None
         return return_code
 
@@ -128,7 +128,7 @@ class NetworkInjector(multiprocessing.Process):
 
         number_of_args = in_cmd.count(":") + 1
 
-        # All arguments are separated by colons.
+        # All arguments are separated by : (colon).
         # Find colon index -> Read until next colon -> append argument to list -> remove argument -> repeat.
 
         for i in range(0, number_of_args):
@@ -147,9 +147,9 @@ class NetworkInjector(multiprocessing.Process):
 
     @staticmethod
     def read_interaction_directory():
-        """ Read flags from lines in text files in src/inter and broadcast them.
+        """ Read flags from lines of text files in src/inter and broadcast them.
         # TODO: this should be run in a seperate thread as part of the server. As of now, this won't run without
-        # TODO: ...some form of user input. User input should never be necessary in (potentially) headless clusters. """
+        # TODO: ...some form of user input. User input should never be necessary in (potentially) headless networks. """
 
         global original_path
 
@@ -190,8 +190,7 @@ class NetworkInjector(multiprocessing.Process):
         return formatted_flags
 
     def interpret(self, in_msg, net_tuple):
-        """Identify whether a message is a flag or command, and execute any appropriate functions and/or broadcasts.
-        Doesn't return"""
+        """Identify whether a message is a flag or command, and execute any appropriate functions and/or broadcasts. """
 
         if in_msg[:1] == "$":
             command = True
