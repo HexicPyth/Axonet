@@ -862,6 +862,9 @@ class Client:
                 # arguments[0] = network architecture to boostrap into (e.x "mesh")
                 # arguments[1] = c_ext
 
+                net_architecture = arguments[0]
+                c_ext = int(arguments[1])
+
                 hosts_pagefile = ''.join([item[0][10:] for item in election_list if item[0][:10] == "discovery-"])
                 Primitives.log("Hosts pagefile is "+hosts_pagefile+".bin", in_log_level="Info")
 
@@ -875,7 +878,22 @@ class Client:
                     if peer == Primitives.get_local_ip()+"\n":  # Do not try to pick ourselves as a remote node
                         potential_peers.remove(peer)
 
-                print(str(potential_peers))
+                if net_architecture == "mesh":
+                    print("Network tuple:")
+                    print(str(network_tuple))
+
+                    this_node = (localhost, "127.0.0.1")
+
+                    for peer in network_tuple:
+
+                        if peer != this_node:
+                            self.disconnect(peer)
+
+                        else:
+                            pass  # Don't disconnect from localhost
+
+                    Primitives.log("Disassociation successful. Ready for bootstrap...", in_log_level="Info")
+
 
             # Append message signature to the message list, or in the case of sig=no_prop, do nothing.
             if sig != no_prop:
