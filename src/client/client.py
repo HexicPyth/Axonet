@@ -648,12 +648,15 @@ class Client:
                                                                  "\n The network tuple(+1) is of length: "
                                    + str(len(network_tuple) + 1), in_log_level="Debug")
 
-                    if len(newlines) == len(network_tuple)+1:
+                    if len(newlines) >= network_size:
+                        pass
                         # We've received contributions from every node on the network.
                         # Now do module-specific I/O
-                        if module_loaded == "something":
-
-                            pass  # Do stuff for module 'something' here
+                    else:
+                        print(str(len(newlines)))
+                        if module_loaded == "discover":
+                            hosts_pagefile = ''.join([item[0][10:] for item in election_list if item[0][:10] == "discovery-"])
+                            self.broadcast(self.prepare("fetch:"+hosts_pagefile))
 
             # Provide server's a means of communicating readiness to clients. This is used during file proxying
             # to form a feedback loop between the proxy and client, that way the client doesn't ever exceed the
@@ -823,6 +826,7 @@ class Client:
                 os.chdir(original_path)
                 import discover
 
+                module_loaded = "discover"
                 arguments = Primitives.parse_cmd(message)  # arguments[0] = op_id = name of pagefile
 
                 op_id = arguments[0]
