@@ -653,10 +653,10 @@ class Client:
                         # We've received contributions from every node on the network.
                         # Now do module-specific I/O
                     else:
-                        print(str(len(newlines)))
                         if module_loaded == "discover":
                             hosts_pagefile = ''.join([item[0][10:] for item in election_list if item[0][:10] == "discovery-"])
                             self.broadcast(self.prepare("fetch:"+hosts_pagefile))
+                            module_loaded = ""
 
             # Provide server's a means of communicating readiness to clients. This is used during file proxying
             # to form a feedback loop between the proxy and client, that way the client doesn't ever exceed the
