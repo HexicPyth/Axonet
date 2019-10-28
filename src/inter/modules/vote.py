@@ -11,6 +11,7 @@ no_prop = "ffffffffffffffff"
 
 def initiate(net_tuple, arguments):
     """ Called from the network injector when it receives a $vote:(reason) input"""
+    os.chdir(this_dir)
     import inject
     injector = inject.NetworkInjector()
     reason = arguments[0]

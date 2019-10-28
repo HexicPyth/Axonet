@@ -16,6 +16,7 @@ no_prop = "ffffffffffffffff"
 
 def initiate(net_tuple):
     """ Called from the network injector when it receives a $discover: flag"""
+    os.chdir(this_dir)
     import inject
 
     op_id = secrets.token_hex(8)
