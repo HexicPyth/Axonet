@@ -540,7 +540,7 @@ class Client:
                 else:
                     Primitives.log(("Not executing command: ", message[5:]), in_log_level="Info")
 
-            if message.startswith("newpage`:"):
+            if message.startswith("newpage:"):
                 """ Create a new pagefile that we'll presumably do some 
                 parallel or distributed operations with.
                 e.x newpage:(64-bit identifier provided by sender)"""
