@@ -3,16 +3,15 @@ import sys
 import secrets
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
+
 os.chdir(this_dir)
-sys.path.insert(0, '../../client/')
-sys.path.insert(0, '../../server/')
-sys.path.insert(0, '../../inter/modules/')
-sys.path.insert(0, '../../misc/')
+
+sys.path.insert(0, (os.path.abspath('../../client')))
+sys.path.insert(0, (os.path.abspath('../../server')))
+sys.path.insert(0, (os.path.abspath('../../inter/modules')))
+sys.path.insert(0, (os.path.abspath('../../inter/misc')))
 
 import primitives
-
-no_prop = "ffffffffffffffff"
-
 
 def initiate(net_tuple):
     """ Called from the network injector when it receives a $discover: flag"""
@@ -28,7 +27,10 @@ def initiate(net_tuple):
 
 def respond_start(net_tuple, op_id, cluster_rep):
     """Called by the client's listener_thread after the 'discovery' election is complete"""
+
+    print('Current directory: '+this_dir)
     import inject
+    os.chdir(this_dir)
     if cluster_rep:
         injector = inject.NetworkInjector()
         injector.broadcast("newpage:"+op_id, net_tuple)  # Create a pagefile to store peer addresses in

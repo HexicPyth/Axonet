@@ -11,8 +11,20 @@ import secrets
 from time import sleep
 from hashlib import sha3_224
 
-sys.path.insert(0, '../inter/')
-sys.path.insert(0, '../misc/')
+# Switch to the directory containing client.py
+this_dir = os.path.dirname(os.path.realpath(__file__))
+os.chdir(this_dir)
+
+# Insert the server, misc, and src/inter directories to PATH so we can use modules like inject, vote, discover, etc.
+
+
+sys.path.insert(0, (os.path.abspath('../server')))
+sys.path.insert(0, (os.path.abspath('../misc')))
+sys.path.insert(0, (os.path.abspath('../inter/')))
+sys.path.insert(0, (os.path.abspath('../inter/modules')))
+
+
+
 import primitives
 
 # Globals
@@ -47,9 +59,6 @@ network_size = 0
 output_node = ""   # Address of one remote node from init_client
 
 os.chdir(original_path)
-sys.path.insert(0, '../inter/modules/')
-sys.path.insert(0, '../server/')
-
 # Will be reset later
 Primitives = primitives.Primitives(sub_node, log_level)
 network_architecture = ""
@@ -863,7 +872,7 @@ class Client:
                 potential_peers = pagefile.readlines()
 
                 for peer in potential_peers:
-                    if peer == Primitives.get_local_ip():  # Do not try to pick ourselves as a remote node
+                    if peer == Primitives.get_local_ip()+"\n":  # Do not try to pick ourselves as a remote node
                         potential_peers.remove(peer)
 
                 print(str(potential_peers))
@@ -895,7 +904,7 @@ class Client:
                     if incoming:
                         self.respond(conn, raw_message)
 
-                except TypeError:
+                except UnboundLocalError:  # DEBUG
                     conn_severed_msg = str("Connection to " + str(in_sock)
                                            + "was severed or disconnected."
                                            + "(TypeError: listen() -> listener_thread()")

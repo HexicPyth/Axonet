@@ -10,11 +10,11 @@ import threading
 from hashlib import sha3_224
 
 # Add to PATH
-sys.path.insert(0, '../inter/')
-sys.path.insert(0, '../inter/modules/')
-sys.path.insert(0, '../inter/modules/scripts/')
-
-sys.path.insert(0, '../misc/')
+sys.path.insert(0, (os.path.abspath('../../inter/')))
+sys.path.insert(0, (os.path.abspath('../../inter/scripts')))
+sys.path.insert(0, (os.path.abspath('../../inter/modules')))
+sys.path.insert(0, (os.path.abspath('../../inter/misc')))
+sys.path.insert(0, (os.path.abspath('../misc')))
 
 # Imports from PATH
 
@@ -46,10 +46,6 @@ try:
 except FileNotFoundError:
     # This works when launching with the src/misc/init.py script
     os.chdir("../../server")
-
-
-sys.path.insert(0, '../inter/modules/')
-sys.path.insert(0, '../misc/')
 
 # This will be reset with input values by init()
 Primitives = primitives.Primitives(sub_node, log_level)

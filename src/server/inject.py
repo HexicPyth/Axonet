@@ -7,7 +7,8 @@ import datetime
 import sys
 original_path = os.path.dirname(os.path.realpath(__file__))
 
-sys.path.insert(0, '../inter/modules/')
+sys.path.insert(0, (os.path.abspath('../inter/modules')))
+
 
 # Global lookup of message we are currently trying to send.
 # Used as a backup in case of OSError/BrokenPipeError/etc.
