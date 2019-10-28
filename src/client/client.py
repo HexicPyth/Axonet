@@ -365,6 +365,8 @@ class Client:
         sig = full_message[:16]  # Just the signature
         address = connection[1]
 
+        os.chdir(original_path)
+
         if address == "127.0.0.1":
             Primitives.log("Received message from 127.0.0.1; This is a violation of protocol; "
                            "replacing address with Local IP.", in_log_level="Debug")
