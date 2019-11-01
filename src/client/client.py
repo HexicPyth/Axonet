@@ -976,6 +976,7 @@ class Client:
         threading.Thread(target=listener_thread, args=(connection,), name='listener_thread').start()
 
     def terminate(self):
+        global localhost
         # Disconnect from the network and exit the client cleanly.
         # Returns 0 -> int (duh)
 
@@ -1001,12 +1002,14 @@ class Client:
             address = connection[1]
             Primitives.log(str("Terminating connection to " + address), in_log_level="Info")
             self.disconnect(connection, disallow_local_disconnect=False)
+            localhost.close()
+
             index += 1
 
         Primitives.log("Quietly Dying...")
         self.writeNodeState(nodeState, 3, True)  # Set terminated = True
 
-        return 0
+        quit(0)
 
     def initialize(self, port=3705, net_architecture="complete", remote_addresses=None, command_execution=False,
                    default_log_level="Debug", modules=None, networkSize=0):
