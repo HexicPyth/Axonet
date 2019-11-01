@@ -219,28 +219,11 @@ class NetworkInjector(multiprocessing.Process):
                 args = self.parse_cmd(in_cmd)
                 vote.initiate(net_tuple, args)
 
-            elif in_cmd.startswith("file"):
-                # Start distributing a file across the network
-
-                # We need the file module to do that :P
-                os.chdir(original_path)
-                import file
-
-                # Run the appropriate module function
-                args = self.parse_cmd(in_cmd)
-                file.initiate(net_tuple, args)
-
-            elif in_cmd.startswith("WPABruteForce"):
-                # WPABruteForce:dictionary_size
-                os.chdir(original_path)
-                import WPABruteforce
-
-                args = self.parse_cmd(in_cmd)
-                WPABruteforce.initiate(net_tuple, args)
 
             elif in_cmd.startswith("discover"):
                 os.chdir(original_path)
                 import discover
+
                 discover.initiate(net_tuple)
 
     def init(self, network_tuple, loaded_modules, msg=None):

@@ -19,7 +19,6 @@ sys.path.insert(0, (os.path.abspath('../misc')))
 # Imports from PATH
 
 import primitives
-import file
 
 # Globals
 localhost = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

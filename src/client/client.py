@@ -16,39 +16,25 @@ this_dir = os.path.dirname(os.path.realpath(__file__))
 os.chdir(this_dir)
 
 # Insert the server, misc, and src/inter directories to PATH so we can use modules like inject, vote, discover, etc.
-
-
 sys.path.insert(0, (os.path.abspath('../server')))
 sys.path.insert(0, (os.path.abspath('../misc')))
 sys.path.insert(0, (os.path.abspath('../inter/')))
 sys.path.insert(0, (os.path.abspath('../inter/modules')))
 
-
-
+# Imports from PATH
 import primitives
 
 # Globals
 localhost = socket.socket()
 localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes TIME_WAIT-ing. Add SO_REUSEADDR.
 
-# State
-election_list = []   # [(reason, representative), (another_reason, another_representative)]
-campaign_list = []  # [int, another_int, etc.]
-our_campaign = 0  # An integer between 0 and 2^128 (see voting algorithm)
-network_tuple = ()  # ((socket, address), (another_socket, another_address))
-message_list = []  # [message_hash, another_msg_hash, etc.]
-page_list = []  # temporary file objects to close and delete on stop()
-page_ids = []  # Used by some modules
-terminated = False
-cluster_rep = False
-ongoing_election = False
-module_loaded = ""  # Current module being executed
+# Mutable state; Write with writeState(), Read with readState(). Contains default values until changed
+nodeState = [(), [], False, False, [], "", [], 0, [], [], False, False]
 
 
-# Defaults and arguments and things to be set by self.initialize(). Not state.
+# Immutable state: Constant node parameters set upon initialization
 PORT = 3705
 allow_command_execution = False  # Don't execute arbitrary UNIX commands when casually asked, that's bad :]
-connecting_to_server = False
 log_level = ""  # "Debug", "Info", or "Warning"; To be set by init
 sub_node = "Client"
 no_prop = "ffffffffffffffff"  # True:[message] = No message propagation.
@@ -56,16 +42,23 @@ SALT = None  # Will be set to a 128-bit hexadecimal token(by self.init) for maki
 ADDR_ID = None  # Another 128-bit hexadecimal token that wil be salted with SALT, and set by init()
 original_path = os.path.dirname(os.path.realpath(__file__))
 network_size = 0
-output_node = ""   # Address of one remote node from init_client
+network_architecture = ""  # "complete" or "mesh"
+output_node = ""  # Address of one remote node from init_client
 
 os.chdir(original_path)
-# Will be reset later
 Primitives = primitives.Primitives(sub_node, log_level)
-network_architecture = ""
-loaded_modules = []  # List of all modules loaded
 
 
 class Client:
+
+    def writeNodeState(self, in_nodestate, index, value):
+        global nodeState
+        in_nodestate[index] = value
+
+        nodeState = list(in_nodestate)
+
+    def readNodeState(self, index):
+        return nodeState[index]
 
     @staticmethod
     def prepare(message):
@@ -76,7 +69,7 @@ class Client:
 
         # Assign a timestamp
         timestamp = str(datetime.datetime.utcnow())
-        stamped_message = timestamp+message
+        stamped_message = timestamp + message
         out += stamped_message
 
         # Generate the hash and append the message to it
@@ -84,16 +77,16 @@ class Client:
         out = sig + ":" + message
         return out
 
-    @staticmethod
-    def lookup_socket(address, ext_net_tuple=None):  # TODO: optimize me
+    def lookup_socket(self, address, ext_net_tuple=None):  # TODO: optimize me
         """Brute force search the network tuple for a socket associated with a given address.
             Return socket object if found.
             Returns 0(-> int) if not found
         """
         if ext_net_tuple:
             net_tuple = ext_net_tuple
+
         else:
-            net_tuple = network_tuple
+            net_tuple = self.readNodeState(0)
 
         for item in net_tuple:
             discovered_address = item[1]
@@ -102,8 +95,7 @@ class Client:
 
         return 0  # Socket not found
 
-    @staticmethod
-    def lookup_address(in_sock, ext_net_tuple=None):  # TODO: optimize me
+    def lookup_address(self, in_sock, ext_net_tuple=None):  # TODO: optimize me
         """Brute force search the network tuple for an address associated with a given socket.
             Return a string containing an address if found.
             Returns 0 (-> int) if not found
@@ -111,7 +103,7 @@ class Client:
         if ext_net_tuple:
             net_tuple = ext_net_tuple
         else:
-            net_tuple = network_tuple
+            net_tuple = self.readNodeState(0)
 
         for item in net_tuple:
             discovered_socket = item[0]
@@ -120,56 +112,57 @@ class Client:
 
         return 0  # Address not found
 
-    @staticmethod
-    def permute_network_tuple():
+
+    def permute_network_tuple(self):
         """ Permute the network tuple. Repetitive permutation after each call
             of respond() functionally allows the network to inherit many of the anonymous
             aspects of a mixing network. Packets are sent sequentially in the order of the
             network tuple, which when permuted, thwarts many timing attacks. ''
             Doesn't return """
 
-        global network_tuple
+        Primitives.log("Permuting the network tuple", in_log_level="Info")
 
-        network_list = list(network_tuple)
+        net_tuple = self.readNodeState(0)
+        net_list = list(net_tuple)
 
         cs_prng = random.SystemRandom()
-        cs_prng.shuffle(network_list)
+        cs_prng.shuffle(net_list)
 
         # Tuples are immutable. We have to overwrite the exiting one to 'update' it.
-        new_network_tuple = tuple(network_list)
-        network_tuple = new_network_tuple
+        net_new_tuple = tuple(net_list)
+        self.writeNodeState(nodeState, 0, net_new_tuple)
 
-    @staticmethod
-    def append(in_socket, address):
+    def append(self, in_socket, address):
         """ Append a given connection object(tuple of (socket, address)) to the network tuple.
             Doesn't return """
 
-        global network_tuple
-
+        net_tuple = self.readNodeState(0)
         # Tuples are immutable; convert it to a list.
-        network_list = list(network_tuple)
+        net_list = list(net_tuple)
 
         connection = (in_socket, address)
-        network_list.append(connection)
+        net_list.append(connection)
 
-        # (Again) tuples are immutable; replace the old one with the new one
-        network_tuple = tuple(network_list)
-        print("\n\n\n" + str(network_tuple))
+        net_tuple = tuple(net_list)
+        self.writeNodeState(nodeState, 0, net_tuple)
 
-    @staticmethod
-    def remove(connection):
+        Primitives.log("Successfully appended connection to Network tuple." +
+                       "\nConnection:" + str(connection) +
+                       "\nNew Network Tuple: " + str(net_tuple), in_log_level="Debug")
+
+    def remove(self, connection):
         """ Remove a given connection object(tuple of (socket, address)) from the network tuple.
             Doesn't return """
 
-        global network_tuple
-
         # Tuples are immutable; convert it to a list.
-        network_list = list(network_tuple)
+        net_tuple = self.readNodeState(0)
+
+        net_list = list(net_tuple)
 
         # Identify and remove said connection
         try:
-            index = network_list.index(connection)
-            network_list.pop(index)
+            index = net_list.index(connection)
+            net_list.pop(index)
 
         # Connection not in network tuple, or socket is [closed]
         except ValueError:
@@ -177,22 +170,27 @@ class Client:
             return None
 
         # (Again) tuples are immutable; replace the old one with the new one
-        network_tuple = tuple(network_list)
+        net_tuple = tuple(net_list)
+
+        self.writeNodeState(nodeState, 0, net_tuple)
+
+        Primitives.log("Successfully removed connection from Network tuple." +
+                       "\nConnection:" + str(connection) +
+                       "\nNew Network Tuple: " + str(net_tuple), in_log_level="Debug")
 
     def connect(self, connection, address, port, local=False):
         """ Connect to a remote server and handle the connection(i.e append it).
             Doesn't return. """
 
-        global connecting_to_server
+        connecting_to_server = self.readNodeState(2)
         sock = connection[0]
 
         # Make a real copy of the network tuple
         # Then append our new connection (will be removed if connection fails)
-        quasi_network_tuple = tuple(network_tuple)
-        self.append(sock, address)
+        net_tuple = tuple(self.readNodeState(0))
 
         # Don't connect to an address we're already connected to.
-        if connection in quasi_network_tuple:
+        if connection in net_tuple:
 
             not_connecting_msg = str("Not connecting to " + connection[1],
                                      "We're already connected.")
@@ -206,14 +204,16 @@ class Client:
             if not connecting_to_server:
                 # connecting_to_server is a mutex which prevents this function
                 # from making external connections when it's not supposed to.
-                connecting_to_server = True
+
+                self.writeNodeState(nodeState, 2, True)  # set connecting_to_server = True
 
                 if not local:
 
                     Primitives.log(str("Connecting to " + address), in_log_level="Info")
                     sock.connect((address, port))
                     Primitives.log("Successfully connected.", in_log_level="Info")
-                    connecting_to_server = False
+                    self.append(sock, address)
+                    self.writeNodeState(nodeState, 2, False)  # set connecting_to_server = False
 
                 elif local:
                     self.remove((sock, address))
@@ -221,14 +221,12 @@ class Client:
                     Primitives.log("Connecting to localhost server...", in_log_level="Info")
 
                     sock.connect(("127.0.0.1", port))
-                    self.append(sock, "127.0.0.1")
                     # The socket object we apppended earlier was automatically
                     # destroyed by the OS because connections to 0.0.0.0 are illegal...
                     # Connect to localhost with raddr=127.0.0.1...
 
-
                     Primitives.log("Successfully connected to localhost server", in_log_level="Info")
-                    connecting_to_server = False
+                    self.writeNodeState(nodeState, 2, False)  # set connecting_to_server = False
 
     def disconnect(self, connection, disallow_local_disconnect=True):
         """ Try to disconnect from a remote server and remove it from the network tuple.
@@ -307,9 +305,11 @@ class Client:
             self.disconnect(connection)
 
     def broadcast(self, message):
-        Primitives.log("Permuting the network tuple", in_log_level="Info")
+
         self.permute_network_tuple()
-        for connection in network_tuple:
+        net_tuple = self.readNodeState(0)
+
+        for connection in net_tuple:
             self.send(connection, message, sign=False)  # Send a message to each node( = Broadcast)
 
     @staticmethod
@@ -354,20 +354,8 @@ class Client:
         """ We received a message, reply with an appropriate response.
             Doesn't return. """
 
-        # Eww... I smell a global state lurking somewhere.
-        global message_list
-        global cluster_rep
-        global page_list
-        global election_list
-        global campaign_list
-        global our_campaign
-        global ongoing_election
-        global page_ids
-        global ADDR_ID
         global network_architecture
-        global module_loaded
         global network_size
-        global output_node
 
         full_message = str(msg)
         message = full_message[17:]  # Message without signature
@@ -375,6 +363,10 @@ class Client:
         address = connection[1]
 
         os.chdir(original_path)
+
+        net_tuple = self.readNodeState(0)
+
+        message_list = self.readNodeState(1)
 
         if address == "127.0.0.1":
             Primitives.log("Received message from 127.0.0.1; This is a violation of protocol; "
@@ -430,7 +422,7 @@ class Client:
                     try:
                         new_network_size = int(arguments[1])
                         network_size = new_network_size
-                        Primitives.log("Successfully set network_size to: "+str(network_size), in_log_level="Info")
+                        Primitives.log("Successfully set network_size to: " + str(network_size), in_log_level="Info")
 
                     except TypeError:
 
@@ -444,7 +436,7 @@ class Client:
 
                     if type(new_network_architecture) == str:
                         network_architecture = new_network_architecture
-                        Primitives.log("Successfully set network_architecture to: "+network_architecture,
+                        Primitives.log("Successfully set network_architecture to: " + network_architecture,
                                        in_log_level="Info")
 
             if message.startswith("ConnectTo:"):
@@ -455,7 +447,7 @@ class Client:
                 to connect to  [each node in their network table]. As long as all nodes respond to ConnectTo: flags,
                 (if network_architecture = "complete" in init_client/init_server) the 
                 network will always be fully-connected.
-                
+
                 Elsewhere in the documentation and code, this bootstrapping mechanism is
                 referred to as "address propagation"
                 """
@@ -465,31 +457,32 @@ class Client:
 
                 # lookup_socket will return 0 if we're not already connected to said address (above)
                 connection_status = self.lookup_socket(connect_to_address)
-                Primitives.log(str(network_tuple), in_log_level="Debug")
+
+                Primitives.log(str(net_tuple), in_log_level="Debug")
 
                 # If we're not already connected and making this connection won't break anything, connect now.
                 if connection_status == 0:
 
                     remote_adress_is_localhost = connect_to_address == Primitives.get_local_ip() or \
-                                                  connect_to_address == "127.0.0.1"
+                                                 connect_to_address == "127.0.0.1"
 
                     # Don't connect to localhost multiple times;
                     # All kinds of bad things happen if you do.
                     if remote_adress_is_localhost:
 
-                            not_connecting_msg = str("Not connecting to " + connect_to_address + "; That's localhost :P")
-                            Primitives.log(not_connecting_msg, in_log_level="Warning")
+                        not_connecting_msg = str("Not connecting to " + connect_to_address + "; That's localhost :P")
+                        Primitives.log(not_connecting_msg, in_log_level="Warning")
 
                     else:
 
                         mesh_network = (network_architecture == "mesh")  # True if network architecture is mesh
-                        received_packet_from_localhost = (address == "127.0.0.1" or address == Primitives.get_local_ip())
+                        sent_by_localhost = (address == "127.0.0.1" or address == Primitives.get_local_ip())
 
                         print('\n\n')
-                        print("\tNetwork Architecture: "+network_architecture)
-                        print("\tNetwork Architecture is mesh: "+str(mesh_network))
+                        print("\tNetwork Architecture: " + network_architecture)
+                        print("\tNetwork Architecture is mesh: " + str(mesh_network))
                         print("\tRemote Address is Localhost: " + str(remote_adress_is_localhost))
-                        print("\tReceived packet from Localhost: " + str(received_packet_from_localhost))
+                        print("\tReceived packet from Localhost: " + str(sent_by_localhost))
                         print("\n\n")
 
                         """ In a fully-connected network, act on all ConnectTo: packets;
@@ -497,7 +490,7 @@ class Client:
                             (ConnectTo: is never sent with message propagation -- ConnectTo: packets received from
                              localhost always really originate from localhost) """
 
-                        if (mesh_network and received_packet_from_localhost) or not mesh_network:
+                        if (mesh_network and sent_by_localhost) or not mesh_network:
 
                             local_address = Primitives.get_local_ip()
 
@@ -560,7 +553,11 @@ class Client:
 
                 os.chdir(original_path)
                 newpage = open(new_filename, "a+")
+
+                page_list = self.readNodeState(6)
                 page_list.append(newpage)
+
+                self.writeNodeState(nodeState, 6, page_list)
 
             if message.startswith("fetch:"):
                 """ Broadcast the contents of [page id] to maintain distributed memory """
@@ -590,7 +587,7 @@ class Client:
                 """
 
                 os.chdir(original_path)
-                page_id = message[5:][:16] # First 16 bytes after removing the 'sync:' flag
+                page_id = message[5:][:16]  # First 16 bytes after removing the 'sync:' flag
                 data = message[22:]
 
                 Primitives.log("Syncing " + data + " into page:" + page_id, in_log_level="Info")
@@ -605,7 +602,7 @@ class Client:
 
                 except FileNotFoundError:
                     Primitives.log("Cannot open a non-existent page")
-                    existing_pagelines = []  # Stop my PyCharm from telling me this is referenced before assignment
+                    existing_pagelines = []  # Stop PyCharm from telling me this is referenced before assignment
 
                 if file_exists:
                     duplicate = False
@@ -638,8 +635,6 @@ class Client:
                     # https://stackoverflow.com/users/146442/marcell
                     # The following two lines of code are the work were written by "Marcel" from StackOverflow.
 
-                    # Cleanup after sync
-
                     # Remove duplicate lines
                     unique_lines = set(open(file_path).readlines())
                     open(file_path, 'w').writelines(set(unique_lines))
@@ -652,22 +647,28 @@ class Client:
 
                     open(file_path, 'w').writelines(set(newlines))
 
-                    print(len(network_tuple))
-
                     # Wait for each node to contribute before doing module-specific I/O
                     Primitives.log("\n\t" + str(len(newlines)) + " Node(s) have contributed to the network."
                                                                  "\n The network tuple(+1) is of length: "
-                                   + str(len(network_tuple) + 1), in_log_level="Debug")
+                                   + str(len(net_tuple) + 1), in_log_level="Debug")
 
                     if len(newlines) >= network_size:
                         pass
                         # We've received contributions from every node on the network.
                         # Now do module-specific I/O
                     else:
+                        module_loaded = self.readNodeState(5)
+                        election_list = self.readNodeState(9)
+
                         if module_loaded == "discover":
-                            hosts_pagefile = ''.join([item[0][10:] for item in election_list if item[0][:10] == "discovery-"])
-                            self.broadcast(self.prepare("fetch:"+hosts_pagefile))
+                            # TODO: Make this support multiple peer discoveries without reinitializing
+
+                            hosts_pagefile = ''.join(
+                                [item[0][10:] for item in election_list if item[0][:10] == "discovery-"])
+                            self.broadcast(self.prepare("fetch:" + hosts_pagefile))
+
                             module_loaded = ""
+                            self.writeNodeState(nodeState, 5, "")
 
             # Provide server's a means of communicating readiness to clients. This is used during file proxying
             # to form a feedback loop between the proxy and client, that way the client doesn't ever exceed the
@@ -677,7 +678,6 @@ class Client:
                 arguments = Primitives.parse_cmd(message)
 
                 if arguments[0] == "something":
-
                     pass  # Do something about it
 
             # Disconnect from some misbehaving node and pop it from network tuple
@@ -691,14 +691,15 @@ class Client:
                     # Don't disconnect from localhost. That's what self.terminate is for.
                     if address_to_remove != Primitives.get_local_ip() and address_to_remove != "127.0.0.1":
 
+                        # Lookup the socket of the address to remove
                         sock = self.lookup_socket(address_to_remove)
 
                         if sock:
                             Primitives.log("Remove -> Disconnecting from " + address_to_remove,
                                            in_log_level="Info")
 
-                            # lookup the socket of the address we want to remove
                             connection_to_remove = (sock, address_to_remove)
+
                             Primitives.log(str("\tWho's connection is: " + str(connection_to_remove)),
                                            in_log_level="Debug")
 
@@ -715,32 +716,37 @@ class Client:
                     # Either the address we're looking for doesn't exist, or we're not connected it it.
                     Primitives.log(str("Sorry, we're not connected to " + address_to_remove),
                                    in_log_level="Warning")
-                    pass
 
                 # Localhost needs to remove said node too! (see message propagation)
                 localhost_conn = (localhost, "127.0.0.1")
-                self.send(localhost_conn, no_prop+":"+message, sign=False)
+                self.send(localhost_conn, no_prop + ":" + message, sign=False)
 
             if message.startswith("vote:"):
-                Primitives.log("Ongoing election: "+str(ongoing_election), in_log_level="Debug")
+                ongoing_election = self.readNodeState(10)
+                Primitives.log("Ongoing election: " + str(ongoing_election), in_log_level="Debug")
 
                 if not ongoing_election:
-                    ongoing_election = True
+
+                    election_list = self.readNodeState(9)
+                    self.writeNodeState(nodeState, 10, True)
+
                     reason = message[5:]
 
                     election_tuple = (reason, "TBD")
                     election_list.append(election_tuple)
+                    self.writeNodeState(nodeState, 9, election_list)
 
-                    campaign_int = random.randint(1, 2**128)
-                    our_campaign = campaign_int
+                    campaign_int = random.randint(1, 2 ** 128)
+                    self.writeNodeState(nodeState, 7, campaign_int)
 
-                    Primitives.log("Campaigning for "+str(campaign_int), in_log_level="Info")
-                    campaign_msg = self.prepare("campaign:"+reason+":"+str(campaign_int))
+                    Primitives.log("Campaigning for " + str(campaign_int), in_log_level="Info")
+                    campaign_msg = self.prepare("campaign:" + reason + ":" + str(campaign_int))
                     self.broadcast(campaign_msg)
 
             if message.startswith("campaign:"):
                 # example message: campaign:do_stuff:01234566789
 
+                ongoing_election = self.readNodeState(10)
                 if not ongoing_election:
                     # We probably received a campaign flag out of order(before a vote:). Let's start that election now.
                     # ------------------------------------------------------
@@ -756,14 +762,18 @@ class Client:
 
                     # Before we (hopefully) receive a vote flag: the elction list is empty. Populate it
                     campaign_tuple = tuple(election_details)
+                    campaign_list = self.readNodeState(8)
+
                     campaign_list.append(campaign_tuple)
-                    print(str(campaign_list))
+                    self.writeNodeState(nodeState, 8, campaign_list)
 
                 if ongoing_election:
 
                     election_details = Primitives.parse_cmd(message)  # [reason, token]
 
                     campaign_tuple = tuple(election_details)
+
+                    campaign_list = self.readNodeState(8)
                     campaign_list.append(campaign_tuple)
 
                     print(str(campaign_list))
@@ -786,18 +796,20 @@ class Client:
                         election_log_msg = str(winning_int) + " won the election for: " + winning_reason
                         Primitives.log(election_log_msg, in_log_level="Info")
 
-                        if our_campaign == int(winning_int):
-                            Primitives.log("We won the election for: "+winning_reason, in_log_level="Info")
-                            elect_msg = self.prepare("elect:"+winning_reason+":"+str(Primitives.get_local_ip()))
+                        this_campaign = self.readNodeState(7)
+
+                        if this_campaign == int(winning_int):
+                            Primitives.log("We won the election for: " + winning_reason, in_log_level="Info")
+                            elect_msg = self.prepare("elect:" + winning_reason + ":" + str(Primitives.get_local_ip()))
                             self.broadcast(elect_msg)
 
-                            cluster_rep = True
+                            self.writeNodeState(nodeState, 11, True)  # set is_cluster_rep = True
                         else:
-                            cluster_rep = False
+                            self.writeNodeState(nodeState, 11, False)  # set is_cluster_rep = False
 
                         # Cleanup
-                        campaign_list = []
-                        our_campaign = 0
+                        self.writeNodeState(nodeState, 8, [])  # Clear the campaign_list
+                        self.writeNodeState(nodeState, 7, 0)   # reset this_campaign to 0
 
             if message.startswith("elect:"):
                 # elect:reason:representative
@@ -809,10 +821,13 @@ class Client:
                 new_leader = args[1]
 
                 # Index of tuple containing winning node
+                election_list = self.readNodeState(9)
                 index = Primitives.find_election_index(election_list, reason)
 
-                election_list = Primitives.set_leader(election_list, index, new_leader)
-                ongoing_election = False
+                new_election_list = Primitives.set_leader(election_list, index, new_leader)
+                self.writeNodeState(nodeState, 9, new_election_list)  # Update the election list
+
+                self.writeNodeState(nodeState, 10, False)  # Set ongoing_election = False
 
                 election_winner_msg = str(new_leader) + " won the election for:" + reason
                 Primitives.log(election_winner_msg, in_log_level="Info")
@@ -820,41 +835,41 @@ class Client:
                 if reason.startswith('discovery-'):
                     os.chdir(original_path)
                     import discover
-                    op_id = reason[10:]
-                    discover.respond_start(network_tuple, op_id, cluster_rep)
 
-                print("\n")
-                print(election_list)
-                print("\n")
+                    op_id = reason[10:]
+                    is_cluster_rep = self.readNodeState(11)
+
+                    discover.respond_start(net_tuple, op_id, is_cluster_rep)
 
             if message.startswith("benchmark:"):
                 arguments = Primitives.parse_cmd(message)
 
                 if arguments[0] == "thing":
-                    pass   # Benchmark this node's performance for task 'thing'
+                    pass  # Benchmark this node's performance for task 'thing'
 
             if message.startswith("sharepeers:"):
                 os.chdir(original_path)
                 import discover
 
-                module_loaded = "discover"
+                new_module_loaded = "discover"
+                self.writeNodeState(nodeState, 10, new_module_loaded)  # set module_loaded = "discover"
+
                 arguments = Primitives.parse_cmd(message)  # arguments[0] = op_id = name of pagefile
 
                 op_id = arguments[0]
 
                 # Get a list of all remote addresses
-                addresses = [item[1] for item in network_tuple if item[1] != "127.0.0.1" and item[1] != Primitives.get_local_ip()]
+                addresses = [item[1] for item in net_tuple if item[1] != "127.0.0.1"
+                             and item[1] != Primitives.get_local_ip() and item[1] != "localhost"]
 
                 # Turn it into a string containing each address separated by newlines
                 data = '\n'.join(addresses)
 
                 # Write it to page [op_id]
-
                 self.write_to_page(op_id, data, signing=False)
 
                 # Callback to discover module
-
-                discover.start(network_tuple, op_id)
+                discover.start(net_tuple, op_id)
 
             if message.startswith("bootstrap:"):
                 arguments = Primitives.parse_cmd(message)
@@ -862,35 +877,40 @@ class Client:
                 # arguments[0] = network architecture to boostrap into (e.x "mesh")
                 # arguments[1] = c_ext
 
+                election_list = self.readNodeState(9)
                 net_architecture = arguments[0]
                 c_ext = int(arguments[1])
 
+                # Find peer discovery output pagefile
                 hosts_pagefile = ''.join([item[0][10:] for item in election_list if item[0][:10] == "discovery-"])
-                Primitives.log("Hosts pagefile is "+hosts_pagefile+".bin", in_log_level="Info")
+                Primitives.log("Hosts pagefile is " + hosts_pagefile + ".bin", in_log_level="Info")
 
-                print("Output node: "+str(output_node))
+                print("Output node: " + str(output_node))
 
                 pagefile = open("../inter/mem/" + hosts_pagefile + ".bin", "r+")
 
                 potential_peers = pagefile.readlines()
 
+                pagefile.close()
+
                 chosen_peers = []
 
                 for peer in potential_peers:
-                    if peer == Primitives.get_local_ip()+"\n":  # Do not try to pick ourselves as a remote node
+                    if peer == Primitives.get_local_ip() + "\n":  # Do not try to pick ourselves as a remote node
                         potential_peers.remove(peer)
 
                 if net_architecture == "mesh":
                     print("Network tuple:")
-                    print(str(network_tuple))
+                    print(str(net_tuple))
 
                     this_node = (localhost, "127.0.0.1")
 
                     # Disconnect from everything other than localhost
-                    for peer in network_tuple:
+                    for peer in net_tuple:
 
                         if peer != this_node:
                             self.disconnect(peer)
+                            net_tuple = self.readNodeState(0)  # self.disconnect() will change this value. Refresh it
 
                         else:
                             pass  # Don't disconnect from localhost
@@ -908,11 +928,11 @@ class Client:
                         external_connection = (socket.socket(), peer_address)
                         self.connect(external_connection, peer_address, PORT)
 
-
             # Append message signature to the message list, or in the case of sig=no_prop, do nothing.
             if sig != no_prop:
-                message_list.append(sig)
-
+                new_message_list = list(message_list)
+                new_message_list.append(sig)
+                self.writeNodeState(nodeState, 1, new_message_list)
                 # End of respond()
 
                 # Propagate the message to the rest of the network.
@@ -926,7 +946,7 @@ class Client:
 
         def listener_thread(conn):
             in_sock = conn[0]
-            global terminated
+            terminated = self.readNodeState(3)
             listener_terminated = False  # Terminate when set
 
             while not listener_terminated and not terminated:
@@ -936,7 +956,7 @@ class Client:
                     if incoming:
                         self.respond(conn, raw_message)
 
-                except UnboundLocalError:  # DEBUG
+                except UnboundLocalError:   ###
                     conn_severed_msg = str("Connection to " + str(in_sock)
                                            + "was severed or disconnected."
                                            + "(TypeError: listen() -> listener_thread()")
@@ -959,9 +979,8 @@ class Client:
         # Disconnect from the network and exit the client cleanly.
         # Returns 0 -> int (duh)
 
-        global terminated
-        global network_tuple
-        global page_list
+        net_tuple = self.readNodeState(0)
+        page_list = self.readNodeState(6)
 
         Primitives.log("Safely terminating our connections...", in_log_level="Warning")
 
@@ -978,21 +997,19 @@ class Client:
 
             Primitives.log(str("Terminating connection to "), in_log_level="Info")
 
-        for connection in network_tuple:
-
+        for connection in net_tuple:
             address = connection[1]
             Primitives.log(str("Terminating connection to " + address), in_log_level="Info")
             self.disconnect(connection, disallow_local_disconnect=False)
             index += 1
 
         Primitives.log("Quietly Dying...")
-        terminated = True
+        self.writeNodeState(nodeState, 3, True)  # Set terminated = True
+
         return 0
 
-    def initialize(self, port=3705, net_architecture="complete",
-                   remote_addresses=None, command_execution=False,
-                   file_storage=True, default_log_level="Debug", modules=None,
-                   networkSize = 0):
+    def initialize(self, port=3705, net_architecture="complete", remote_addresses=None, command_execution=False,
+                   default_log_level="Debug", modules=None, networkSize=0):
 
         # Initialize the client, set any global variable that need to be set, etc.
 
@@ -1000,7 +1017,6 @@ class Client:
         global localhost
         global log_level
         global PORT
-        global loaded_modules
         global Primitives
         global sub_node
         global SALT
@@ -1025,11 +1041,15 @@ class Client:
         SALT = secrets.token_hex(16)
         ADDR_ID = Primitives.gen_addr_id(SALT)
 
+        new_loaded_modules = []
+
         # Import loaded modules
         for item in modules:
             import_str = "import " + item
-            loaded_modules.append(item)
+            new_loaded_modules.append(item)
             exec(import_str)
+
+        self.writeNodeState(nodeState, 4, new_loaded_modules)
 
         # Stage 0
         Primitives.log("Initializing...", in_log_level="Info")
@@ -1071,7 +1091,7 @@ class Client:
                     self.listen(connection)
 
                     if network_architecture == "complete":
-                        self.send(connection, no_prop+":echo", sign=False)  # TODO: why?
+                        self.send(connection, no_prop + ":echo", sign=False)  # TODO: why?
 
                 except ConnectionRefusedError:
                     Primitives.log("Unable to connect to remove server; Failed to bootstrap.",
