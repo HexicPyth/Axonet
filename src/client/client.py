@@ -368,6 +368,8 @@ class Client:
 
         message_list = self.readNodeState(1)
 
+        do_propagation = True
+
         if address == "127.0.0.1":
             Primitives.log("Received message from 127.0.0.1; This is a violation of protocol; "
                            "replacing address with Local IP.", in_log_level="Debug")
@@ -408,6 +410,11 @@ class Client:
                 # Inform localhost to follow suit.
                 localhost_connection = (localhost, "127.0.0.1")
                 self.send(localhost_connection, "stop")  # TODO: should we use no_prop here?
+
+                # The node will already be terminated by the time it gets to the end of the function and runs the
+                # message propagation algorithm; broadcast now, then stop
+                self.broadcast(full_message)
+                do_propagation = False
 
                 # Do so ourselves
                 self.terminate()
@@ -929,7 +936,7 @@ class Client:
                         self.connect(external_connection, peer_address, PORT)
 
             # Append message signature to the message list, or in the case of sig=no_prop, do nothing.
-            if sig != no_prop:
+            if sig != no_prop and do_propagation:
                 new_message_list = list(message_list)
                 new_message_list.append(sig)
                 self.writeNodeState(nodeState, 1, new_message_list)
