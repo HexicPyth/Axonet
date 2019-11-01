@@ -190,7 +190,7 @@ class Client:
         net_tuple = tuple(self.readNodeState(0))
 
         # Don't connect to an address we're already connected to.
-        if connection in net_tuple:
+        if connection in net_tuple or self.lookup_socket(address) != 0:
 
             not_connecting_msg = str("Not connecting to " + connection[1],
                                      "We're already connected.")
