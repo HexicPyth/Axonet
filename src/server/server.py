@@ -247,8 +247,12 @@ class Server:
                 Primitives.log(echo_received_log, in_log_level="Info")
 
             if message == "stop":
+                global terminated
+
                 self.broadcast(no_prop + ":" + message)
                 Primitives.log("Exiting Cleanly", in_log_level="Info")
+                terminated = True
+
                 self.stop()
 
             if message.startswith("remove:"):
