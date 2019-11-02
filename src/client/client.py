@@ -742,6 +742,8 @@ class Client:
 
                     election_tuple = (reason, "TBD")
                     election_list.append(election_tuple)
+                    election_list = list(set(election_list))  # Remove any duplicates
+
                     self.write_nodestate(nodeState, 9, election_list)
 
                     campaign_int = random.randint(1, 2 ** 128)
