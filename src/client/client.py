@@ -818,6 +818,7 @@ class Client:
                         # Cleanup
                         self.write_nodestate(nodeState, 8, [])  # Clear the campaign_list
                         self.write_nodestate(nodeState, 7, 0)   # reset this_campaign to 0
+                        self.write_nodestate(nodeState, 10, False)  # clear ongoing_election
 
             if message.startswith("elect:"):
                 # elect:reason:representative
