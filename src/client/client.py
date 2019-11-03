@@ -742,7 +742,7 @@ class Client:
 
             if message.startswith("vote:"):
                 ongoing_election = self.read_nodestate(10)
-                Primitives.log("Ongoing election: " + str(ongoing_election), in_log_level="Debug")
+                Primitives.log("(vote:) Ongoing election: " + str(ongoing_election), in_log_level="Debug")
 
                 if not ongoing_election:
 
@@ -767,6 +767,8 @@ class Client:
             if message.startswith("campaign:"):
                 # example message: campaign:do_stuff:01234566789
 
+                arguments = Primitives.parse_cmd(message)
+
                 ongoing_election = self.read_nodestate(10)
                 if not ongoing_election:
                     # We probably received a campaign flag out of order(before a vote:). Let's start that election now.
@@ -781,7 +783,7 @@ class Client:
                     os.chdir(original_path)
                     election_details = Primitives.parse_cmd(message)  # [reason, token]
 
-                    # Before we (hopefully) receive a vote flag: the elction list is empty. Populate it
+                    # Before we (hopefully) receive a vote flag: the election list is empty. Populate it
                     campaign_tuple = tuple(election_details)
                     campaign_list = self.read_nodestate(8)
 
@@ -797,10 +799,17 @@ class Client:
                     campaign_list = self.read_nodestate(8)
                     campaign_list.append(campaign_tuple)
 
-                    print(str(campaign_list))
+                    this_campaign_list = []
+                    for item in campaign_list:
 
+                        if item[0].startswith(arguments[0]):
+
+                            this_campaign_list.append(item)
+                    this_campaign_list = list(set(this_campaign_list))
+
+                    print("This campaign list: " + str(this_campaign_list))
                     # Wait for all votes to be cast
-                    if len(campaign_list) == network_size:
+                    if len(this_campaign_list) == network_size:
                         campaign_ints = []
 
                         for campaign_tuple in campaign_list:
