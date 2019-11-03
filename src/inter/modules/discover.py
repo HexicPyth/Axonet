@@ -37,12 +37,13 @@ def respond_start(net_tuple, op_id, cluster_rep):
         injector.broadcast("sharepeers:"+op_id, net_tuple)  # Instruct nodes to append peer addresses to this pagefile
 
 
-def start(net_tuple, op_id, no_prop):
+def start(net_tuple, op_id, cluster_rep):
     """Called after addresses are written to page [op-id] """
     import inject
 
     injector = inject.NetworkInjector()
 
     # Synchronise discovered addresses across distributed filesystem...
-    injector.broadcast(no_prop+":fetch:" + op_id, net_tuple, signing=False)
+    if cluster_rep:
+        injector.broadcast("fetch:" + op_id, net_tuple)
 

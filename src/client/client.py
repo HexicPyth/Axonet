@@ -325,7 +325,7 @@ class Client:
     @staticmethod
     def write_to_page(page_id, data, signing=True):
         global ADDR_ID
-        """ Write data to a given pagefile by ID."""
+        """ Append data to a given pagefile by ID."""
 
         Primitives.log("Writing to page:" + page_id, in_log_level="Info")
         os.chdir(original_path)
@@ -891,7 +891,7 @@ class Client:
                 self.write_to_page(op_id, _data, signing=False)
 
                 # Callback to discover module
-                discover.start(net_tuple, op_id, no_prop)
+                discover.start(net_tuple, op_id, self.read_nodestate(11))
 
             if message.startswith("bootstrap:"):
                 arguments = Primitives.parse_cmd(message)
