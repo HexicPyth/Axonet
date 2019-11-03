@@ -807,7 +807,6 @@ class Client:
                             this_campaign_list.append(item)
                     this_campaign_list = list(set(this_campaign_list))
 
-                    print("This campaign list: " + str(this_campaign_list))
                     # Wait for all votes to be cast
                     if len(this_campaign_list) == network_size:
                         campaign_ints = []
@@ -866,23 +865,28 @@ class Client:
                     os.chdir(original_path)
                     import discover
 
-                    old_election_list = election_list  # new_election_list contains the new election results already...
-
                     # Remove any previous discovery elections from the election list.
                     # This allows network bootstrapping to occur multiple times without reinitializing
 
                     for _election_tuple in new_election_list:
-                        reason = _election_tuple[0]
+                        _reason = _election_tuple[0]
                         _index_in_new_election_list = new_election_list.index(_election_tuple)
 
-                        if reason.startswith('discover-'):
+                        if _reason != reason:
+                            print("Old eleciton list: "+str(new_election_list))
                             new_election_list.remove(_election_tuple)
-                            self.write_nodestate(nodeState, 9, new_election_list)
+                            print("new election list: "+str(new_election_list))
+
+                    self.write_nodestate(nodeState, 9, new_election_list)
 
                     op_id = reason[10:]
                     is_cluster_rep = self.read_nodestate(11)
                     self.write_nodestate(nodeState, 10, False)  # Set ongoing_election = False
-                    print("Ongoing election: "+str(self.read_nodestate(10)))
+
+                    Primitives.log("(end of vote:) Ongoing election: "+str(self.read_nodestate(10)),
+                                   in_log_level="Debug")
+
+                    print(str(new_election_list))
 
                     discover.respond_start(net_tuple, op_id, is_cluster_rep)
 
@@ -932,6 +936,7 @@ class Client:
 
                 print("Output node: " + str(output_node))
 
+                print(str(election_list))
                 pagefile = open("../inter/mem/" + hosts_pagefile + ".bin", "r+")
 
                 potential_peers = pagefile.readlines()
