@@ -596,9 +596,9 @@ class Client:
 
                 os.chdir(original_path)
                 page_id = message[5:][:16]  # First 16 bytes after removing the 'sync:' flag
-                data = message[22:]
+                sync_data = message[22:]
 
-                Primitives.log("Syncing " + data + " into page:" + page_id, in_log_level="Info")
+                Primitives.log("Syncing " + sync_data + " into page:" + page_id, in_log_level="Info")
 
                 file_path = "../inter/mem/" + page_id + ".bin"
 
@@ -616,15 +616,16 @@ class Client:
                     duplicate = False
                     local = False
 
-                    # How do we sort out duplicates?
                     for line in existing_pagelines:
-                        if line == data and line[:32]:
+                        print("Line: "+line)
+                        print('Data: '+sync_data)
+                        if line == sync_data:
                             duplicate = True
                             Primitives.log("Not writing duplicate data into page " + page_id)
                             break
 
                     if not duplicate:
-                        data_id = data[:16]
+                        data_id = sync_data[:16]
                         local_id = sha3_224(Primitives.get_local_ip().encode()).hexdigest()[:16]
                         if data_id == local_id:
                             # Don't re-write data from ourselves. We already did that with 'corecount'.
@@ -632,39 +633,49 @@ class Client:
                             local = True
 
                         if not local:
-                            if data == "" or data == " " or data == "\n":
+                            if sync_data == "" or sync_data == " " or sync_data == "\n":
                                 pass
 
                             else:
-                                print("Writing " + data + "to page " + page_id)
-                                self.write_to_page(page_id, data, signing=False)
+                                print("Writing " + sync_data + "to page " + page_id)
+                                self.write_to_page(page_id, sync_data, signing=False)
 
                     # https://stackoverflow.com/a/1216544
                     # https://stackoverflow.com/users/146442/marcell
                     # The following two lines of code are the work were written by "Marcel" from StackOverflow.
 
-                    # Remove duplicate lines
+                    # Remove duplicate lines from page
                     unique_lines = set(open(file_path).readlines())
                     open(file_path, 'w').writelines(set(unique_lines))
 
-                    # Remove any extra newlines
+                    # Remove any extra newlines from page
                     raw_lines = list(set(open(file_path).readlines()))
 
-                    newlines = [raw_line for raw_line in raw_lines
+                    existing_lines = [raw_line for raw_line in raw_lines
                                 if raw_line != "\n" and raw_line[:2] != "##"]
 
-                    open(file_path, 'w').writelines(set(newlines))
+                    # Write changes to page
+                    open(file_path, 'w').writelines(set(existing_lines))
 
                     # Wait for each node to contribute before doing module-specific I/O
-                    Primitives.log("\n\t" + str(len(newlines)) + " Node(s) have contributed to the network."
+                    Primitives.log("\n\t" + str(len(existing_lines)) + " Node(s) have contributed to the network."
                                                                  "\n The network tuple(+1) is of length: "
                                    + str(len(net_tuple) + 1), in_log_level="Debug")
 
-                    if len(newlines) >= network_size:
+                    if len(existing_lines) >= network_size:
                         pass
                         # We've received contributions from every node on the network.
                         # Now do module-specific I/O
+
                     else:
+                        print(sync_data)
+                        print(sync_data.split('\n'))
+                        new_lines_added = len(existing_pagelines)-len(sync_data.split('\n'))
+                        print("New lines added: "+str(new_lines_added))
+                        print(len(existing_lines))
+                        print(existing_lines)
+
+                        print("\n\nNetwork size: "+str(network_size) + "\n\n")
                         module_loaded = self.read_nodestate(5)
                         election_list = self.read_nodestate(9)
 
@@ -874,13 +885,13 @@ class Client:
                              and item[1] != Primitives.get_local_ip() and item[1] != "localhost"]
 
                 # Turn it into a string containing each address separated by newlines
-                data = '\n'.join(addresses)
+                _data = '\n'.join(addresses)
 
                 # Write it to page [op_id]
-                self.write_to_page(op_id, data, signing=False)
+                self.write_to_page(op_id, _data, signing=False)
 
                 # Callback to discover module
-                discover.start(net_tuple, op_id)
+                discover.start(net_tuple, op_id, no_prop)
 
             if message.startswith("bootstrap:"):
                 arguments = Primitives.parse_cmd(message)
@@ -967,7 +978,7 @@ class Client:
                     if incoming:
                         self.respond(conn, raw_message)
 
-                except UnboundLocalError:   ###
+                except TypeError:
                     conn_severed_msg = str("Connection to " + str(in_sock)
                                            + "was severed or disconnected."
                                            + "(TypeError: listen() -> listener_thread()")
