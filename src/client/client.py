@@ -687,7 +687,7 @@ class Client:
                             self.broadcast(self.prepare("fetch:" + hosts_pagefile))
 
                             module_loaded = ""
-                            self.write_nodestate(nodeState, 5, "")
+                            self.write_nodestate(nodeState, 5, module_loaded)
 
             # Provide server's a means of communicating readiness to clients. This is used during file proxying
             # to form a feedback loop between the proxy and client, that way the client doesn't ever exceed the
@@ -873,9 +873,7 @@ class Client:
                         _index_in_new_election_list = new_election_list.index(_election_tuple)
 
                         if _reason != reason:
-                            print("Old eleciton list: "+str(new_election_list))
                             new_election_list.remove(_election_tuple)
-                            print("new election list: "+str(new_election_list))
 
                     self.write_nodestate(nodeState, 9, new_election_list)
 
@@ -886,7 +884,7 @@ class Client:
                     Primitives.log("(end of vote:) Ongoing election: "+str(self.read_nodestate(10)),
                                    in_log_level="Debug")
 
-                    print(str(new_election_list))
+                    Primitives.log(str(new_election_list), in_log_level="Debug")
 
                     discover.respond_start(net_tuple, op_id, is_cluster_rep)
 
