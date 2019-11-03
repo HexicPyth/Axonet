@@ -1004,7 +1004,7 @@ class Client:
                     if incoming:
                         self.respond(conn, raw_message)
 
-                except TypeError:
+                except ArithmeticError:  # TypeError
                     conn_severed_msg = str("Connection to " + str(in_sock)
                                            + "was severed or disconnected."
                                            + "(TypeError: listen() -> listener_thread()")
