@@ -847,9 +847,8 @@ class Client:
                 index = Primitives.find_election_index(election_list, reason)
 
                 new_election_list = Primitives.set_leader(election_list, index, new_leader)
-                self.write_nodestate(nodeState, 9, new_election_list)  # Update the election list
 
-                self.write_nodestate(nodeState, 10, False)  # Set ongoing_election = False
+                self.write_nodestate(nodeState, 9, new_election_list)  # Update the election list
 
                 election_winner_msg = str(new_leader) + " won the election for:" + reason
                 Primitives.log(election_winner_msg, in_log_level="Info")
@@ -858,8 +857,23 @@ class Client:
                     os.chdir(original_path)
                     import discover
 
+                    old_election_list = election_list  # new_election_list contains the new election results already...
+
+                    # Remove any previous discovery elections from the election list.
+                    # This allows network bootstrapping to occur multiple times without reinitializing
+
+                    for _election_tuple in new_election_list:
+                        reason = _election_tuple[0]
+                        _index_in_new_election_list = new_election_list.index(_election_tuple)
+
+                        if reason.startswith('discover-'):
+                            new_election_list.remove(_election_tuple)
+                            self.write_nodestate(nodeState, 9, new_election_list)
+
                     op_id = reason[10:]
                     is_cluster_rep = self.read_nodestate(11)
+                    self.write_nodestate(nodeState, 10, False)  # Set ongoing_election = False
+                    print("Ongoing election: "+str(self.read_nodestate(10)))
 
                     discover.respond_start(net_tuple, op_id, is_cluster_rep)
 
