@@ -888,7 +888,7 @@ class Client:
                 import discover
 
                 new_module_loaded = "discover"
-                self.write_nodestate(nodeState, 10, new_module_loaded)  # set module_loaded = "discover"
+                self.write_nodestate(nodeState, 4, new_module_loaded)  # set module_loaded = "discover"
 
                 arguments = Primitives.parse_cmd(message)  # arguments[0] = op_id = name of pagefile
 
