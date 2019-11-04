@@ -255,7 +255,7 @@ class Server:
             """ sig=msg[:16] probably threw TypeError because msg=self.receive(conn) and self.receive probably
                 returned 0 because the connection is broken. Disconnect from [connection]...
 
-             If [connection] is localhost than the client is already dead (hence the receive error);
+             If [connection] is localhost then the client is already dead (hence the receive error);
              Permit localhost disconnect..."""
             self.disconnect(connection, disallow_local_disconnect=False)
             return
@@ -359,6 +359,14 @@ class Server:
                     # Send this to localhost Client.
 
                     Primitives.log("Violating the no_prop policy for localhost", in_log_level="Warning")
+
+                    localhost_address = "127.0.0.1"
+                    localhost_socket = self.lookup_socket(localhost_address)
+                    localhost_connection = (localhost_socket, localhost_address)
+
+                    self.send(localhost_connection, full_message, signing=False)
+
+                elif message.startswith("sharepeers:"):
 
                     localhost_address = "127.0.0.1"
                     localhost_socket = self.lookup_socket(localhost_address)
