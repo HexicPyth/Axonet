@@ -52,11 +52,21 @@ Primitives = primitives.Primitives(sub_node, log_level)
 class Client:
 
     @staticmethod
-    def write_nodestate(in_nodestate, index, value):
+    def overwrite_nodestate(in_nodestate):
         global nodeState
+        nodeState = in_nodestate
+
+    @staticmethod
+    def write_nodestate(in_nodestate, index, value, void=True):
+        global nodeState
+
         in_nodestate[index] = value
 
         nodeState = list(in_nodestate)
+
+        if not void:
+            return nodeState
+
 
     @staticmethod
     def read_nodestate(index):
@@ -729,28 +739,13 @@ class Client:
                 self.send(localhost_conn, no_prop + ":" + message, sign=False)
 
             if message.startswith("vote:"):
+                import vote
+
                 ongoing_election = self.read_nodestate(10)
                 Primitives.log("(vote:) Ongoing election: " + str(ongoing_election), in_log_level="Debug")
+                new_nodestate = vote.respond_start(message, nodeState, ongoing_election)
 
-                if not ongoing_election:
-
-                    election_list = self.read_nodestate(9)
-                    self.write_nodestate(nodeState, 10, True)
-
-                    reason = message[5:]
-
-                    election_tuple = (reason, "TBD")
-                    election_list.append(election_tuple)
-                    election_list = list(set(election_list))  # Remove any duplicates
-
-                    self.write_nodestate(nodeState, 9, election_list)
-
-                    campaign_int = random.randint(1, 2 ** 128)
-                    self.write_nodestate(nodeState, 7, campaign_int)
-
-                    Primitives.log("Campaigning for " + str(campaign_int), in_log_level="Info")
-                    campaign_msg = self.prepare("campaign:" + reason + ":" + str(campaign_int))
-                    self.broadcast(campaign_msg)
+                self.overwrite_nodestate(new_nodestate)
 
             if message.startswith("campaign:"):
                 # example message: campaign:do_stuff:01234566789
@@ -998,7 +993,7 @@ class Client:
                     if incoming:
                         self.respond(conn, raw_message)
 
-                except TypeError:
+                except ArithmeticError:   # DEBUG TypeError
                     conn_severed_msg = str("Connection to " + str(in_sock)
                                            + "was severed or disconnected."
                                            + "(TypeError: listen() -> listener_thread()")
