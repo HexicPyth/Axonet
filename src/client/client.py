@@ -397,12 +397,12 @@ class Client:
             Primitives.log(message_received_log, in_log_level="Info")
 
             if message == "echo":
+                import echo
+
                 """ Simple way to test our connection to a given node."""
 
                 Primitives.log("echoing...", in_log_level="Info")
-
-                if network_architecture == "complete":
-                    self.send(connection, no_prop + ':' + message, sign=False)  # If received, send back
+                echo.initiate(self.read_nodestate(0), network_architecture, connection, no_prop)
 
             if message == "stop":
                 """ instruct all nodes to disconnect from each other and exit cleanly."""
@@ -534,20 +534,9 @@ class Client:
                     Primitives.log(already_connected_msg, "Warning")
 
             if message.startswith('exec:'):
-                # Assuming allow_command_execution is set, execute arbitrary UNIX commands in their own threads.
-                if allow_command_execution:
-                    command = message[5:]
-                    Primitives.log(str("executing: " + command), in_log_level="Info")
+                import exec
 
-                    # Warning: This is about to execute some arbitrary UNIX command in it's own nice little
-                    # non-isolated fork of a process. That's very dangerous.
-                    command_process = multiprocessing.Process(target=self.run_external_command,
-                                                              args=(command,), name='Cmd_Thread')
-                    command_process.start()
-
-                # allow_command_execution is not set, don't execute arbitrary UNIX commands from the network.
-                else:
-                    Primitives.log(("Not executing command: ", message[5:]), in_log_level="Info")
+                exec.initiate(message, allow_command_execution)
 
             if message.startswith("newpage:"):
                 """ Create a new pagefile that we'll presumably do some 
@@ -939,7 +928,7 @@ class Client:
                     pagefile = open("../inter/mem/" + hosts_pagefile + ".bin", "r+")
                     potential_peers = pagefile.readlines()
                     pagefile.close()
-                    
+
                 except FileNotFoundError:
                     Primitives.log(hosts_pagefile+".bin" + " does not exist.", in_log_level="Warning")
                     potential_peers = None
