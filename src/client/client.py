@@ -941,44 +941,47 @@ class Client:
 
                 except FileNotFoundError:
                     Primitives.log(hosts_pagefile+".bin" + " does not exist.", in_log_level="Warning")
+                    potential_peers = None
 
                 finally:
                     pagefile.close()
 
                 chosen_peers = []
 
-                for peer in potential_peers:
-                    if peer == Primitives.get_local_ip() + "\n":  # Do not try to pick ourselves as a remote node
-                        potential_peers.remove(peer)
+                if potential_peers:
+                    for peer in potential_peers:
+                        if peer == Primitives.get_local_ip() + "\n":  # Do not try to pick ourselves as a remote node
+                            potential_peers.remove(peer)
 
-                if net_architecture == "mesh":
-                    print("Network tuple:")
-                    print(str(net_tuple))
+                if potential_peers:
+                    if net_architecture == "mesh":
+                        print("Network tuple:")
+                        print(str(net_tuple))
+    
+                        this_node = (localhost, "127.0.0.1")
 
-                    this_node = (localhost, "127.0.0.1")
+                        # Disconnect from everything other than localhost
+                        for peer in net_tuple:
 
-                    # Disconnect from everything other than localhost
-                    for peer in net_tuple:
+                            if peer != this_node:
+                                self.disconnect(peer)
+                                net_tuple = self.read_nodestate(0)  # Refresh the network tuple after disconnecting
 
-                        if peer != this_node:
-                            self.disconnect(peer)
-                            net_tuple = self.read_nodestate(0)  # self.disconnect() will change this value. Refresh it
+                            else:
+                                pass  # Don't disconnect from localhost
 
-                        else:
-                            pass  # Don't disconnect from localhost
+                        # Select remote peers to bootstrap with
+                        for i in range(0, c_ext):
+                            chosen_peer = random.choice(potential_peers)
+                            potential_peers.remove(chosen_peer)
+                            chosen_peers.append(chosen_peer.strip("\n"))
 
-                    # Select remote peers to bootstrap with
-                    for i in range(0, c_ext):
-                        chosen_peer = random.choice(potential_peers)
-                        potential_peers.remove(chosen_peer)
-                        chosen_peers.append(chosen_peer.strip("\n"))
+                        Primitives.log("Disassociation successful. Ready for bootstrap...", in_log_level="Info")
 
-                    Primitives.log("Disassociation successful. Ready for bootstrap...", in_log_level="Info")
-
-                    # Bootstrap!
-                    for peer_address in chosen_peers:
-                        external_connection = (socket.socket(), peer_address)
-                        self.connect(external_connection, peer_address, PORT)
+                        # Bootstrap!
+                        for peer_address in chosen_peers:
+                            external_connection = (socket.socket(), peer_address)
+                            self.connect(external_connection, peer_address, PORT)
 
             # Append message signature to the message list, or in the case of sig=no_prop, do nothing.
             if sig != no_prop and do_propagation:
