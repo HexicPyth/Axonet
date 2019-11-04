@@ -583,7 +583,7 @@ class Client:
 
                 page_contents = ''.join(page_lines)
 
-                sync_msg = (no_prop + ":" + "sync:" + page_id + ":" + page_contents)
+                sync_msg = self.prepare("sync:" + page_id + ":" + page_contents)
                 self.broadcast(sync_msg)
 
             if message.startswith("sync:"):
