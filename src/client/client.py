@@ -52,11 +52,21 @@ Primitives = primitives.Primitives(sub_node, log_level)
 class Client:
 
     @staticmethod
-    def write_nodestate(in_nodestate, index, value):
+    def overwrite_nodestate(in_nodestate):
         global nodeState
+        nodeState = in_nodestate
+
+    @staticmethod
+    def write_nodestate(in_nodestate, index, value, void=True):
+        global nodeState
+
         in_nodestate[index] = value
 
         nodeState = list(in_nodestate)
+
+        if not void:
+            return nodeState
+
 
     @staticmethod
     def read_nodestate(index):
@@ -193,8 +203,7 @@ class Client:
         # Don't connect to an address we're already connected to.
         if connection in net_tuple or self.lookup_socket(address) != 0:
 
-            not_connecting_msg = str("Not connecting to " + connection[1],
-                                     "We're already connected.")
+            not_connecting_msg = str("Not connecting to " + connection[1] + " (We're already connected.)")
 
             Primitives.log(not_connecting_msg, in_log_level="Warning")
             self.remove((sock, address))
@@ -325,7 +334,7 @@ class Client:
     @staticmethod
     def write_to_page(page_id, data, signing=True):
         global ADDR_ID
-        """ Write data to a given pagefile by ID."""
+        """ Append data to a given pagefile by ID."""
 
         Primitives.log("Writing to page:" + page_id, in_log_level="Info")
         os.chdir(original_path)
@@ -398,12 +407,12 @@ class Client:
             Primitives.log(message_received_log, in_log_level="Info")
 
             if message == "echo":
+                import echo
+
                 """ Simple way to test our connection to a given node."""
 
                 Primitives.log("echoing...", in_log_level="Info")
-
-                if network_architecture == "complete":
-                    self.send(connection, no_prop + ':' + message, sign=False)  # If received, send back
+                echo.initiate(self.read_nodestate(0), network_architecture, connection, no_prop)
 
             if message == "stop":
                 """ instruct all nodes to disconnect from each other and exit cleanly."""
@@ -535,20 +544,9 @@ class Client:
                     Primitives.log(already_connected_msg, "Warning")
 
             if message.startswith('exec:'):
-                # Assuming allow_command_execution is set, execute arbitrary UNIX commands in their own threads.
-                if allow_command_execution:
-                    command = message[5:]
-                    Primitives.log(str("executing: " + command), in_log_level="Info")
+                import exec
 
-                    # Warning: This is about to execute some arbitrary UNIX command in it's own nice little
-                    # non-isolated fork of a process. That's very dangerous.
-                    command_process = multiprocessing.Process(target=self.run_external_command,
-                                                              args=(command,), name='Cmd_Thread')
-                    command_process.start()
-
-                # allow_command_execution is not set, don't execute arbitrary UNIX commands from the network.
-                else:
-                    Primitives.log(("Not executing command: ", message[5:]), in_log_level="Info")
+                exec.initiate(message, allow_command_execution)
 
             if message.startswith("newpage:"):
                 """ Create a new pagefile that we'll presumably do some 
@@ -596,9 +594,9 @@ class Client:
 
                 os.chdir(original_path)
                 page_id = message[5:][:16]  # First 16 bytes after removing the 'sync:' flag
-                data = message[22:]
+                sync_data = message[22:]
 
-                Primitives.log("Syncing " + data + " into page:" + page_id, in_log_level="Info")
+                Primitives.log("Syncing " + sync_data + " into page:" + page_id, in_log_level="Info")
 
                 file_path = "../inter/mem/" + page_id + ".bin"
 
@@ -616,15 +614,16 @@ class Client:
                     duplicate = False
                     local = False
 
-                    # How do we sort out duplicates?
                     for line in existing_pagelines:
-                        if line == data and line[:32]:
+                        print("Line: "+line)
+                        print('Data: '+sync_data)
+                        if line == sync_data:
                             duplicate = True
                             Primitives.log("Not writing duplicate data into page " + page_id)
                             break
 
                     if not duplicate:
-                        data_id = data[:16]
+                        data_id = sync_data[:16]
                         local_id = sha3_224(Primitives.get_local_ip().encode()).hexdigest()[:16]
                         if data_id == local_id:
                             # Don't re-write data from ourselves. We already did that with 'corecount'.
@@ -632,39 +631,49 @@ class Client:
                             local = True
 
                         if not local:
-                            if data == "" or data == " " or data == "\n":
+                            if sync_data == "" or sync_data == " " or sync_data == "\n":
                                 pass
 
                             else:
-                                print("Writing " + data + "to page " + page_id)
-                                self.write_to_page(page_id, data, signing=False)
+                                print("Writing " + sync_data + "to page " + page_id)
+                                self.write_to_page(page_id, sync_data, signing=False)
 
                     # https://stackoverflow.com/a/1216544
                     # https://stackoverflow.com/users/146442/marcell
                     # The following two lines of code are the work were written by "Marcel" from StackOverflow.
 
-                    # Remove duplicate lines
+                    # Remove duplicate lines from page
                     unique_lines = set(open(file_path).readlines())
                     open(file_path, 'w').writelines(set(unique_lines))
 
-                    # Remove any extra newlines
+                    # Remove any extra newlines from page
                     raw_lines = list(set(open(file_path).readlines()))
 
-                    newlines = [raw_line for raw_line in raw_lines
+                    existing_lines = [raw_line for raw_line in raw_lines
                                 if raw_line != "\n" and raw_line[:2] != "##"]
 
-                    open(file_path, 'w').writelines(set(newlines))
+                    # Write changes to page
+                    open(file_path, 'w').writelines(set(existing_lines))
 
                     # Wait for each node to contribute before doing module-specific I/O
-                    Primitives.log("\n\t" + str(len(newlines)) + " Node(s) have contributed to the network."
+                    Primitives.log("\n\t" + str(len(existing_lines)) + " Node(s) have contributed to the network."
                                                                  "\n The network tuple(+1) is of length: "
                                    + str(len(net_tuple) + 1), in_log_level="Debug")
 
-                    if len(newlines) >= network_size:
+                    if len(existing_lines) >= network_size:
                         pass
                         # We've received contributions from every node on the network.
                         # Now do module-specific I/O
+
                     else:
+                        print(sync_data)
+                        print(sync_data.split('\n'))
+                        new_lines_added = len(existing_pagelines)-len(sync_data.split('\n'))
+                        print("New lines added: "+str(new_lines_added))
+                        print(len(existing_lines))
+                        print(existing_lines)
+
+                        print("\n\nNetwork size: "+str(network_size) + "\n\n")
                         module_loaded = self.read_nodestate(5)
                         election_list = self.read_nodestate(9)
 
@@ -676,7 +685,7 @@ class Client:
                             self.broadcast(self.prepare("fetch:" + hosts_pagefile))
 
                             module_loaded = ""
-                            self.write_nodestate(nodeState, 5, "")
+                            self.write_nodestate(nodeState, 5, module_loaded)
 
             # Provide server's a means of communicating readiness to clients. This is used during file proxying
             # to form a feedback loop between the proxy and client, that way the client doesn't ever exceed the
@@ -730,31 +739,18 @@ class Client:
                 self.send(localhost_conn, no_prop + ":" + message, sign=False)
 
             if message.startswith("vote:"):
+                import vote
+
                 ongoing_election = self.read_nodestate(10)
-                Primitives.log("Ongoing election: " + str(ongoing_election), in_log_level="Debug")
+                Primitives.log("(vote:) Ongoing election: " + str(ongoing_election), in_log_level="Debug")
+                new_nodestate = vote.respond_start(message, nodeState, ongoing_election)
 
-                if not ongoing_election:
-
-                    election_list = self.read_nodestate(9)
-                    self.write_nodestate(nodeState, 10, True)
-
-                    reason = message[5:]
-
-                    election_tuple = (reason, "TBD")
-                    election_list.append(election_tuple)
-                    election_list = list(set(election_list))  # Remove any duplicates
-
-                    self.write_nodestate(nodeState, 9, election_list)
-
-                    campaign_int = random.randint(1, 2 ** 128)
-                    self.write_nodestate(nodeState, 7, campaign_int)
-
-                    Primitives.log("Campaigning for " + str(campaign_int), in_log_level="Info")
-                    campaign_msg = self.prepare("campaign:" + reason + ":" + str(campaign_int))
-                    self.broadcast(campaign_msg)
+                self.overwrite_nodestate(new_nodestate)
 
             if message.startswith("campaign:"):
                 # example message: campaign:do_stuff:01234566789
+
+                arguments = Primitives.parse_cmd(message)
 
                 ongoing_election = self.read_nodestate(10)
                 if not ongoing_election:
@@ -770,7 +766,7 @@ class Client:
                     os.chdir(original_path)
                     election_details = Primitives.parse_cmd(message)  # [reason, token]
 
-                    # Before we (hopefully) receive a vote flag: the elction list is empty. Populate it
+                    # Before we (hopefully) receive a vote flag: the election list is empty. Populate it
                     campaign_tuple = tuple(election_details)
                     campaign_list = self.read_nodestate(8)
 
@@ -786,10 +782,16 @@ class Client:
                     campaign_list = self.read_nodestate(8)
                     campaign_list.append(campaign_tuple)
 
-                    print(str(campaign_list))
+                    this_campaign_list = []
+                    for item in campaign_list:
+
+                        if item[0].startswith(arguments[0]):
+
+                            this_campaign_list.append(item)
+                    this_campaign_list = list(set(this_campaign_list))
 
                     # Wait for all votes to be cast
-                    if len(campaign_list) == network_size:
+                    if len(this_campaign_list) == network_size:
                         campaign_ints = []
 
                         for campaign_tuple in campaign_list:
@@ -836,9 +838,8 @@ class Client:
                 index = Primitives.find_election_index(election_list, reason)
 
                 new_election_list = Primitives.set_leader(election_list, index, new_leader)
-                self.write_nodestate(nodeState, 9, new_election_list)  # Update the election list
 
-                self.write_nodestate(nodeState, 10, False)  # Set ongoing_election = False
+                self.write_nodestate(nodeState, 9, new_election_list)  # Update the election list
 
                 election_winner_msg = str(new_leader) + " won the election for:" + reason
                 Primitives.log(election_winner_msg, in_log_level="Info")
@@ -847,8 +848,26 @@ class Client:
                     os.chdir(original_path)
                     import discover
 
+                    # Remove any previous discovery elections from the election list.
+                    # This allows network bootstrapping to occur multiple times without reinitializing
+
+                    for _election_tuple in new_election_list:
+                        _reason = _election_tuple[0]
+                        _index_in_new_election_list = new_election_list.index(_election_tuple)
+
+                        if _reason != reason:
+                            new_election_list.remove(_election_tuple)
+
+                    self.write_nodestate(nodeState, 9, new_election_list)
+
                     op_id = reason[10:]
                     is_cluster_rep = self.read_nodestate(11)
+                    self.write_nodestate(nodeState, 10, False)  # Set ongoing_election = False
+
+                    Primitives.log("(end of vote:) Ongoing election: "+str(self.read_nodestate(10)),
+                                   in_log_level="Debug")
+
+                    Primitives.log(str(new_election_list), in_log_level="Debug")
 
                     discover.respond_start(net_tuple, op_id, is_cluster_rep)
 
@@ -863,7 +882,7 @@ class Client:
                 import discover
 
                 new_module_loaded = "discover"
-                self.write_nodestate(nodeState, 10, new_module_loaded)  # set module_loaded = "discover"
+                self.write_nodestate(nodeState, 4, new_module_loaded)  # set module_loaded = "discover"
 
                 arguments = Primitives.parse_cmd(message)  # arguments[0] = op_id = name of pagefile
 
@@ -874,13 +893,13 @@ class Client:
                              and item[1] != Primitives.get_local_ip() and item[1] != "localhost"]
 
                 # Turn it into a string containing each address separated by newlines
-                data = '\n'.join(addresses)
+                _data = '\n'.join(addresses)
 
                 # Write it to page [op_id]
-                self.write_to_page(op_id, data, signing=False)
+                self.write_to_page(op_id, _data, signing=False)
 
                 # Callback to discover module
-                discover.start(net_tuple, op_id)
+                discover.start(net_tuple, op_id, self.read_nodestate(11))
 
             if message.startswith("bootstrap:"):
                 arguments = Primitives.parse_cmd(message)
@@ -898,46 +917,53 @@ class Client:
 
                 print("Output node: " + str(output_node))
 
-                pagefile = open("../inter/mem/" + hosts_pagefile + ".bin", "r+")
+                print(str(election_list))
 
-                potential_peers = pagefile.readlines()
+                try:
+                    pagefile = open("../inter/mem/" + hosts_pagefile + ".bin", "r+")
+                    potential_peers = pagefile.readlines()
+                    pagefile.close()
 
-                pagefile.close()
+                except FileNotFoundError:
+                    Primitives.log(hosts_pagefile+".bin" + " does not exist.", in_log_level="Warning")
+                    potential_peers = None
 
                 chosen_peers = []
 
-                for peer in potential_peers:
-                    if peer == Primitives.get_local_ip() + "\n":  # Do not try to pick ourselves as a remote node
-                        potential_peers.remove(peer)
+                if potential_peers:
+                    for peer in potential_peers:
+                        if peer == Primitives.get_local_ip() + "\n":  # Do not try to pick ourselves as a remote node
+                            potential_peers.remove(peer)
 
-                if net_architecture == "mesh":
-                    print("Network tuple:")
-                    print(str(net_tuple))
+                if potential_peers:
+                    if net_architecture == "mesh":
+                        print("Network tuple:")
+                        print(str(net_tuple))
 
-                    this_node = (localhost, "127.0.0.1")
+                        this_node = (localhost, "127.0.0.1")
 
-                    # Disconnect from everything other than localhost
-                    for peer in net_tuple:
+                        # Disconnect from everything other than localhost
+                        for peer in net_tuple:
 
-                        if peer != this_node:
-                            self.disconnect(peer)
-                            net_tuple = self.read_nodestate(0)  # self.disconnect() will change this value. Refresh it
+                            if peer != this_node:
+                                self.disconnect(peer)
+                                net_tuple = self.read_nodestate(0)  # Refresh the network tuple after disconnecting
 
-                        else:
-                            pass  # Don't disconnect from localhost
+                            else:
+                                pass  # Don't disconnect from localhost
 
-                    # Select remote peers to bootstrap with
-                    for i in range(0, c_ext):
-                        chosen_peer = random.choice(potential_peers)
-                        potential_peers.remove(chosen_peer)
-                        chosen_peers.append(chosen_peer.strip("\n"))
+                        # Select remote peers to bootstrap with
+                        for i in range(0, c_ext):
+                            chosen_peer = random.choice(potential_peers)
+                            potential_peers.remove(chosen_peer)
+                            chosen_peers.append(chosen_peer.strip("\n"))
 
-                    Primitives.log("Disassociation successful. Ready for bootstrap...", in_log_level="Info")
+                        Primitives.log("Disassociation successful. Ready for bootstrap...", in_log_level="Info")
 
-                    # Bootstrap!
-                    for peer_address in chosen_peers:
-                        external_connection = (socket.socket(), peer_address)
-                        self.connect(external_connection, peer_address, PORT)
+                        # Bootstrap!
+                        for peer_address in chosen_peers:
+                            external_connection = (socket.socket(), peer_address)
+                            self.connect(external_connection, peer_address, PORT)
 
             # Append message signature to the message list, or in the case of sig=no_prop, do nothing.
             if sig != no_prop and do_propagation:
@@ -967,7 +993,7 @@ class Client:
                     if incoming:
                         self.respond(conn, raw_message)
 
-                except UnboundLocalError:   ###
+                except ArithmeticError:   # DEBUG TypeError
                     conn_severed_msg = str("Connection to " + str(in_sock)
                                            + "was severed or disconnected."
                                            + "(TypeError: listen() -> listener_thread()")
