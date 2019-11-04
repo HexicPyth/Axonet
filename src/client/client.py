@@ -936,9 +936,14 @@ class Client:
                 print(str(election_list))
                 pagefile = open("../inter/mem/" + hosts_pagefile + ".bin", "r+")
 
-                potential_peers = pagefile.readlines()
+                try:
+                    potential_peers = pagefile.readlines()
 
-                pagefile.close()
+                except FileNotFoundError:
+                    Primitives.log(hosts_pagefile+".bin" + " does not exist.", in_log_level="Warning")
+
+                finally:
+                    pagefile.close()
 
                 chosen_peers = []
 
