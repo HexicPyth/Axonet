@@ -934,17 +934,15 @@ class Client:
                 print("Output node: " + str(output_node))
 
                 print(str(election_list))
-                pagefile = open("../inter/mem/" + hosts_pagefile + ".bin", "r+")
 
                 try:
+                    pagefile = open("../inter/mem/" + hosts_pagefile + ".bin", "r+")
                     potential_peers = pagefile.readlines()
-
+                    pagefile.close()
+                    
                 except FileNotFoundError:
                     Primitives.log(hosts_pagefile+".bin" + " does not exist.", in_log_level="Warning")
                     potential_peers = None
-
-                finally:
-                    pagefile.close()
 
                 chosen_peers = []
 
@@ -957,7 +955,7 @@ class Client:
                     if net_architecture == "mesh":
                         print("Network tuple:")
                         print(str(net_tuple))
-    
+
                         this_node = (localhost, "127.0.0.1")
 
                         # Disconnect from everything other than localhost
