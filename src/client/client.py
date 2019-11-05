@@ -328,6 +328,12 @@ class Client:
             message_list.append(sig)
             self.write_nodestate(nodeState, 1, message_list)
 
+        if bootstrapped:
+            Primitives.log("Message propagation mode: fully-complete/mesh", in_log_level="Debug")
+
+        else:
+            Primitives.log("Message propagation mode: ring", in_log_level="Debug")
+
         for connection in net_tuple:
             self.send(connection, message, sign=False)  # Send a message to each node( = Broadcast)
 
@@ -425,6 +431,11 @@ class Client:
 
             if message == "stop":
                 """ instruct all nodes to disconnect from each other and exit cleanly."""
+
+                # Enable fully-complete/mesh propagation, regardless of actual network architecture,
+                # to ensure that all nodes actually die on command
+
+                self.write_nodestate(nodeState, 12, True)
 
                 # Inform localhost to follow suit.
                 localhost_connection = (localhost, "127.0.0.1")
