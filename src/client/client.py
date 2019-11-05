@@ -29,7 +29,7 @@ localhost = socket.socket()
 localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes TIME_WAIT-ing. Add SO_REUSEADDR.
 
 # Mutable state; Write with writeState(), Read with readState(). Contains default values until changed
-nodeState = [(), [], False, False, [], "", [], 0, [], [], False, False]
+nodeState = [(), [], False, False, [], "", [], 0, [], [], False, False, False]
 
 
 # Immutable state: Constant node parameters set upon initialization
@@ -318,6 +318,15 @@ class Client:
 
         self.permute_network_tuple()
         net_tuple = self.read_nodestate(0)
+
+        # If not bootstrapped, do ring network propagation. Else, do fully-complete style propagation.
+        bootstrapped = self.read_nodestate(12)
+        message_list = self.read_nodestate(1)
+
+        if not bootstrapped:
+            sig = message[:16]
+            message_list.append(sig)
+            self.write_nodestate(nodeState, 1, message_list)
 
         for connection in net_tuple:
             self.send(connection, message, sign=False)  # Send a message to each node( = Broadcast)
@@ -964,6 +973,12 @@ class Client:
                         for peer_address in chosen_peers:
                             external_connection = (socket.socket(), peer_address)
                             self.connect(external_connection, peer_address, PORT)
+
+                        bootstrapped = self.read_nodestate(12)
+
+                        if not bootstrapped:
+                            bootstrapped = True
+                            self.write_nodestate(nodeState, 12, bootstrapped)
 
             # Append message signature to the message list, or in the case of sig=no_prop, do nothing.
             if sig != no_prop and do_propagation:
