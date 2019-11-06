@@ -726,13 +726,22 @@ class Client:
 
                         module_loaded = self.read_nodestate(5)
                         election_list = self.read_nodestate(9)
+                        is_cluster_rep = self.read_nodestate(11)
 
                         if module_loaded == "discover":
                             # TODO: Make this support multiple peer discoveries without reinitializing
 
                             hosts_pagefile = ''.join(
                                 [item[0][10:] for item in election_list if item[0][:10] == "discovery-"])
-                            self.broadcast(self.prepare("fetch:" + hosts_pagefile))
+
+                            if is_cluster_rep:
+                                previous_message_propagation_mode = self.read_nodestate(12)
+
+                                self.write_nodestate(nodeState, 12, True)
+
+                                self.broadcast(self.prepare("fetch:" + hosts_pagefile))
+
+                                self.write_nodestate(nodeState, 12, previous_message_propagation_mode)
 
                             module_loaded = ""
                             self.write_nodestate(nodeState, 5, module_loaded)
