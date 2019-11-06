@@ -2,7 +2,6 @@
 import socket
 import struct
 import threading
-import multiprocessing
 import datetime
 import os
 import random
@@ -1100,7 +1099,8 @@ class Client:
         Primitives.log("Quietly Dying...")
         self.write_nodestate(nodeState, 3, True)  # Set terminated = True
 
-        quit(0)
+        # noinspection PyProtectedMember
+        os._exit(0)  # kill oneself with passion
 
     def initialize(self, port=3705, net_architecture="complete", remote_addresses=None, command_execution=False,
                    default_log_level="Debug", modules=None, net_size=0):
