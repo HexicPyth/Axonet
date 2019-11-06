@@ -614,8 +614,14 @@ class Client:
 
                 page_contents = ''.join(page_lines)
 
+                previous_message_propagation_mode = self.read_nodestate(12)
+                self.write_nodestate(nodeState, 12, False)  # Set message propagation mode to ring for better efficiency
+
                 sync_msg = self.prepare("sync:" + page_id + ":" + page_contents)
                 self.broadcast(sync_msg)
+
+                # Set message propagation mode back to whatever it was before we overwrote it
+                self.write_nodestate(nodeState, 12, previous_message_propagation_mode)
 
             # Write received pagefile data to disk
             if message.startswith("sync:"):
@@ -627,6 +633,7 @@ class Client:
                 os.chdir(original_path)
                 page_id = message[5:][:16]  # First 16 bytes after removing the 'sync:' flag
                 sync_data = message[22:]
+
 
                 Primitives.log("Syncing " + sync_data + " into page:" + page_id, in_log_level="Info")
 
