@@ -421,8 +421,13 @@ class Client:
         elif sig not in message_list or sig == no_prop:
 
             # e.x "Client -> Received: echo (ffffffffffffffff) from: 127.0.0.1"
-            message_received_log = str('Received: ' + message
-                                       + " (" + sig + ")" + " from: " + address)
+
+            if len(message) < 100 and "\n" not in message:
+                message_received_log = str('Received: ' + message
+                                           + " (" + sig + ")" + " from: " + address)
+            else:
+                message_received_log = str('Received: ' + message[:16] + "(message truncated)"
+                                           + " (" + sig + ")" + " from: " + address)
 
             Primitives.log(message_received_log, in_log_level="Info")
 
@@ -636,8 +641,7 @@ class Client:
                 page_id = message[5:][:16]  # First 16 bytes after removing the 'sync:' flag
                 sync_data = message[22:]
 
-
-                Primitives.log("Syncing " + sync_data + " into page:" + page_id, in_log_level="Info")
+                Primitives.log("Syncing " + sync_data + " into page:" + page_id, in_log_level="Debug")
 
                 file_path = "../inter/mem/" + page_id + ".bin"
 
@@ -655,15 +659,14 @@ class Client:
                     duplicate = False
                     local = False
 
+                    Primitives.log("Receiving " + str(len(sync_data)) + " bytes of data from network",
+                                   in_log_level="Info")
+
                     for line in existing_pagelines:
 
                         if log_level == "Debug":
                             print("Line: "+line)
                             print('Data: '+sync_data)
-
-                        else:
-                            Primitives.log("Receiving "+str(len(sync_data)) + "bytes of data from network",
-                                           in_log_level="Info")
 
                         if line == sync_data:
                             duplicate = True
@@ -684,8 +687,12 @@ class Client:
                                 pass
 
                             else:
-                                print("Writing " + sync_data + "to page " + page_id)
-                                self.write_to_page(page_id, sync_data, signing=False)
+                                if log_level == "Debug":
+                                    print("Writing " + sync_data + "to page " + page_id)
+                                    self.write_to_page(page_id, sync_data, signing=False)
+                                else:
+                                    Primitives.log("Writing " + str(len(sync_data)) + " bytes to " + page_id + ".bin",
+                                                   in_log_level="Info")
 
                     # https://stackoverflow.com/a/1216544
                     # https://stackoverflow.com/users/146442/marcell
@@ -715,14 +722,8 @@ class Client:
                         # Now do module-specific I/O
 
                     else:
-                        print(sync_data)
-                        print(sync_data.split('\n'))
-                        new_lines_added = len(existing_pagelines)-len(sync_data.split('\n'))
-                        print("New lines added: "+str(new_lines_added))
-                        print(len(existing_lines))
-                        print(existing_lines)
+                        print()
 
-                        print("\n\nNetwork size: "+str(network_size) + "\n\n")
                         module_loaded = self.read_nodestate(5)
                         election_list = self.read_nodestate(9)
 
