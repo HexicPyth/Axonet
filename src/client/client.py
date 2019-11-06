@@ -384,6 +384,8 @@ class Client:
 
         global network_architecture
         global network_size
+        global log_level
+        global nodeState
 
         full_message = str(msg)
         message = full_message[17:]  # Message without signature
@@ -654,8 +656,15 @@ class Client:
                     local = False
 
                     for line in existing_pagelines:
-                        print("Line: "+line)
-                        print('Data: '+sync_data)
+
+                        if log_level == "Debug":
+                            print("Line: "+line)
+                            print('Data: '+sync_data)
+
+                        else:
+                            Primitives.log("Receiving "+str(len(sync_data)) + "bytes of data from network",
+                                           in_log_level="Info")
+
                         if line == sync_data:
                             duplicate = True
                             Primitives.log("Not writing duplicate data into page " + page_id)
@@ -664,6 +673,7 @@ class Client:
                     if not duplicate:
                         data_id = sync_data[:16]
                         local_id = sha3_224(Primitives.get_local_ip().encode()).hexdigest()[:16]
+
                         if data_id == local_id:
                             # Don't re-write data from ourselves. We already did that with 'corecount'.
                             print("Not being hypocritical in page " + page_id)
