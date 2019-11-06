@@ -774,8 +774,14 @@ class Client:
 
                 ongoing_election = self.read_nodestate(10)
                 Primitives.log("(vote:) Ongoing election: " + str(ongoing_election), in_log_level="Debug")
-                self.write_nodestate(nodeState, 10, True)
+                self.write_nodestate(nodeState, 10, True)   # set ongoing_election = True
+
+                previous_message_propagation_mode = self.read_nodestate(12)
+
+                self.write_nodestate(nodeState, 12, True)   # Enable mesh-mode message propagation for added redundancy
+
                 new_nodestate = vote.respond_start(message, nodeState, ongoing_election)
+                self.write_nodestate(nodeState, 12, previous_message_propagation_mode)
 
                 self.overwrite_nodestate(new_nodestate)
 
@@ -786,6 +792,10 @@ class Client:
                 arguments = Primitives.parse_cmd(message)
 
                 ongoing_election = self.read_nodestate(10)
+
+                previous_message_propagation_mode = self.read_nodestate(12)
+
+                self.write_nodestate(nodeState, 12, True)  # Enable mesh-style message propagation for extra redundancy
 
                 if not ongoing_election:
                     # We probably received a campaign flag out of order(before a vote:). Let's start that election now.
@@ -806,6 +816,7 @@ class Client:
 
                     campaign_list.append(campaign_tuple)
                     self.write_nodestate(nodeState, 8, campaign_list)
+
                     self.broadcast(no_prop+":vote:"+str(election_details[0]))
 
                 if ongoing_election:
@@ -861,6 +872,8 @@ class Client:
                         self.write_nodestate(nodeState, 8, [])  # Clear the campaign_list
                         self.write_nodestate(nodeState, 7, 0)   # reset this_campaign to 0
                         self.write_nodestate(nodeState, 10, False)  # clear ongoing_election
+
+                self.write_nodestate(nodeState, 12, previous_message_propagation_mode)  # Set it back to whatever it was
 
             # Elect the winning node of a network election to their position as cluster representative
             if message.startswith("elect:"):
