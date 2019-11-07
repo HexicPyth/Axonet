@@ -687,6 +687,10 @@ class Client:
                             module_loaded = ""
                             self.write_nodestate(nodeState, 5, module_loaded)
 
+            if message.startswith("find:"):
+                import finder
+                finder.respond_start(message, sub_node, log_level)
+
             # Provide server's a means of communicating readiness to clients. This is used during file proxying
             # to form a feedback loop between the proxy and client, that way the client doesn't ever exceed the
             # maximum channel capacity(i.e bandwidth) of it's connection to the proxy server.
