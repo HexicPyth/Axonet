@@ -29,7 +29,7 @@ log_level = ""  # "Debug", "Info", or "Warning"; will be set by self.initialize(
 sub_node = "Server"
 
 
-nodeState = [(), [], False, False, False, []]
+nodeState = [(), [], False, False, False, [], False]
 
 this_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -142,6 +142,13 @@ class Server:
     def broadcast(self, message):
 
         net_tuple = self.read_nodestate(0)
+        bootstrapped = self.read_nodestate(6)
+        message_list = self.read_nodestate(1)
+
+        if not bootstrapped:
+            sig = message[:16]
+            message_list.append(sig)
+            self.write_nodestate(nodeState, 1, message_list)
 
         for connection in net_tuple:
             address = connection[1]
@@ -255,7 +262,7 @@ class Server:
             """ sig=msg[:16] probably threw TypeError because msg=self.receive(conn) and self.receive probably
                 returned 0 because the connection is broken. Disconnect from [connection]...
 
-             If [connection] is localhost than the client is already dead (hence the receive error);
+             If [connection] is localhost then the client is already dead (hence the receive error);
              Permit localhost disconnect..."""
             self.disconnect(connection, disallow_local_disconnect=False)
             return
@@ -338,6 +345,14 @@ class Server:
                 fetch_msg = self.prepare("fetch:"+target_page)
                 self.broadcast(fetch_msg)
 
+            if message.startswith("bootstrap:"):
+                bootstrapped = self.read_nodestate(6)
+
+                if not bootstrapped:
+                    bootstrapped = True
+
+                self.write_nodestate(nodeState, 6, bootstrapped)
+
             # We only broadcast messages with hashes we haven't already documented. That way the network doesn't
             # loop indefinitely broadcasting the same message. Also, Don't append no_prop to message_list.
             # That would be bad.
@@ -359,6 +374,14 @@ class Server:
                     # Send this to localhost Client.
 
                     Primitives.log("Violating the no_prop policy for localhost", in_log_level="Warning")
+
+                    localhost_address = "127.0.0.1"
+                    localhost_socket = self.lookup_socket(localhost_address)
+                    localhost_connection = (localhost_socket, localhost_address)
+
+                    self.send(localhost_connection, full_message, signing=False)
+
+                elif message.startswith("sharepeers:"):
 
                     localhost_address = "127.0.0.1"
                     localhost_socket = self.lookup_socket(localhost_address)

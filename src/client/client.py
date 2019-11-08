@@ -2,7 +2,6 @@
 import socket
 import struct
 import threading
-import multiprocessing
 import datetime
 import os
 import random
@@ -29,7 +28,7 @@ localhost = socket.socket()
 localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes TIME_WAIT-ing. Add SO_REUSEADDR.
 
 # Mutable state; Write with writeState(), Read with readState(). Contains default values until changed
-nodeState = [(), [], False, False, [], "", [], 0, [], [], False, False]
+nodeState = [(), [], False, False, [], "", [], 0, [], [], False, False, False]
 
 
 # Immutable state: Constant node parameters set upon initialization
@@ -319,6 +318,25 @@ class Client:
         self.permute_network_tuple()
         net_tuple = self.read_nodestate(0)
 
+        # If not bootstrapped, do ring network propagation. Else, do fully-complete style propagation.
+        do_mesh_propagation = self.read_nodestate(12)
+        message_list = self.read_nodestate(1)
+
+        if not do_mesh_propagation:
+            # Network not bootstrapped yet, do ring network propagation
+            sig = message[:16]
+            message_list.append(sig)
+            self.write_nodestate(nodeState, 1, message_list)
+
+        if do_mesh_propagation:
+            """ network bootstrapped or do_mesh_propagation override is active, do fully-complete/mesh style
+                message propagation """
+
+            Primitives.log("Message propagation mode: fully-complete/mesh", in_log_level="Debug")
+
+        else:
+            Primitives.log("Message propagation mode: ring", in_log_level="Debug")
+
         for connection in net_tuple:
             self.send(connection, message, sign=False)  # Send a message to each node( = Broadcast)
 
@@ -366,6 +384,8 @@ class Client:
 
         global network_architecture
         global network_size
+        global log_level
+        global nodeState
 
         full_message = str(msg)
         message = full_message[17:]  # Message without signature
@@ -378,7 +398,7 @@ class Client:
 
         message_list = self.read_nodestate(1)
 
-        do_propagation = True
+        propagation_allowed = True
 
         if address == "127.0.0.1":
             Primitives.log("Received message from 127.0.0.1; This is a violation of protocol; "
@@ -401,11 +421,17 @@ class Client:
         elif sig not in message_list or sig == no_prop:
 
             # e.x "Client -> Received: echo (ffffffffffffffff) from: 127.0.0.1"
-            message_received_log = str('Received: ' + message
-                                       + " (" + sig + ")" + " from: " + address)
+
+            if len(message) < 100 and "\n" not in message:
+                message_received_log = str('Received: ' + message
+                                           + " (" + sig + ")" + " from: " + address)
+            else:
+                message_received_log = str('Received: ' + message[:16] + "(message truncated)"
+                                           + " (" + sig + ")" + " from: " + address)
 
             Primitives.log(message_received_log, in_log_level="Info")
 
+            # If received, send back to confirm the presence of successful two-way communication
             if message == "echo":
                 import echo
 
@@ -414,8 +440,14 @@ class Client:
                 Primitives.log("echoing...", in_log_level="Info")
                 echo.initiate(self.read_nodestate(0), network_architecture, connection, no_prop)
 
+            # Terminate this node and quit
             if message == "stop":
                 """ instruct all nodes to disconnect from each other and exit cleanly."""
+
+                # Enable fully-complete/mesh propagation, regardless of actual network architecture,
+                # to ensure that all nodes actually die on command
+
+                self.write_nodestate(nodeState, 12, True)
 
                 # Inform localhost to follow suit.
                 localhost_connection = (localhost, "127.0.0.1")
@@ -424,11 +456,12 @@ class Client:
                 # The node will already be terminated by the time it gets to the end of the function and runs the
                 # message propagation algorithm; broadcast now, then stop
                 self.broadcast(full_message)
-                do_propagation = False
+                propagation_allowed = False
 
                 # Do so ourselves
                 self.terminate()
 
+            # Set various network topology attributes on-the-fly
             if message.startswith('config:'):
 
                 arguments = Primitives.parse_cmd(message)  # arguments[0] = variable to configure; [1] = value
@@ -456,6 +489,7 @@ class Client:
                         Primitives.log("Successfully set network_architecture to: " + network_architecture,
                                        in_log_level="Info")
 
+            # Instruct clients to connect to remote servers.
             if message.startswith("ConnectTo:"):
 
                 """ConnectTo: Instructs external clients to connect to remote servers.
@@ -543,11 +577,14 @@ class Client:
                                                 "We're already connected.")
                     Primitives.log(already_connected_msg, "Warning")
 
+            # If allowed by client configuration, execute a shell command in the operating system's default terminal
             if message.startswith('exec:'):
                 import exec
 
                 exec.initiate(message, allow_command_execution)
 
+            # Create a new pagefile in src/inter/mem which will presumably store some data generated by a
+            # concurrent network algorithm
             if message.startswith("newpage:"):
                 """ Create a new pagefile that we'll presumably do some 
                 parallel or distributed operations with.
@@ -565,6 +602,7 @@ class Client:
 
                 self.write_nodestate(nodeState, 6, page_list)
 
+            # Retrieve a file from distributed memory by instructing all nodes to sync: the contents of some pagefile
             if message.startswith("fetch:"):
                 """ Broadcast the contents of [page id] to maintain distributed memory """
 
@@ -583,9 +621,16 @@ class Client:
 
                 page_contents = ''.join(page_lines)
 
-                sync_msg = (no_prop + ":" + "sync:" + page_id + ":" + page_contents)
+                previous_message_propagation_mode = self.read_nodestate(12)
+                self.write_nodestate(nodeState, 12, False)  # Set message propagation mode to ring for better efficiency
+
+                sync_msg = self.prepare("sync:" + page_id + ":" + page_contents)
                 self.broadcast(sync_msg)
 
+                # Set message propagation mode back to whatever it was before we overwrote it
+                self.write_nodestate(nodeState, 12, previous_message_propagation_mode)
+
+            # Write received pagefile data to disk
             if message.startswith("sync:"):
                 """ Update our pagefile with data from another node (such as another node's completed work)
                 Translation: write arbitrary data to page [page id] 
@@ -596,7 +641,7 @@ class Client:
                 page_id = message[5:][:16]  # First 16 bytes after removing the 'sync:' flag
                 sync_data = message[22:]
 
-                Primitives.log("Syncing " + sync_data + " into page:" + page_id, in_log_level="Info")
+                Primitives.log("Syncing " + sync_data + " into page:" + page_id, in_log_level="Debug")
 
                 file_path = "../inter/mem/" + page_id + ".bin"
 
@@ -614,9 +659,15 @@ class Client:
                     duplicate = False
                     local = False
 
+                    Primitives.log("Receiving " + str(len(sync_data)) + " bytes of data from network",
+                                   in_log_level="Info")
+
                     for line in existing_pagelines:
-                        print("Line: "+line)
-                        print('Data: '+sync_data)
+
+                        if log_level == "Debug":
+                            print("Line: "+line)
+                            print('Data: '+sync_data)
+
                         if line == sync_data:
                             duplicate = True
                             Primitives.log("Not writing duplicate data into page " + page_id)
@@ -625,6 +676,7 @@ class Client:
                     if not duplicate:
                         data_id = sync_data[:16]
                         local_id = sha3_224(Primitives.get_local_ip().encode()).hexdigest()[:16]
+
                         if data_id == local_id:
                             # Don't re-write data from ourselves. We already did that with 'corecount'.
                             print("Not being hypocritical in page " + page_id)
@@ -635,8 +687,12 @@ class Client:
                                 pass
 
                             else:
-                                print("Writing " + sync_data + "to page " + page_id)
-                                self.write_to_page(page_id, sync_data, signing=False)
+                                if log_level == "Debug":
+                                    print("Writing " + sync_data + "to page " + page_id)
+                                    self.write_to_page(page_id, sync_data, signing=False)
+                                else:
+                                    Primitives.log("Writing " + str(len(sync_data)) + " bytes to " + page_id + ".bin",
+                                                   in_log_level="Info")
 
                     # https://stackoverflow.com/a/1216544
                     # https://stackoverflow.com/users/146442/marcell
@@ -666,23 +722,26 @@ class Client:
                         # Now do module-specific I/O
 
                     else:
-                        print(sync_data)
-                        print(sync_data.split('\n'))
-                        new_lines_added = len(existing_pagelines)-len(sync_data.split('\n'))
-                        print("New lines added: "+str(new_lines_added))
-                        print(len(existing_lines))
-                        print(existing_lines)
+                        print()
 
-                        print("\n\nNetwork size: "+str(network_size) + "\n\n")
                         module_loaded = self.read_nodestate(5)
                         election_list = self.read_nodestate(9)
+                        is_cluster_rep = self.read_nodestate(11)
 
                         if module_loaded == "discover":
                             # TODO: Make this support multiple peer discoveries without reinitializing
 
                             hosts_pagefile = ''.join(
                                 [item[0][10:] for item in election_list if item[0][:10] == "discovery-"])
-                            self.broadcast(self.prepare("fetch:" + hosts_pagefile))
+
+                            if is_cluster_rep:
+                                previous_message_propagation_mode = self.read_nodestate(12)
+
+                                self.write_nodestate(nodeState, 12, True)
+
+                                self.broadcast(self.prepare("fetch:" + hosts_pagefile))
+
+                                self.write_nodestate(nodeState, 12, previous_message_propagation_mode)
 
                             module_loaded = ""
                             self.write_nodestate(nodeState, 5, module_loaded)
@@ -694,6 +753,7 @@ class Client:
             # Provide server's a means of communicating readiness to clients. This is used during file proxying
             # to form a feedback loop between the proxy and client, that way the client doesn't ever exceed the
             # maximum channel capacity(i.e bandwidth) of it's connection to the proxy server.
+
             if message.startswith("notify:"):
 
                 arguments = Primitives.parse_cmd(message)
@@ -701,8 +761,7 @@ class Client:
                 if arguments[0] == "something":
                     pass  # Do something about it
 
-            # Disconnect from some misbehaving node and pop it from network tuple
-            # example: remove:192.168.2.3
+            # Disconnect some misbehaving node and pop it from network tuple
             if message.startswith("remove:"):
 
                 address_to_remove = message[7:]
@@ -742,21 +801,35 @@ class Client:
                 localhost_conn = (localhost, "127.0.0.1")
                 self.send(localhost_conn, no_prop + ":" + message, sign=False)
 
+            # Start a network election which selects a suitable node to do some task
             if message.startswith("vote:"):
                 import vote
 
                 ongoing_election = self.read_nodestate(10)
                 Primitives.log("(vote:) Ongoing election: " + str(ongoing_election), in_log_level="Debug")
+                self.write_nodestate(nodeState, 10, True)   # set ongoing_election = True
+
+                previous_message_propagation_mode = self.read_nodestate(12)
+
+                self.write_nodestate(nodeState, 12, True)   # Enable mesh-mode message propagation for added redundancy
+
                 new_nodestate = vote.respond_start(message, nodeState, ongoing_election)
+                self.write_nodestate(nodeState, 12, previous_message_propagation_mode)
 
                 self.overwrite_nodestate(new_nodestate)
 
+            # Participate in a network election by entering as a candidate
             if message.startswith("campaign:"):
                 # example message: campaign:do_stuff:01234566789
 
                 arguments = Primitives.parse_cmd(message)
 
                 ongoing_election = self.read_nodestate(10)
+
+                previous_message_propagation_mode = self.read_nodestate(12)
+
+                self.write_nodestate(nodeState, 12, True)  # Enable mesh-style message propagation for extra redundancy
+
                 if not ongoing_election:
                     # We probably received a campaign flag out of order(before a vote:). Let's start that election now.
                     # ------------------------------------------------------
@@ -777,6 +850,8 @@ class Client:
                     campaign_list.append(campaign_tuple)
                     self.write_nodestate(nodeState, 8, campaign_list)
 
+                    self.broadcast(no_prop+":vote:"+str(election_details[0]))
+
                 if ongoing_election:
 
                     election_details = Primitives.parse_cmd(message)  # [reason, token]
@@ -787,13 +862,16 @@ class Client:
                     campaign_list.append(campaign_tuple)
 
                     this_campaign_list = []
+
                     for item in campaign_list:
 
                         if item[0].startswith(arguments[0]):
 
                             this_campaign_list.append(item)
+
                     this_campaign_list = list(set(this_campaign_list))
 
+                    Primitives.log(str(len(this_campaign_list)) + " nodes have cast votes for "+election_details[0])
                     # Wait for all votes to be cast
                     if len(this_campaign_list) == network_size:
                         campaign_ints = []
@@ -828,6 +906,9 @@ class Client:
                         self.write_nodestate(nodeState, 7, 0)   # reset this_campaign to 0
                         self.write_nodestate(nodeState, 10, False)  # clear ongoing_election
 
+                self.write_nodestate(nodeState, 12, previous_message_propagation_mode)  # Set it back to whatever it was
+
+            # Elect the winning node of a network election to their position as cluster representative
             if message.startswith("elect:"):
                 # elect:reason:representative
 
@@ -875,12 +956,7 @@ class Client:
 
                     discover.respond_start(net_tuple, op_id, is_cluster_rep)
 
-            if message.startswith("benchmark:"):
-                arguments = Primitives.parse_cmd(message)
-
-                if arguments[0] == "thing":
-                    pass  # Benchmark this node's performance for task 'thing'
-
+            # Write the remote addresses of all connected nodes to the pagefile established by $discover
             if message.startswith("sharepeers:"):
                 os.chdir(original_path)
                 import discover
@@ -905,6 +981,7 @@ class Client:
                 # Callback to discover module
                 discover.start(net_tuple, op_id, self.read_nodestate(11))
 
+            # Ring Network --> Fully-Complete/Mesh network bootstrapping routine
             if message.startswith("bootstrap:"):
                 arguments = Primitives.parse_cmd(message)
 
@@ -969,8 +1046,14 @@ class Client:
                             external_connection = (socket.socket(), peer_address)
                             self.connect(external_connection, peer_address, PORT)
 
+                        do_mesh_propagation = self.read_nodestate(12)
+
+                        if not do_mesh_propagation:
+                            do_mesh_propagation = True
+                            self.write_nodestate(nodeState, 12, do_mesh_propagation)
+
             # Append message signature to the message list, or in the case of sig=no_prop, do nothing.
-            if sig != no_prop and do_propagation:
+            if sig != no_prop and propagation_allowed:
                 new_message_list = list(message_list)
                 new_message_list.append(sig)
                 self.write_nodestate(nodeState, 1, new_message_list)
@@ -1050,7 +1133,8 @@ class Client:
         Primitives.log("Quietly Dying...")
         self.write_nodestate(nodeState, 3, True)  # Set terminated = True
 
-        quit(0)
+        # noinspection PyProtectedMember
+        os._exit(0)  # kill oneself with passion
 
     def initialize(self, port=3705, net_architecture="complete", remote_addresses=None, command_execution=False,
                    default_log_level="Debug", modules=None, net_size=0):
