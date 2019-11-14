@@ -66,9 +66,7 @@ class Client:
         if not void:
             return nodeState
 
-
-    @staticmethod
-    def read_nodestate(index):
+    def read_nodestate(self, index):
         return nodeState[index]
 
     @staticmethod
@@ -313,7 +311,8 @@ class Client:
         except OSError:
             self.disconnect(connection)
 
-    def broadcast(self, message, do_mesh_propagation=read_nodestate(12)):
+    def broadcast(self, message, do_mesh_propagation=None):
+        # do_message_propagation=None means use global config in nodeState[12]
 
         self.permute_network_tuple()
         net_tuple = self.read_nodestate(0)
@@ -321,7 +320,11 @@ class Client:
         # If not bootstrapped, do ring network propagation. Else, do fully-complete style propagation.
         message_list = self.read_nodestate(1)
 
+        if do_mesh_propagation == None:
+            do_mesh_propagation = self.read_nodestate(12)
+
         if not do_mesh_propagation:
+
             # Network not bootstrapped yet, do ring network propagation
             sig = message[:16]
             message_list.append(sig)
