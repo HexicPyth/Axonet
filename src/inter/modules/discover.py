@@ -39,11 +39,11 @@ def respond_start(net_tuple, op_id, cluster_rep):
 
 def start(net_tuple, op_id, cluster_rep):
     """Called after addresses are written to page [op-id] """
-    import inject
+    import client
 
-    injector = inject.NetworkInjector()
+    _client = client.Client()
 
     # Synchronise discovered addresses across distributed filesystem...
     if cluster_rep:
-        injector.broadcast("fetch:" + op_id, net_tuple)
+        client.broadcast("fetch:" + op_id, net_tuple, do_mesh_propagation=False)
 
