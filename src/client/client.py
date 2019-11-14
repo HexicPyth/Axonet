@@ -333,7 +333,6 @@ class Client:
         if do_mesh_propagation:
             """ network bootstrapped or do_mesh_propagation override is active, do fully-complete/mesh style
                 message propagation """
-
             Primitives.log("Message propagation mode: fully-complete/mesh", in_log_level="Debug")
 
         else:
@@ -802,10 +801,8 @@ class Client:
                 # Instead of making global changes to the nodeState, pass a new nodeState to vote
                 # with the appropriate parameters changed...
 
-                vote_nodeState = nodeState
-                vote_nodeState[12] = True  # Do mesh propagation
-
-                new_nodestate = vote.respond_start(message, vote_nodeState, ongoing_election)
+                new_nodestate = vote.respond_start(message, nodeState, ongoing_election)
+                self.overwrite_nodestate(new_nodestate)
 
             # Participate in a network election by entering as a candidate
             if message.startswith("campaign:"):
