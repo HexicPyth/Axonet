@@ -949,8 +949,7 @@ class Client:
                 op_id = arguments[0]
 
                 # Get a list of all remote addresses
-                addresses = [item[1] for item in net_tuple if item[1] != "127.0.0.1"
-                             and item[1] != Primitives.get_local_ip() and item[1] != "localhost"]
+                addresses = Primitives.get_local_ip()
 
                 # Turn it into a string containing each address separated by newlines
                 _data = '\n'.join(addresses)
