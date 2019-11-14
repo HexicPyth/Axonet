@@ -949,10 +949,7 @@ class Client:
                 op_id = arguments[0]
 
                 # Get a list of all remote addresses
-                addresses = Primitives.get_local_ip()
-
-                # Turn it into a string containing each address separated by newlines
-                _data = '\n'.join(addresses)
+                _data = Primitives.get_local_ip()
 
                 # Write it to page [op_id]
                 self.write_to_page(op_id, _data, signing=False)
