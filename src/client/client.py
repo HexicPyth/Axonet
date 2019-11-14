@@ -730,7 +730,7 @@ class Client:
 
                             if is_cluster_rep:
 
-                                self.broadcast(self.prepare("fetch:" + hosts_pagefile), do_mesh_propagation=True)
+                                self.broadcast(self.prepare("fetch:" + hosts_pagefile), do_mesh_propagation=False)
 
                             module_loaded = ""
                             self.write_nodestate(nodeState, 5, module_loaded)
