@@ -45,5 +45,5 @@ def start(net_tuple, op_id, cluster_rep):
 
     # Synchronise discovered addresses across distributed filesystem...
     if cluster_rep:
-        client.broadcast("fetch:" + op_id, net_tuple, do_mesh_propagation=False)
+        _client.broadcast("fetch:" + op_id, net_tuple, do_mesh_propagation=False)
 
