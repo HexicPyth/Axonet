@@ -622,11 +622,16 @@ class Client:
 
                 page_contents = ''.join(page_lines)
 
-                if arguments[1] == "discovery":
-                    cluser_rep = self.read_nodestate(11)
-                    if cluser_rep:
-                        sync_msg = self.prepare("sync:" + page_id + ":" + page_contents)
-                        self.broadcast(sync_msg, do_mesh_propagation=False)
+                try:
+                    if arguments[1] == "discovery":
+                        cluser_rep = self.read_nodestate(11)
+                        if cluser_rep:
+                            sync_msg = self.prepare("sync:" + page_id + ":" + page_contents)
+                            self.broadcast(sync_msg, do_mesh_propagation=False)
+
+                except IndexError:
+                    sync_msg = self.prepare("sync:" + page_id + ":" + page_contents)
+                    self.broadcast(sync_msg, do_mesh_propagation=False)
 
             # Write received pagefile data to disk
             if message.startswith("sync:"):
