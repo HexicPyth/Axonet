@@ -313,13 +313,12 @@ class Client:
         except OSError:
             self.disconnect(connection)
 
-    def broadcast(self, message):
+    def broadcast(self, message, do_mesh_propagation=read_nodestate(12)):
 
         self.permute_network_tuple()
         net_tuple = self.read_nodestate(0)
 
         # If not bootstrapped, do ring network propagation. Else, do fully-complete style propagation.
-        do_mesh_propagation = self.read_nodestate(12)
         message_list = self.read_nodestate(1)
 
         if not do_mesh_propagation:
@@ -447,15 +446,13 @@ class Client:
                 # Enable fully-complete/mesh propagation, regardless of actual network architecture,
                 # to ensure that all nodes actually die on command
 
-                self.write_nodestate(nodeState, 12, True)
-
                 # Inform localhost to follow suit.
                 localhost_connection = (localhost, "127.0.0.1")
                 self.send(localhost_connection, "stop")  # TODO: should we use no_prop here?
 
                 # The node will already be terminated by the time it gets to the end of the function and runs the
                 # message propagation algorithm; broadcast now, then stop
-                self.broadcast(full_message)
+                self.broadcast(full_message, do_mesh_propagation=True)
                 propagation_allowed = False
 
                 # Do so ourselves
@@ -621,14 +618,9 @@ class Client:
 
                 page_contents = ''.join(page_lines)
 
-                previous_message_propagation_mode = self.read_nodestate(12)
-                self.write_nodestate(nodeState, 12, False)  # Set message propagation mode to ring for better efficiency
-
                 sync_msg = self.prepare("sync:" + page_id + ":" + page_contents)
-                self.broadcast(sync_msg)
+                self.broadcast(sync_msg, do_mesh_propagation=False)
 
-                # Set message propagation mode back to whatever it was before we overwrote it
-                self.write_nodestate(nodeState, 12, previous_message_propagation_mode)
 
             # Write received pagefile data to disk
             if message.startswith("sync:"):
@@ -735,13 +727,8 @@ class Client:
                                 [item[0][10:] for item in election_list if item[0][:10] == "discovery-"])
 
                             if is_cluster_rep:
-                                previous_message_propagation_mode = self.read_nodestate(12)
 
-                                self.write_nodestate(nodeState, 12, True)
-
-                                self.broadcast(self.prepare("fetch:" + hosts_pagefile))
-
-                                self.write_nodestate(nodeState, 12, previous_message_propagation_mode)
+                                self.broadcast(self.prepare("fetch:" + hosts_pagefile), do_mesh_propagation=True)
 
                             module_loaded = ""
                             self.write_nodestate(nodeState, 5, module_loaded)
@@ -802,14 +789,13 @@ class Client:
                 Primitives.log("(vote:) Ongoing election: " + str(ongoing_election), in_log_level="Debug")
                 self.write_nodestate(nodeState, 10, True)   # set ongoing_election = True
 
-                previous_message_propagation_mode = self.read_nodestate(12)
+                # Instead of making global changes to the nodeState, pass a new nodeState to vote
+                # with the appropriate parameters changed...
 
-                self.write_nodestate(nodeState, 12, True)   # Enable mesh-mode message propagation for added redundancy
+                vote_nodeState = nodeState
+                vote_nodeState[12] = True  # Do mesh propagation
 
-                new_nodestate = vote.respond_start(message, nodeState, ongoing_election)
-                self.write_nodestate(nodeState, 12, previous_message_propagation_mode)
-
-                self.overwrite_nodestate(new_nodestate)
+                new_nodestate = vote.respond_start(message, vote_nodeState, ongoing_election)
 
             # Participate in a network election by entering as a candidate
             if message.startswith("campaign:"):
@@ -818,10 +804,6 @@ class Client:
                 arguments = Primitives.parse_cmd(message)
 
                 ongoing_election = self.read_nodestate(10)
-
-                previous_message_propagation_mode = self.read_nodestate(12)
-
-                self.write_nodestate(nodeState, 12, True)  # Enable mesh-style message propagation for extra redundancy
 
                 if not ongoing_election:
                     # We probably received a campaign flag out of order(before a vote:). Let's start that election now.
@@ -843,7 +825,7 @@ class Client:
                     campaign_list.append(campaign_tuple)
                     self.write_nodestate(nodeState, 8, campaign_list)
 
-                    self.broadcast(no_prop+":vote:"+str(election_details[0]))
+                    self.broadcast(no_prop+":vote:"+str(election_details[0]), do_mesh_propagation=True)
 
                 if ongoing_election:
 
@@ -888,7 +870,7 @@ class Client:
                         if this_campaign == int(winning_int):
                             Primitives.log("We won the election for: " + winning_reason, in_log_level="Info")
                             elect_msg = self.prepare("elect:" + winning_reason + ":" + str(Primitives.get_local_ip()))
-                            self.broadcast(elect_msg)
+                            self.broadcast(elect_msg, do_mesh_propagation=True)
 
                             self.write_nodestate(nodeState, 11, True)  # set is_cluster_rep = True
                         else:
@@ -898,8 +880,6 @@ class Client:
                         self.write_nodestate(nodeState, 8, [])  # Clear the campaign_list
                         self.write_nodestate(nodeState, 7, 0)   # reset this_campaign to 0
                         self.write_nodestate(nodeState, 10, False)  # clear ongoing_election
-
-                self.write_nodestate(nodeState, 12, previous_message_propagation_mode)  # Set it back to whatever it was
 
             # Elect the winning node of a network election to their position as cluster representative
             if message.startswith("elect:"):
@@ -1039,6 +1019,8 @@ class Client:
                             external_connection = (socket.socket(), peer_address)
                             self.connect(external_connection, peer_address, PORT)
 
+                        # Great, bootstrapping was successful
+                        # Set global message propagation mode to mesh
                         do_mesh_propagation = self.read_nodestate(12)
 
                         if not do_mesh_propagation:
