@@ -605,6 +605,8 @@ class Client:
             if message.startswith("fetch:"):
                 """ Broadcast the contents of [page id] to maintain distributed memory """
 
+                arguments = Primitives.parse_cmd(message)
+
                 page_id = message[6:]
 
                 # Read contents of page
@@ -620,9 +622,11 @@ class Client:
 
                 page_contents = ''.join(page_lines)
 
-                sync_msg = self.prepare("sync:" + page_id + ":" + page_contents)
-                self.broadcast(sync_msg, do_mesh_propagation=False)
-
+                if arguments[1] == "discovery":
+                    cluser_rep = self.read_nodestate(11)
+                    if cluser_rep:
+                        sync_msg = self.prepare("sync:" + page_id + ":" + page_contents)
+                        self.broadcast(sync_msg, do_mesh_propagation=False)
 
             # Write received pagefile data to disk
             if message.startswith("sync:"):
@@ -736,7 +740,7 @@ class Client:
                                 added_peers = open("../inter/mem/" + hosts_pagefile + ".bin", "r+").readlines()
 
                                 if len(added_peers) == network_size:
-                                    self.broadcast(self.prepare("fetch:" + hosts_pagefile), do_mesh_propagation=False)
+                                    self.broadcast(self.prepare("fetch:discovery" + hosts_pagefile), do_mesh_propagation=False)
 
                             module_loaded = ""
                             self.write_nodestate(nodeState, 5, module_loaded)
