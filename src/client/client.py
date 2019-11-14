@@ -960,8 +960,6 @@ class Client:
                 # Write it to page [op_id]
                 self.write_to_page(op_id, _data, signing=False)
 
-                # Callback to discover module
-                discover.start(net_tuple, op_id, self.read_nodestate(11))
 
             # Ring Network --> Fully-Complete/Mesh network bootstrapping routine
             if message.startswith("bootstrap:"):
