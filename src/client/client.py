@@ -1068,7 +1068,9 @@ class Client:
 
                 # Propagate the message to the rest of the network.
                 Primitives.log(str('Broadcasting: ' + full_message), in_log_level="Debug")
-                self.broadcast(full_message)
+
+                propagation_mode = self.read_nodestate(12)
+                self.broadcast(full_message, do_mesh_propagation=propagation_mode)
 
     def listen(self, connection):
         # Listen for incoming messages and call self.respond() to respond to them.
