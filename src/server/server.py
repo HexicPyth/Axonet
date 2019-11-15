@@ -264,6 +264,7 @@ class Server:
 
         net_tuple = self.read_nodestate(0)
         message_list = self.read_nodestate(1)
+        do_ring_prop = False  # If true, bypass message signature check
 
         try:
             address = connection[1]
@@ -281,10 +282,12 @@ class Server:
             return
 
         if sig == ring_prop:
-            message.replace(message[:16], '')  # Remove the ring-propagation deliminator
+            message = message[17:]  # Remove the ring_prop delimiter
             message_sig = message[:16]  # Signature after removing ring_prop
+
             sig = message_sig
-            
+            message = message[17:]  # Remove the signature
+
             new_message_list = list(message_list)
             new_message_list.append(message_sig)
             self.write_nodestate(nodeState, 1, new_message_list)

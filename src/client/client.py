@@ -416,11 +416,15 @@ class Client:
 
         sleep(random.uniform(0.008, 0.05))  # 8mS - 50mS
 
+        print("Full message " + full_message)
+
         if sig == ring_prop:
-            message.replace(message[:16], '')  # Remove the ring-propagation deliminator
+
+            message = message[17:]  # Remove the ring-propagation deliminator
             message_sig = message[:16]  # Signature after removing ring_prop
 
             sig = message_sig
+            message = message[17:]  # Remove the signature
 
             new_message_list = list(message_list)
             new_message_list.append(message_sig)
@@ -434,6 +438,8 @@ class Client:
 
         # Do respond to messages we have yet to respond to.
         elif sig not in message_list or sig == no_prop:
+            print("Message: "+message)
+
 
             # e.x "Client -> Received: echo (ffffffffffffffff) from: 127.0.0.1"
 
