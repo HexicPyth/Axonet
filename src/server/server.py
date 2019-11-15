@@ -283,7 +283,8 @@ class Server:
         if sig == ring_prop:
             message.replace(message[:16], '')  # Remove the ring-propagation deliminator
             message_sig = message[:16]  # Signature after removing ring_prop
-
+            sig = message_sig
+            
             new_message_list = list(message_list)
             new_message_list.append(message_sig)
             self.write_nodestate(nodeState, 1, new_message_list)
