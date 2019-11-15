@@ -741,7 +741,7 @@ class Client:
 
                             added_peers = open("../inter/mem/" + hosts_pagefile + ".bin", "r+").readlines()
 
-                            if len(added_peers) == network_size and is_cluster_rep:
+                            if is_cluster_rep:
                                 self.broadcast(self.prepare("fetch:discovery" + hosts_pagefile),
                                                do_mesh_propagation=False)
 
