@@ -312,7 +312,7 @@ class Client:
         except OSError:
             self.disconnect(connection)
 
-    def broadcast(self, message, do_mesh_propagation=None):
+    def broadcast(self, message, do_mesh_propagation="not set"):
         global ring_prop
         # do_message_propagation=None means use global config in nodeState[12]
 
@@ -322,11 +322,11 @@ class Client:
         # If not bootstrapped, do ring network propagation. Else, do fully-complete style propagation.
         message_list = self.read_nodestate(1)
 
-        if do_mesh_propagation == None:
+        if do_mesh_propagation == "not set":
             do_mesh_propagation = self.read_nodestate(12)
 
         if not do_mesh_propagation:
-
+            Primitives.log("Message propagation mode: ring", in_log_level="Debug")
             # Network not bootstrapped yet, do ring network propagation
             if message[:16] != ring_prop:
                 message = ring_prop + ":" + message
@@ -336,9 +336,6 @@ class Client:
             """ network bootstrapped or do_mesh_propagation override is active, do fully-complete/mesh style
                 message propagation """
             Primitives.log("Message propagation mode: fully-complete/mesh", in_log_level="Debug")
-
-        else:
-            Primitives.log("Message propagation mode: ring", in_log_level="Debug")
 
         for connection in net_tuple:
             self.send(connection, message, sign=False)  # Send a message to each node( = Broadcast)

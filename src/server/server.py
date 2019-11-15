@@ -140,7 +140,7 @@ class Server:
 
                 self.disconnect(connection)
 
-    def broadcast(self, message, do_mesh_propagation=None):
+    def broadcast(self, message, do_mesh_propagation="not set"):
         global ring_prop
         # do_message_propagation=None means use global config in nodeState[12]
 
@@ -150,7 +150,7 @@ class Server:
         # If not bootstrapped, do ring network propagation. Else, do fully-complete style propagation.
         message_list = self.read_nodestate(1)
 
-        if do_mesh_propagation == None:
+        if do_mesh_propagation == "not set":
             do_mesh_propagation = self.read_nodestate(6)
 
         if not do_mesh_propagation:
