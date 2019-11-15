@@ -376,7 +376,7 @@ class Client:
             data_line = str(data + "\n")
 
         file_path = ("../inter/mem/" + page_id + ".bin")
-        print('Writing '+data+ " to " + page_id + ".bin")
+        print('Writing '+data + " to " + page_id + ".bin")
 
         this_page = open(file_path, "a+")
         this_page.write(data_line)
@@ -416,8 +416,6 @@ class Client:
 
         sleep(random.uniform(0.008, 0.05))  # 8mS - 50mS
 
-        print("Full message " + full_message)
-
         if sig == ring_prop:
 
             message = full_message[17:]  # Remove the ring-propagation deliminator
@@ -429,8 +427,6 @@ class Client:
             new_message_list = list(message_list)
             new_message_list.append(message_sig)
             self.write_nodestate(nodeState, 1, new_message_list)
-            print("Message after ring_prop processing: "+message)
-
 
         # Don't respond to messages we've already responded to.
         if sig in message_list:
@@ -440,14 +436,13 @@ class Client:
 
         # Do respond to messages we have yet to respond to.
         elif sig not in message_list or sig == no_prop:
-            print("Message: "+message)
-
-
-            # e.x "Client -> Received: echo (ffffffffffffffff) from: 127.0.0.1"
 
             if len(message) < 100 and "\n" not in message:
                 message_received_log = str('Received: ' + message
                                            + " (" + sig + ")" + " from: " + address)
+
+                # e.x "Client -> Received: echo (ffffffffffffffff) from: 127.0.0.1"
+
             else:
                 message_received_log = str('Received: ' + message[:16] + "(message truncated)"
                                            + " (" + sig + ")" + " from: " + address)
@@ -897,8 +892,6 @@ class Client:
                                 campaign_int = campaign_tuple[1]
                                 campaign_ints.append(campaign_int)
 
-                        print("Election complete: Campaign list:")
-                        print("\n\n"+str(campaign_ints)+"\n\n")
                         winning_int = max(campaign_ints)
                         winning_reason = ""
 
@@ -989,7 +982,6 @@ class Client:
                 _data = Primitives.get_local_ip()
                 addresses = [item[1] for item in net_tuple]
                 _data += "\n" + '\n'.join(addresses)
-
 
                 # Write it to page [op_id]
                 self.write_to_page(op_id, _data, signing=False)
