@@ -987,7 +987,7 @@ class Client:
 
                 # Get a list of all remote addresses
                 _data = Primitives.get_local_ip()
-                addresses = [item[0] for item in net_tuple]
+                addresses = [item[1] for item in net_tuple]
                 _data += "\n" + random.choice(addresses)
 
 
