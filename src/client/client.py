@@ -608,7 +608,7 @@ class Client:
 
                 arguments = Primitives.parse_cmd(message)
 
-                page_id = arguments[1]
+                page_id = arguments[0]
 
                 # Read contents of page
                 os.chdir(original_path)
