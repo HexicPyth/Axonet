@@ -970,6 +970,7 @@ class Client:
 
                 new_module_loaded = "discover"
                 self.write_nodestate(nodeState, 4, new_module_loaded)  # set module_loaded = "discover"
+                self.write_nodestate(nodeState, 12, True)  # Set network propagation mode to mesh
 
                 arguments = Primitives.parse_cmd(message)  # arguments[0] = op_id = name of pagefile
 
@@ -1053,6 +1054,7 @@ class Client:
 
                         # Great, bootstrapping was successful
                         # Set global message propagation mode to mesh
+                        # This was probably already run by sharepeers: assuming peer discovery was run...
                         do_mesh_propagation = self.read_nodestate(12)
 
                         if not do_mesh_propagation:
