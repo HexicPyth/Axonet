@@ -24,6 +24,7 @@ import primitives
 localhost = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes TIME_WAIT-ing. Add SO_REUSEADDR.
 
+ring_prop = "eeeeeeeeeeeeeeee"
 no_prop = "ffffffffffffffff"  # a message with a true hash indicates that no message propagation is needed.
 log_level = ""  # "Debug", "Info", or "Warning"; will be set by self.initialize()
 sub_node = "Server"
@@ -139,24 +140,34 @@ class Server:
 
                 self.disconnect(connection)
 
-    def broadcast(self, message):
+    def broadcast(self, message, do_mesh_propagation=None):
+        global ring_prop
+        # do_message_propagation=None means use global config in nodeState[12]
 
+        self.permute_network_tuple()
         net_tuple = self.read_nodestate(0)
-        bootstrapped = self.read_nodestate(6)
+
+        # If not bootstrapped, do ring network propagation. Else, do fully-complete style propagation.
         message_list = self.read_nodestate(1)
 
-        if not bootstrapped:
-            sig = message[:16]
-            message_list.append(sig)
+        if do_mesh_propagation == None:
+            do_mesh_propagation = self.read_nodestate(6)
+
+        if not do_mesh_propagation:
+            # Network not bootstrapped yet, do ring network propagation
+            message = ring_prop + ":" + message
             self.write_nodestate(nodeState, 1, message_list)
 
+        if do_mesh_propagation:
+            """ network bootstrapped or do_mesh_propagation override is active, do fully-complete/mesh style
+                message propagation """
+            Primitives.log("Message propagation mode: fully-complete/mesh", in_log_level="Debug")
+
+        else:
+            Primitives.log("Message propagation mode: ring", in_log_level="Debug")
+
         for connection in net_tuple:
-            address = connection[1]
-
-            log_msg = str("Sending to: "+address)
-            Primitives.log(log_msg, in_log_level="Debug")
-
-            self.send(connection, message, signing=False)  # For each of them send the given message( = Broadcast)
+            self.send(connection, message, signing=False)  # Send a message to each node( = Broadcast)
 
     def append(self, in_socket, address):
         """ Add a connection to the network tuple. Doesn't return."""
@@ -266,6 +277,14 @@ class Server:
              Permit localhost disconnect..."""
             self.disconnect(connection, disallow_local_disconnect=False)
             return
+
+        if sig == ring_prop:
+            message.replace(message[:16], '')  # Remove the ring-propagation deliminator
+            message_sig = message[:16]  # Signature after removing ring_prop
+
+            new_message_list = list(message_list)
+            new_message_list.append(message_sig)
+            self.write_nodestate(nodeState, 1, new_message_list)
 
         # Server received a unique message. Respond accordingly.
         if sig not in message_list:

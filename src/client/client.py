@@ -37,6 +37,7 @@ allow_command_execution = False  # Don't execute arbitrary UNIX commands when ca
 log_level = ""  # "Debug", "Info", or "Warning"; To be set by init
 sub_node = "Client"
 no_prop = "ffffffffffffffff"  # True:[message] = No message propagation.
+ring_prop = "eeeeeeeeeeeeeeee"
 SALT = None  # Will be set to a 128-bit hexadecimal token(by self.init) for making address identifiers
 ADDR_ID = None  # Another 128-bit hexadecimal token that wil be salted with SALT, and set by init()
 original_path = os.path.dirname(os.path.realpath(__file__))
@@ -312,6 +313,7 @@ class Client:
             self.disconnect(connection)
 
     def broadcast(self, message, do_mesh_propagation=None):
+        global ring_prop
         # do_message_propagation=None means use global config in nodeState[12]
 
         self.permute_network_tuple()
@@ -326,8 +328,7 @@ class Client:
         if not do_mesh_propagation:
 
             # Network not bootstrapped yet, do ring network propagation
-            sig = message[:16]
-            message_list.append(sig)
+            message = ring_prop + ":" + message
             self.write_nodestate(nodeState, 1, message_list)
 
         if do_mesh_propagation:
@@ -374,6 +375,7 @@ class Client:
             data_line = str(data + "\n")
 
         file_path = ("../inter/mem/" + page_id + ".bin")
+        print('Writing '+data+ " to " + page_id + ".bin")
 
         this_page = open(file_path, "a+")
         this_page.write(data_line)
@@ -387,6 +389,7 @@ class Client:
         global network_size
         global log_level
         global nodeState
+        global ring_prop
 
         full_message = str(msg)
         message = full_message[17:]  # Message without signature
@@ -411,6 +414,14 @@ class Client:
         # impossible to derive message paths through timing analysis alone.
 
         sleep(random.uniform(0.008, 0.05))  # 8mS - 50mS
+
+        if sig == ring_prop:
+            message.replace(message[:16], '')  # Remove the ring-propagation deliminator
+            message_sig = message[:16]  # Signature after removing ring_prop
+
+            new_message_list = list(message_list)
+            new_message_list.append(message_sig)
+            self.write_nodestate(nodeState, 1, new_message_list)
 
         # Don't respond to messages we've already responded to.
         if sig in message_list:
@@ -601,7 +612,7 @@ class Client:
 
                 self.write_nodestate(nodeState, 6, page_list)
 
-            # Retrieve a file from distributed memory by instructing all nodes to sync: the contents of some pagefile
+            # Retrieve a file from distributed memory by instructing all nodes to sync the contents of some pagefile
             if message.startswith("fetch:"):
                 # fetch:pagefile:[optional task identifier]
                 """ Broadcast the contents of [page id] to maintain distributed memory """
@@ -623,17 +634,8 @@ class Client:
 
                 page_contents = ''.join(page_lines)
 
-                try:
-                    if arguments[1] == "discovery":
-                        cluser_rep = self.read_nodestate(11)
-                        if cluser_rep:
-                            sync_msg = self.prepare("sync:" + page_id + ":" + page_contents)
-                            self.broadcast(sync_msg, do_mesh_propagation=False)
-
-                except IndexError:
-                    print("!!!!!")
-                    sync_msg = self.prepare("sync:" + page_id + ":" + page_contents)
-                    self.broadcast(sync_msg, do_mesh_propagation=False)
+                sync_msg = self.prepare("sync:" + page_id + ":" + page_contents)
+                self.broadcast(sync_msg, do_mesh_propagation=False)
 
             # Write received pagefile data to disk
             if message.startswith("sync:"):
