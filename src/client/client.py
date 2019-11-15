@@ -645,8 +645,16 @@ class Client:
 
                 page_contents = ''.join(page_lines)
 
-                sync_msg = self.prepare("sync:" + page_id + ":" + page_contents)
-                self.broadcast(sync_msg, do_mesh_propagation=False)
+                if arguments[1] == "discovery":
+                    is_cluster_rep = self.read_nodestate(11)
+
+                    if is_cluster_rep or len(page_lines) == network_size:
+                        sync_msg = self.prepare("sync:" + page_id + ":" + page_contents)
+                        self.broadcast(sync_msg, do_mesh_propagation=False)
+
+                else:
+                    sync_msg = self.prepare("sync:" + page_id + ":" + page_contents)
+                    self.broadcast(sync_msg, do_mesh_propagation=False)
 
             # Write received pagefile data to disk
             if message.startswith("sync:"):
