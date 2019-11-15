@@ -140,7 +140,7 @@ class Server:
 
                 self.disconnect(connection)
 
-    def broadcast(self, message, do_mesh_propagation="not set"):
+    def broadcast(self, message, do_mesh_propagation=True):
         global ring_prop
         # do_message_propagation=None means use global config in nodeState[12]
 
