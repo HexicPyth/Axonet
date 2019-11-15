@@ -630,6 +630,7 @@ class Client:
                             self.broadcast(sync_msg, do_mesh_propagation=False)
 
                 except IndexError:
+                    print("!!!!!")
                     sync_msg = self.prepare("sync:" + page_id + ":" + page_contents)
                     self.broadcast(sync_msg, do_mesh_propagation=False)
 
