@@ -603,11 +603,12 @@ class Client:
 
             # Retrieve a file from distributed memory by instructing all nodes to sync: the contents of some pagefile
             if message.startswith("fetch:"):
+                # fetch:pagefile:[optional task identifier]
                 """ Broadcast the contents of [page id] to maintain distributed memory """
 
                 arguments = Primitives.parse_cmd(message)
 
-                page_id = message[6:]
+                page_id = arguments[1]
 
                 # Read contents of page
                 os.chdir(original_path)
