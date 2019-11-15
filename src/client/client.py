@@ -879,6 +879,8 @@ class Client:
                             campaign_int = campaign_tuple[1]
                             campaign_ints.append(campaign_int)
 
+                        print("Election complete: Campaign list:")
+                        print("\n\n"+str(campaign_ints)+"\n\n")
                         winning_int = max(campaign_ints)
                         winning_reason = ""
 
