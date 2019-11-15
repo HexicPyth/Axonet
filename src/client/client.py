@@ -328,8 +328,9 @@ class Client:
         if not do_mesh_propagation:
 
             # Network not bootstrapped yet, do ring network propagation
-            message = ring_prop + ":" + message
-            self.write_nodestate(nodeState, 1, message_list)
+            if message[:16] != ring_prop:
+                message = ring_prop + ":" + message
+                self.write_nodestate(nodeState, 1, message_list)
 
         if do_mesh_propagation:
             """ network bootstrapped or do_mesh_propagation override is active, do fully-complete/mesh style
