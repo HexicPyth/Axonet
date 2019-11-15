@@ -420,15 +420,17 @@ class Client:
 
         if sig == ring_prop:
 
-            message = message[17:]  # Remove the ring-propagation deliminator
+            message = full_message[17:]  # Remove the ring-propagation deliminator
             message_sig = message[:16]  # Signature after removing ring_prop
 
             sig = message_sig
-            message = message[17:]  # Remove the signature
+            message = message[17:]  # remove the signature
 
             new_message_list = list(message_list)
             new_message_list.append(message_sig)
             self.write_nodestate(nodeState, 1, new_message_list)
+            print("Message after ring_prop processing: "+message)
+
 
         # Don't respond to messages we've already responded to.
         if sig in message_list:

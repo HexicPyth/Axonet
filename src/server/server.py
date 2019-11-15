@@ -282,11 +282,11 @@ class Server:
             return
 
         if sig == ring_prop:
-            message = message[17:]  # Remove the ring_prop delimiter
+            message = full_message[17:]  # Remove the ring-propagation deliminator
             message_sig = message[:16]  # Signature after removing ring_prop
 
             sig = message_sig
-            message = message[17:]  # Remove the signature
+            message = message[17:]  # remove the signature
 
             new_message_list = list(message_list)
             new_message_list.append(message_sig)
