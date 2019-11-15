@@ -49,6 +49,6 @@ def respond_start(message, nodeState, ongoing_election):
 
         _primitives.log("Campaigning for " + str(campaign_int), in_log_level="Info")
         campaign_msg = _client.prepare("campaign:" + reason + ":" + str(campaign_int))
-        _client.broadcast(campaign_msg)
+        _client.broadcast(campaign_msg, do_mesh_propagation=True)
 
     return new_nodestate
