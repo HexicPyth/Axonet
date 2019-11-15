@@ -739,15 +739,11 @@ class Client:
                             hosts_pagefile = ''.join(
                                 [item[0][10:] for item in election_list if item[0][:10] == "discovery-"])
 
-                            if is_cluster_rep:
+                            added_peers = open("../inter/mem/" + hosts_pagefile + ".bin", "r+").readlines()
 
-                                hosts_pagefile = ''.join(
-                                    [item[0][10:] for item in election_list if item[0][:10] == "discovery-"])
-
-                                added_peers = open("../inter/mem/" + hosts_pagefile + ".bin", "r+").readlines()
-
-                                if len(added_peers) == network_size:
-                                    self.broadcast(self.prepare("fetch:discovery" + hosts_pagefile), do_mesh_propagation=False)
+                            if len(added_peers) == network_size and is_cluster_rep:
+                                self.broadcast(self.prepare("fetch:discovery" + hosts_pagefile),
+                                               do_mesh_propagation=False)
 
                             module_loaded = ""
                             self.write_nodestate(nodeState, 5, module_loaded)
