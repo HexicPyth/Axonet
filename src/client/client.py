@@ -876,8 +876,9 @@ class Client:
                         campaign_ints = []
 
                         for campaign_tuple in campaign_list:
-                            campaign_int = campaign_tuple[1]
-                            campaign_ints.append(campaign_int)
+                            if campaign_tuple[0] == arguments[0]:
+                                campaign_int = campaign_tuple[1]
+                                campaign_ints.append(campaign_int)
 
                         print("Election complete: Campaign list:")
                         print("\n\n"+str(campaign_ints)+"\n\n")
