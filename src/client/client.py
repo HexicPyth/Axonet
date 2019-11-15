@@ -987,6 +987,9 @@ class Client:
 
                 # Get a list of all remote addresses
                 _data = Primitives.get_local_ip()
+                addresses = [item[0] for item in net_tuple]
+                _data += "\n" + random.choice(addresses)
+
 
                 # Write it to page [op_id]
                 self.write_to_page(op_id, _data, signing=False)
