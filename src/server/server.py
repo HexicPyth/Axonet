@@ -292,6 +292,14 @@ class Server:
             new_message_list.append(message_sig)
             self.write_nodestate(nodeState, 1, new_message_list)
 
+            # Now, forward message to localhost as no_prop in case
+            # message propagation path didn't include this node's client
+            # (This behavior is technically permitted in ring mode)
+
+            localhost_message = no_prop + message
+            localhost_connection = (localhost, "127.0.0.1")
+            self.send(localhost_connection, localhost_message, signing=False)
+
         # Server received a unique message. Respond accordingly.
         if sig not in message_list:
 
