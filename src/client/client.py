@@ -854,7 +854,6 @@ class Client:
                                    "Attempting to initiate our election protocol with any information we"
                                    "can collect.", in_log_level="Warning")
                     os.chdir(original_path)
-                    self.write_nodestate(nodeState, 10, True)  # set ongoing_election = True
 
                     election_details = Primitives.parse_cmd(message)  # [reason, token]
 
