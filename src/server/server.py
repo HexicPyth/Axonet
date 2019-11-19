@@ -422,6 +422,12 @@ class Server:
 
                     self.send(localhost_connection, full_message, signing=False)
 
+        # If message propagation allows, forward all received message to client as no_prop.
+        if sig != no_prop and sig != ring_prop:
+            message_to_client = no_prop+message
+            localhost_connection = (localhost, "127.0.0.1")
+            self.send(localhost_connection, message_to_client)
+
     def disconnect(self, connection, disallow_local_disconnect=True):
         """Try to disconnect from a socket as cleanly as possible.
            Doesn't return anything. """
