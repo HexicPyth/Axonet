@@ -637,14 +637,17 @@ class Client:
 
                 page_contents = ''.join(page_lines)
 
-                if arguments[1] == "discovery":
-                    is_cluster_rep = self.read_nodestate(11)
+                try:
+                    if arguments[1] == "discovery":
+                        is_cluster_rep = self.read_nodestate(11)
 
-                    if is_cluster_rep or len(page_lines) == network_size:
-                        sync_msg = self.prepare("sync:" + page_id + ":" + page_contents)
-                        self.broadcast(sync_msg, do_mesh_propagation=True)
+                        if is_cluster_rep or len(page_lines) == network_size:
+                            sync_msg = self.prepare("sync:" + page_id + ":" + page_contents)
+                            self.broadcast(sync_msg, do_mesh_propagation=True)
 
-                else:
+                # Else if arguments[1] doesn't exist queue a normal fetch: routine
+                except TypeError:
+
                     sync_msg = self.prepare("sync:" + page_id + ":" + page_contents)
                     self.broadcast(sync_msg, do_mesh_propagation=True)
 
@@ -659,6 +662,8 @@ class Client:
                 page_id = message[5:][:16]  # First 16 bytes after removing the 'sync:' flag
                 sync_data = message[22:]
 
+                print("Message: ")
+                print("\n\nSync Data: "+sync_data)
                 Primitives.log("Syncing " + sync_data + " into page:" + page_id, in_log_level="Debug")
 
                 file_path = "../inter/mem/" + page_id + ".bin"
@@ -849,6 +854,8 @@ class Client:
                                    "Attempting to initiate our election protocol with any information we"
                                    "can collect.", in_log_level="Warning")
                     os.chdir(original_path)
+                    self.write_nodestate(nodeState, 10, True)  # set ongoing_election = True
+
                     election_details = Primitives.parse_cmd(message)  # [reason, token]
 
                     # Before we (hopefully) receive a vote flag: the election list is empty. Populate it
