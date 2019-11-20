@@ -671,12 +671,19 @@ class Client:
                 file_exists = False
 
                 try:
-                    existing_pagelines = open(file_path, "r+").readlines()
+                    raw_lines = open(file_path, "r+").readlines()
+
+                    # Don't include comments
+                    valid_pagelines = [raw_line for raw_line in raw_lines
+                                if raw_line != "\n" and raw_line[:2] != "##"]
+
+                    line_count = len(valid_pagelines)
                     file_exists = True
 
                 except FileNotFoundError:
                     Primitives.log("Cannot open a non-existent page")
-                    existing_pagelines = []  # Stop PyCharm from telling me this is referenced before assignment
+                    valid_pagelines = []  # Stop PyCharm from telling me this is referenced before assignment
+                    line_count = 0
 
                 if file_exists:
                     duplicate = False
@@ -685,7 +692,7 @@ class Client:
                     Primitives.log("Receiving " + str(len(sync_data)) + " bytes of data from network",
                                    in_log_level="Info")
 
-                    for line in existing_pagelines:
+                    for line in valid_pagelines:
 
                         if log_level == "Debug":
                             print("Line: "+line)
@@ -711,8 +718,19 @@ class Client:
 
                             else:
                                 if log_level == "Debug":
-                                    print("Writing " + sync_data + "to page " + page_id)
-                                    self.write_to_page(page_id, sync_data, signing=False)
+                                    module_loaded = self.read_nodestate(5)
+
+                                    do_write = False
+
+                                    if module_loaded == "discovery":
+                                        if line_count < network_size:
+                                            do_write = True
+                                    else:
+                                        do_write = True
+
+                                    if do_write:
+                                        print("Writing " + sync_data + "to page " + page_id)
+                                        self.write_to_page(page_id, sync_data, signing=False)
                                 else:
                                     Primitives.log("Writing " + str(len(sync_data)) + " bytes to " + page_id + ".bin",
                                                    in_log_level="Info")
