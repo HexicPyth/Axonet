@@ -30,7 +30,6 @@ localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes 
 # Mutable state; Write with writeState(), Read with readState(). Contains default values until changed
 nodeState = [(), [], False, False, [], "", [], 0, [], [], False, False, False]
 
-
 # Immutable state: Constant node parameters set upon initialization
 PORT = 3705
 allow_command_execution = False  # Don't execute arbitrary UNIX commands when casually asked, that's bad :]
@@ -44,6 +43,7 @@ original_path = os.path.dirname(os.path.realpath(__file__))
 network_size = 0
 network_architecture = ""  # "complete" or "mesh"
 output_node = ""  # Address of one remote node from init_client
+our_part_numbers = []
 
 os.chdir(original_path)
 Primitives = primitives.Primitives(sub_node, log_level)
@@ -373,7 +373,7 @@ class Client:
             data_line = str(data + "\n")
 
         file_path = ("../inter/mem/" + page_id + ".bin")
-        print('Writing '+data + " to " + page_id + ".bin")
+        print('Writing ' + data + " to " + page_id + ".bin")
 
         this_page = open(file_path, "a+")
         this_page.write(data_line)
@@ -414,7 +414,6 @@ class Client:
         sleep(random.uniform(0.008, 0.05))  # 8mS - 50mS
 
         if sig == ring_prop:
-
             message = full_message[17:]  # Remove the ring-propagation deliminator
             message_sig = message[:16]  # Signature after removing ring_prop
 
@@ -683,8 +682,8 @@ class Client:
                     for line in existing_pagelines:
 
                         if log_level == "Debug":
-                            print("Line: "+line)
-                            print('Data: '+sync_data)
+                            print("Line: " + line)
+                            print('Data: ' + sync_data)
 
                         if line == sync_data:
                             duplicate = True
@@ -724,14 +723,14 @@ class Client:
                     raw_lines = list(set(open(file_path).readlines()))
 
                     existing_lines = [raw_line for raw_line in raw_lines
-                                if raw_line != "\n" and raw_line[:2] != "##"]
+                                      if raw_line != "\n" and raw_line[:2] != "##"]
 
                     # Write changes to page
                     open(file_path, 'w').writelines(set(existing_lines))
 
                     # Wait for each node to contribute before doing module-specific I/O
                     Primitives.log("\n\t" + str(len(existing_lines)) + " Node(s) have contributed to the network."
-                                                                 "\n The network tuple(+1) is of length: "
+                                                                       "\n The network tuple(+1) is of length: "
                                    + str(len(net_tuple) + 1), in_log_level="Debug")
 
                     if len(existing_lines) >= network_size:
@@ -763,7 +762,8 @@ class Client:
 
             if message.startswith("find:"):
                 import finder
-                finder.respond_start(message, sub_node, log_level)
+                global our_part_numbers
+                finder.respond_start(message, sub_node, log_level, our_part_numbers)
 
             # Provide server's a means of communicating readiness to clients. This is used during file proxying
             # to form a feedback loop between the proxy and client, that way the client doesn't ever exceed the
@@ -822,7 +822,7 @@ class Client:
 
                 ongoing_election = self.read_nodestate(10)
                 Primitives.log("(vote:) Ongoing election: " + str(ongoing_election), in_log_level="Debug")
-                self.write_nodestate(nodeState, 10, True)   # set ongoing_election = True
+                self.write_nodestate(nodeState, 10, True)  # set ongoing_election = True
 
                 # Instead of making global changes to the nodeState, pass a new nodeState to vote
                 # with the appropriate parameters changed...
@@ -858,7 +858,7 @@ class Client:
                     campaign_list.append(campaign_tuple)
                     self.write_nodestate(nodeState, 8, campaign_list)
 
-                    self.broadcast(no_prop+":vote:"+str(election_details[0]), do_mesh_propagation=True)
+                    self.broadcast(no_prop + ":vote:" + str(election_details[0]), do_mesh_propagation=True)
 
                 if ongoing_election:
 
@@ -874,12 +874,11 @@ class Client:
                     for item in campaign_list:
 
                         if item[0].startswith(arguments[0]):
-
                             this_campaign_list.append(item)
 
                     this_campaign_list = list(set(this_campaign_list))
 
-                    Primitives.log(str(len(this_campaign_list)) + " nodes have cast votes for "+election_details[0])
+                    Primitives.log(str(len(this_campaign_list)) + " nodes have cast votes for " + election_details[0])
                     # Wait for all votes to be cast
                     if len(this_campaign_list) == network_size:
                         campaign_ints = []
@@ -912,7 +911,7 @@ class Client:
 
                         # Cleanup
                         self.write_nodestate(nodeState, 8, [])  # Clear the campaign_list
-                        self.write_nodestate(nodeState, 7, 0)   # reset this_campaign to 0
+                        self.write_nodestate(nodeState, 7, 0)  # reset this_campaign to 0
                         self.write_nodestate(nodeState, 10, False)  # clear ongoing_election
 
             # Elect the winning node of a network election to their position as cluster representative
@@ -956,7 +955,7 @@ class Client:
                     is_cluster_rep = self.read_nodestate(11)
                     self.write_nodestate(nodeState, 10, False)  # Set ongoing_election = False
 
-                    Primitives.log("(end of vote:) Ongoing election: "+str(self.read_nodestate(10)),
+                    Primitives.log("(end of vote:) Ongoing election: " + str(self.read_nodestate(10)),
                                    in_log_level="Debug")
 
                     Primitives.log(str(new_election_list), in_log_level="Debug")
@@ -1012,7 +1011,7 @@ class Client:
                     pagefile.close()
 
                 except FileNotFoundError:
-                    Primitives.log(hosts_pagefile+".bin" + " does not exist.", in_log_level="Warning")
+                    Primitives.log(hosts_pagefile + ".bin" + " does not exist.", in_log_level="Warning")
                     potential_peers = None
 
                 chosen_peers = []
@@ -1091,7 +1090,7 @@ class Client:
                     if incoming:
                         self.respond(conn, raw_message)
 
-                except ArithmeticError:   # DEBUG TypeError
+                except ArithmeticError:  # DEBUG TypeError
                     conn_severed_msg = str("Connection to " + str(in_sock)
                                            + "was severed or disconnected."
                                            + "(TypeError: listen() -> listener_thread()")
@@ -1148,7 +1147,7 @@ class Client:
         os._exit(0)  # kill oneself with passion
 
     def initialize(self, port=3705, net_architecture="complete", remote_addresses=None, command_execution=False,
-                   default_log_level="Debug", modules=None, net_size=0):
+                   default_log_level="Debug", modules=None, net_size=0, assigned_part_numbers=[]):
 
         # Initialize the client, set any global variable that need to be set, etc.
 
@@ -1163,6 +1162,7 @@ class Client:
         global network_architecture
         global network_size
         global output_node
+        global our_part_numbers
 
         # Global variable assignment
         PORT = port
@@ -1170,6 +1170,7 @@ class Client:
         log_level = default_log_level
         network_architecture = net_architecture
         network_size = net_size
+        our_part_numbers = assigned_part_numbers
 
         if remote_addresses:
             output_node = random.choice(remote_addresses)
