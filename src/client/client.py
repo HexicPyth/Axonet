@@ -635,7 +635,7 @@ class Client:
                     if string[:1] == "#":
                         page_lines.remove(string)
 
-                page_contents = ''.join(page_lines)
+                page_contents = ''.join(set(list(page_lines)))
                 print("Page contents:")
                 try:
                     if arguments[1] == "discovery":
