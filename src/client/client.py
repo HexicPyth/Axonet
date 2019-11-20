@@ -984,8 +984,13 @@ class Client:
 
                 # Get a list of all remote addresses
                 _data = Primitives.get_local_ip()
+
+                print("Local IP: "+_data)
+
                 addresses = [item[1] for item in net_tuple]
                 _data += "\n" + '\n'.join(addresses)
+
+                print("Writing Data: "+_data)
 
                 # Write it to page [op_id]
                 self.write_to_page(op_id, _data, signing=False)
