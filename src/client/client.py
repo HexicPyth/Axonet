@@ -411,7 +411,7 @@ class Client:
         # Introduce additional network mixing anonymity by introducing a random delay makes it difficult or
         # impossible to derive message paths through timing analysis alone.
 
-        sleep(random.uniform(0.008, 0.05))  # 8mS - 50mS
+        sleep(random.uniform(0.012, 0.08))  # 12mS - 80mS
 
         if sig == ring_prop:
 
@@ -636,7 +636,7 @@ class Client:
                         page_lines.remove(string)
 
                 page_contents = ''.join(page_lines)
-
+                print("Page contents:")
                 try:
                     if arguments[1] == "discovery":
                         is_cluster_rep = self.read_nodestate(11)
