@@ -45,7 +45,7 @@ def respond_start(message, nodeState, ongoing_election):
         new_nodestate = _client.write_nodestate(new_nodestate, 9, election_list, void=False)
 
         campaign_int = random.randint(1, 2 ** 128)
-        new_nodestate = _client.write_nodestate(nodeState, 7, campaign_int, void=False)
+        new_nodestate = _client.write_nodestate(new_nodestate, 7, campaign_int, void=False)
 
         _primitives.log("Campaigning for " + str(campaign_int), in_log_level="Info")
         campaign_msg = _client.prepare("campaign:" + reason + ":" + str(campaign_int))
