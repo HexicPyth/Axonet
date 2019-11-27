@@ -879,7 +879,7 @@ class Client:
                 # This node has initialized it's election_list, do actual campaign work...
                 # If election_list[election_tuple_index] is not -1 or "TBD" then that election has already completed
                 # so we don't want to disrupt it by continuing to campaign after-the-fact...
-                elif election_list[election_tuple_index] == "TBD":
+                elif election_list[election_tuple_index][0] == "TBD":
 
                     campaign_tuple = tuple(election_details)
 
