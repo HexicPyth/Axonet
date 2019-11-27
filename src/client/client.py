@@ -989,9 +989,12 @@ class Client:
 
             # Write the remote addresses of all connected nodes to the pagefile established by $discover
             if message.startswith("sharepeers:"):
+                # sharepeers:pagefile
+
                 os.chdir(original_path)
                 import discover
 
+                election_list = self.read_nodestate(9)
                 new_module_loaded = "discover"
                 self.write_nodestate(nodeState, 4, new_module_loaded)  # set module_loaded = "discover"
                 self.write_nodestate(nodeState, 12, True)  # Set network propagation mode to mesh
@@ -1014,7 +1017,9 @@ class Client:
                 self.write_to_page(op_id, _data, signing=False)
 
                 # Callback to discover module
-                is_cluster_rep = self.read_nodestate(11)
+                is_cluster_rep = (Primitives.find_representative(election_list, "discovery-"+op_id)
+                                  == Primitives.get_local_ip())
+
                 print("Is cluster rep: "+str(is_cluster_rep))
                 discover.start(net_tuple, op_id, is_cluster_rep)
 
