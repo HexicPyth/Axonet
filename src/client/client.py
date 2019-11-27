@@ -898,6 +898,7 @@ class Client:
 
                     Primitives.log(str(len(this_campaign_list)) + " nodes have cast votes for "+election_details[0])
                     Primitives.log("Network size: "+str(network_size))
+
                     # Wait for all votes to be cast
                     if len(this_campaign_list) == network_size:
                         campaign_ints = []
@@ -931,7 +932,6 @@ class Client:
                             self.write_nodestate(nodeState, 11, False)  # set is_cluster_rep = False
 
                         # Cleanup
-                        self.write_nodestate(nodeState, 8, [])  # Clear the campaign_list
                         self.write_nodestate(nodeState, 7, 0)   # reset this_campaign to 0
                         self.write_nodestate(nodeState, 10, False)  # clear ongoing_election
 
