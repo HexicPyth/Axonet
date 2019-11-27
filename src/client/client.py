@@ -928,6 +928,7 @@ class Client:
                             self.broadcast(elect_msg, do_mesh_propagation=True)
 
                             self.write_nodestate(nodeState, 11, True)  # set is_cluster_rep = True
+
                         else:
                             self.write_nodestate(nodeState, 11, False)  # set is_cluster_rep = False
 
@@ -974,11 +975,13 @@ class Client:
                     self.write_nodestate(nodeState, 9, new_election_list)
 
                     op_id = reason[10:]
-                    is_cluster_rep = self.read_nodestate(11)
+
+                    is_cluster_rep = (new_leader == Primitives.get_local_ip())
                     self.write_nodestate(nodeState, 10, False)  # Set ongoing_election = False
 
                     Primitives.log("(end of vote:) Ongoing election: "+str(self.read_nodestate(10)),
                                    in_log_level="Debug")
+                    print("is_cluster_rep: "+str(is_cluster_rep))
 
                     Primitives.log(str(new_election_list), in_log_level="Debug")
 
