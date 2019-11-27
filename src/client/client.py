@@ -1014,7 +1014,9 @@ class Client:
                 self.write_to_page(op_id, _data, signing=False)
 
                 # Callback to discover module
-                discover.start(net_tuple, op_id, self.read_nodestate(11))
+                is_cluster_rep = self.read_nodestate(11)
+                print("Is cluster rep: "+str(is_cluster_rep))
+                discover.start(net_tuple, op_id, is_cluster_rep)
 
             # Ring Network --> Fully-Complete/Mesh network bootstrapping routine
             if message.startswith("bootstrap:"):
