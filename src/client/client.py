@@ -843,50 +843,43 @@ class Client:
             if message.startswith("vote:"):
                 import vote
 
-                ongoing_election = self.read_nodestate(10)
-                Primitives.log("(vote:) Ongoing election: " + str(ongoing_election), in_log_level="Debug")
-                self.write_nodestate(nodeState, 10, True)   # set ongoing_election = True
+                arguments = Primitives.parse_cmd(message)
+                reason = arguments[0]
+                self.write_nodestate(nodeState, 10, True)
 
                 # Instead of making global changes to the nodeState, pass a new nodeState to vote
                 # with the appropriate parameters changed...
 
-                new_nodestate = vote.respond_start(message, nodeState, ongoing_election)
+                new_nodestate = vote.respond_start(reason, nodeState)
                 self.overwrite_nodestate(new_nodestate)
 
             # Participate in a network election by entering as a candidate
             if message.startswith("campaign:"):
                 # example message: campaign:do_stuff:01234566789
 
-                arguments = Primitives.parse_cmd(message)
+                import vote
 
-                ongoing_election = self.read_nodestate(10)
+                election_details = Primitives.parse_cmd(message)  # ("reason", "representative")
+                reason = election_details[0]
 
-                if not ongoing_election:
-                    # We probably received a campaign flag out of order(before a vote:). Let's start that election now.
-                    # ------------------------------------------------------
-                    # Intended vote flag: vote:reason (received out of order)
-                    # Received campaign flag: campaign:reason:token (will suffice)
-                    # Reconstruct the lost vote: from the campaign: arguments
+                election_list = self.read_nodestate(9)
+                election_tuple_index = Primitives.find_election_index(election_list, reason)
+
+                print(election_tuple_index)
+                # If this node hasn't yet initialized it's election_list for (reason, "TBD") or (reason, representative)
+                if election_tuple_index == -1:
+                    self.write_nodestate(nodeState, 10, True)
+
+                    vote.respond_start(reason, nodeState)
 
                     Primitives.log("Received a campaign: flag out of order(i.e before the vote: flag)."
                                    "Attempting to initiate our election protocol with any information we"
                                    "can collect.", in_log_level="Warning")
-                    os.chdir(original_path)
 
-                    election_details = Primitives.parse_cmd(message)  # [reason, token]
-
-                    # Before we (hopefully) receive a vote flag: the election list is empty. Populate it
-                    campaign_tuple = tuple(election_details)
-                    campaign_list = self.read_nodestate(8)
-
-                    campaign_list.append(campaign_tuple)
-                    self.write_nodestate(nodeState, 8, campaign_list)
-
-                    self.broadcast(no_prop+":vote:"+str(election_details[0]), do_mesh_propagation=True)
-
-                if ongoing_election:
-
-                    election_details = Primitives.parse_cmd(message)  # [reason, token]
+                # This node has initialized it's election_list, do actual campaign work...
+                # If election_list[election_tuple_index] is not -1 or "TBD" then that election has already completed
+                # so we don't want to disrupt it by continuing to campaign after-the-fact...
+                elif election_list[election_tuple_index] == "TBD":
 
                     campaign_tuple = tuple(election_details)
 
@@ -897,7 +890,7 @@ class Client:
 
                     for item in campaign_list:
 
-                        if item[0].startswith(arguments[0]):
+                        if item[0].startswith(election_details[0]):
 
                             this_campaign_list.append(item)
 
@@ -909,7 +902,9 @@ class Client:
                         campaign_ints = []
 
                         for campaign_tuple in campaign_list:
-                            if campaign_tuple[0] == arguments[0]:
+
+                            if campaign_tuple[0] == election_details[0]:
+
                                 campaign_int = campaign_tuple[1]
                                 campaign_ints.append(campaign_int)
 
