@@ -897,6 +897,7 @@ class Client:
                     this_campaign_list = list(set(this_campaign_list))
 
                     Primitives.log(str(len(this_campaign_list)) + " nodes have cast votes for "+election_details[0])
+                    Primitives.log("Network size: "+str(network_size))
                     # Wait for all votes to be cast
                     if len(this_campaign_list) == network_size:
                         campaign_ints = []
@@ -952,6 +953,7 @@ class Client:
 
                 self.write_nodestate(nodeState, 9, new_election_list)  # Update the election list
 
+                print("New election list: "+str(new_election_list))
                 election_winner_msg = str(new_leader) + " won the election for:" + reason
                 Primitives.log(election_winner_msg, in_log_level="Info")
 
