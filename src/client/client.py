@@ -651,8 +651,12 @@ class Client:
                 print("Page contents:")
 
                 try:
+                    election_list = self.read_nodestate(9)
+
                     if arguments[1] == "discovery":
-                        is_cluster_rep = self.read_nodestate(11)
+
+                        is_cluster_rep = (Primitives.find_representative(election_list, "discovery-" + page_id)
+                                          == Primitives.get_local_ip())
 
                         if is_cluster_rep or len(page_lines) == network_size:
                             sync_msg = self.prepare("sync:" + page_id + ":" + page_contents)
