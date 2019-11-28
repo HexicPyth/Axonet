@@ -476,7 +476,7 @@ class Client:
 
                 # Inform localhost to follow suit.
                 localhost_connection = (localhost, "127.0.0.1")
-                self.send(localhost_connection, "rstop")
+                self.send(localhost_connection, "stop")
 
                 # The node will already be terminated by the time it gets to the end of the function and runs the
                 # message propagation algorithm; broadcast now, then stop
