@@ -397,9 +397,7 @@ class Client:
         os.chdir(original_path)
 
         net_tuple = self.read_nodestate(0)
-
         message_list = self.read_nodestate(1)
-
         propagation_allowed = True
 
         if address == "127.0.0.1":
@@ -414,31 +412,45 @@ class Client:
         sleep(random.uniform(0.012, 0.08))  # 12mS - 80mS
 
         if sig == ring_prop:
+            """Sending messages in ring mode adds a special signature on top of the signed message, so to get
+             the actual signature(not the ring propagation delimiter) we need to remove the delimiter, then
+             process the message as usual."""
 
-            message = full_message[17:]  # Remove the ring-propagation deliminator
-            message_sig = message[:16]  # Signature after removing ring_prop
+            message = full_message[17:]  # Remove the ring propagation delimiter
+            message_sig = message[:16]  # Get the actual message signature
 
-            sig = message_sig
-            message = message[17:]  # remove the signature
+            sig = message_sig   # Make the signature local variable point to the actual message signature, not ring_prop
+            message = message[17:]  # Remove the message signature from the message to reveal just the payload
 
             new_message_list = list(message_list)
             new_message_list.append(message_sig)
             self.write_nodestate(nodeState, 1, new_message_list)
 
-        # Don't respond to messages we've already responded to.
+        """Axonet stores the signatures of all received messages in a global lookup table. Messages are propagated in
+        a which which (inevitably) leads to most nodes receiving identical messages from many independent sending nodes.
+        Nodes only need to respond to each message once, so the message signatures are stored in a global lookup table
+        (message_list = nodeState[1]). 
+        
+        Depending on the network configuration/architecture, nodes will either refuse
+        to send messages with signatures that appear in the message_list(ring propagation), or refuse to respond to
+        messages with signatures appearing in the message_list(mesh/fully-complete message propagation)"""
+
         if sig in message_list:
 
             not_responding_to_msg = str("Not responding to " + sig)
             Primitives.log(not_responding_to_msg, in_log_level="Debug")
 
-        # Do respond to messages we have yet to respond to.
+        # This message is either unique, or it has been sent with a special signature indicates that
+        # it should not be propagated(no_prop).
+
         elif sig not in message_list or sig == no_prop:
 
+            # Don't spam stdout with hundreds of kilobytes of text during pagefile syncing/file transfer
             if len(message) < 100 and "\n" not in message:
                 message_received_log = str('Received: ' + message
                                            + " (" + sig + ")" + " from: " + address)
 
-                # e.x "Client -> Received: echo (ffffffffffffffff) from: 127.0.0.1"
+                # e.x "Client -> [log level]: Received: echo (0123456789abcdef) from: 127.0.0.1"
 
             else:
                 message_received_log = str('Received: ' + message[:16] + "(message truncated)"
@@ -460,11 +472,11 @@ class Client:
                 """ instruct all nodes to disconnect from each other and exit cleanly."""
 
                 # Enable fully-complete/mesh propagation, regardless of actual network architecture,
-                # to ensure that all nodes actually die on command
+                # to peer pressure isolated/edge nodes into dying on command
 
                 # Inform localhost to follow suit.
                 localhost_connection = (localhost, "127.0.0.1")
-                self.send(localhost_connection, "stop")  # TODO: should we use no_prop here?
+                self.send(localhost_connection, "rstop")
 
                 # The node will already be terminated by the time it gets to the end of the function and runs the
                 # message propagation algorithm; broadcast now, then stop
@@ -637,6 +649,7 @@ class Client:
 
                 page_contents = ''.join(set(list(page_lines)))
                 print("Page contents:")
+
                 try:
                     if arguments[1] == "discovery":
                         is_cluster_rep = self.read_nodestate(11)
@@ -886,43 +899,40 @@ class Client:
                     campaign_list = self.read_nodestate(8)
                     campaign_list.append(campaign_tuple)
 
-                    this_campaign_list = []
+                    # Extract just the campaigns for the task at hand from the campaign_list.
+                    # (The campaign_list contains contributions for all current and previous tasks)
+                    this_campaign_list = [item for item in campaign_list if item[0].startswith(reason)]
 
-                    for item in campaign_list:
-
-                        if item[0].startswith(election_details[0]):
-
-                            this_campaign_list.append(item)
-
-                    this_campaign_list = list(set(this_campaign_list))
+                    this_campaign_list = list(set(this_campaign_list))  # Remove any duplicate entries
 
                     Primitives.log(str(len(this_campaign_list)) + " nodes have cast votes for "+election_details[0])
                     Primitives.log("Network size: "+str(network_size))
 
-                    # Wait for all votes to be cast
+                    # If all votes are cast, elect a leader.
                     if len(this_campaign_list) == network_size:
-                        campaign_ints = []
 
-                        for campaign_tuple in campaign_list:
+                        # The node with the greatest campaign token is elected cluster representative.
 
-                            if campaign_tuple[0] == election_details[0]:
+                        campaign_tokens = [campaign_tuple[1] for campaign_tuple in campaign_list
+                                         if campaign_tuple[0] == reason]
 
-                                campaign_int = campaign_tuple[1]
-                                campaign_ints.append(campaign_int)
+                        winning_token = max(campaign_tokens)
 
-                        winning_int = max(campaign_ints)
                         winning_reason = ""
 
                         for campaign_tuple in campaign_list:
-                            if campaign_tuple[1] == winning_int:
+                            if campaign_tuple[1] == winning_token:
                                 winning_reason = campaign_tuple[0]
 
-                        election_log_msg = str(winning_int) + " won the election for: " + winning_reason
+                        election_log_msg = str(winning_token) + " won the election for: " + winning_reason
                         Primitives.log(election_log_msg, in_log_level="Info")
 
-                        this_campaign = self.read_nodestate(7)
+                        this_campaign = self.read_nodestate(7)  # TODO: this could cause or suffer from race conditions
 
-                        if this_campaign == int(winning_int):
+                        # If we won the network election, shed our node's pseudonymity by telling the network
+                        # to elect [our Local IP] as network representative for [reason]
+
+                        if this_campaign == int(winning_token):
                             Primitives.log("We won the election for: " + winning_reason, in_log_level="Info")
                             elect_msg = self.prepare("elect:" + winning_reason + ":" + str(Primitives.get_local_ip()))
                             self.broadcast(elect_msg, do_mesh_propagation=True)
