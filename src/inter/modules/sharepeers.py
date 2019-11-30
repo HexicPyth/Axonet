@@ -25,7 +25,7 @@ def respond_start(message, nodeState):
     arguments = _primitives.parse_cmd(message)  # arguments[0] = op_id = name of pagefile
     op_id = arguments[0]
 
-    new_module_loaded = "discover"
+    new_module_loaded = "discovery"
 
     nodeState = _client.write_nodestate(nodeState, 4, new_module_loaded, void=False)  # set module_loaded = "discover"
     nodeState = _client.write_nodestate(nodeState, 12, True, void=False)  # Set network propagation mode to mesh

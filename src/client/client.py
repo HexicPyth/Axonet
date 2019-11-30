@@ -658,7 +658,7 @@ class Client:
                         is_cluster_rep = (Primitives.find_representative(election_list, "discovery-" + page_id)
                                           == Primitives.get_local_ip())
 
-                        if is_cluster_rep or len(page_lines) > round(network_size/2):
+                        if is_cluster_rep or len(page_lines) == round(network_size/2):
                             sync_msg = self.prepare("sync:" + page_id + ":" + page_contents)
                             self.broadcast(sync_msg, do_mesh_propagation=True)
 
@@ -786,7 +786,7 @@ class Client:
                         election_list = self.read_nodestate(9)
                         is_cluster_rep = self.read_nodestate(11)
 
-                        if module_loaded == "discover":
+                        if module_loaded == "discovery":
                             # TODO: Make this support multiple peer discoveries without reinitializing
 
                             hosts_pagefile = ''.join(
