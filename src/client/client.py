@@ -878,7 +878,6 @@ class Client:
 
                 election_details = Primitives.parse_cmd(message)  # ("reason", "representative")
                 reason = election_details[0]
-                candidate = election_details[1]
 
                 election_list = self.read_nodestate(9)
                 election_tuple_index = Primitives.find_election_index(election_list, reason)
@@ -930,7 +929,7 @@ class Client:
                         for campaign_tuple in campaign_list:
                             if campaign_tuple[1] == winning_token:
                                 winning_reason = campaign_tuple[0]
-                                winning_candidate = campaign_tuple[1]
+                                winning_candidate = campaign_tuple[2]
 
                         election_log_msg = str(winning_token) + " won the election for: " + winning_reason
                         Primitives.log(election_log_msg, in_log_level="Info")
