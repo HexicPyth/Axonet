@@ -668,7 +668,7 @@ class Client:
                     sync_msg = self.prepare("sync:" + page_id + ":" + page_contents)
                     self.broadcast(sync_msg, do_mesh_propagation=True)
 
-            # Write received pagefile data to disk
+            # Write received pagefile data to disk, and process received data
             if message.startswith("sync:"):
                 """ Update our pagefile with data from another node (such as another node's completed work)
                 Translation: write arbitrary data to page [page id] 
@@ -852,7 +852,7 @@ class Client:
                     Primitives.log(str("Sorry, we're not connected to " + address_to_remove),
                                    in_log_level="Warning")
 
-                # Localhost needs to remove said node too! (see message propagation)
+                # Localhost needs to remove said node too!
                 localhost_conn = (localhost, "127.0.0.1")
                 self.send(localhost_conn, no_prop + ":" + message, sign=False)
 
@@ -976,6 +976,8 @@ class Client:
                     os.chdir(original_path)
                     import discover
 
+                    op_id = reason[10:]
+
                     # Remove any previous discovery elections from the election list.
                     # This allows network bootstrapping to occur multiple times without reinitializing
 
@@ -987,11 +989,9 @@ class Client:
                             new_election_list.remove(_election_tuple)
 
                     self.write_nodestate(nodeState, 9, new_election_list)
-
-                    op_id = reason[10:]
+                    self.write_nodestate(nodeState, 10, False)  # Set ongoing_election = False
 
                     is_cluster_rep = (new_leader == Primitives.get_local_ip())
-                    self.write_nodestate(nodeState, 10, False)  # Set ongoing_election = False
 
                     Primitives.log("(end of vote:) Ongoing election: "+str(self.read_nodestate(10)),
                                    in_log_level="Debug")
@@ -1007,32 +1007,11 @@ class Client:
 
                 os.chdir(original_path)
                 import discover
+                import sharepeers
 
-                election_list = self.read_nodestate(9)
-                new_module_loaded = "discover"
-                self.write_nodestate(nodeState, 4, new_module_loaded)  # set module_loaded = "discover"
-                self.write_nodestate(nodeState, 12, True)  # Set network propagation mode to mesh
+                new_nodestate, op_id, is_cluster_rep = sharepeers.respond_start(message, nodeState)
 
-                arguments = Primitives.parse_cmd(message)  # arguments[0] = op_id = name of pagefile
-
-                op_id = arguments[0]
-
-                # Get a list of all remote addresses
-                _data = Primitives.get_local_ip()
-
-                print("Local IP: "+_data)
-
-                addresses = [item[1] for item in net_tuple]
-                _data += "\n" + '\n'.join(addresses)
-
-                print("Writing Data: "+_data)
-
-                # Write it to page [op_id]
-                self.write_to_page(op_id, _data, signing=False)
-
-                # Callback to discover module
-                is_cluster_rep = (Primitives.find_representative(election_list, "discovery-"+op_id)
-                                  == Primitives.get_local_ip())
+                self.overwrite_nodestate(new_nodestate)
 
                 print("Is cluster rep: "+str(is_cluster_rep))
                 discover.start(net_tuple, op_id, is_cluster_rep)
@@ -1195,7 +1174,7 @@ class Client:
         self.write_nodestate(nodeState, 3, True)  # Set terminated = True
 
         # noinspection PyProtectedMember
-        os._exit(0)  # kill oneself with passion
+        os._exit(0)  # kill oneself so much passion that the python dev's made this private.
 
     def initialize(self, port=3705, net_architecture="complete", remote_addresses=None, command_execution=False,
                    default_log_level="Debug", modules=None, net_size=0):

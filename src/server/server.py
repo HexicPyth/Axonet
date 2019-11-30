@@ -278,6 +278,7 @@ class Server:
 
              If [connection] is localhost then the client is already dead (hence the receive error);
              Permit localhost disconnect..."""
+
             self.disconnect(connection, disallow_local_disconnect=False)
             return
 
