@@ -213,9 +213,13 @@ class Server:
         net_tuple = self.read_nodestate(0)
 
         # 1. Kill localhost client
-        localhost_socket = self.lookup_socket("127.0.0.1")
-        localhost_connection = (localhost_socket, "127.0.0.1")
-        self.send(localhost_connection, "stop")
+        try:
+            localhost_socket = self.lookup_socket("127.0.0.1")
+            localhost_connection = (localhost_socket, "127.0.0.1")
+            self.send(localhost_connection, "stop")
+
+        except ConnectionRefusedError:
+            pass        # Localhost is already disconnected
 
         log_msg = "Attempting to gracefully disconnect and disassociate from all clients..."
         Primitives.log(log_msg, in_log_level="Info")
