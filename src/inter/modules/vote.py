@@ -49,10 +49,12 @@ def respond_start(reason, nodeState):
         # Generate a campaign: integer and call campaign for (reason, localhost)
 
         campaign_int = random.randint(1, 2 ** 128)
+        local_ip = _primitives.get_local_ip()
+
         new_nodestate = _client.write_nodestate(new_nodestate, 7, campaign_int, void=False)
 
         _primitives.log("Campaigning for " + str(campaign_int), in_log_level="Info")
-        campaign_msg = _client.prepare("campaign:" + reason + ":" + str(campaign_int))
+        campaign_msg = _client.prepare("campaign:" + reason + ":" + str(campaign_int)+":"+local_ip)
         _client.broadcast(campaign_msg, do_mesh_propagation=True)
 
     else:

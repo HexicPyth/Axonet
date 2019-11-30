@@ -872,12 +872,13 @@ class Client:
 
             # Participate in a network election by entering as a candidate
             if message.startswith("campaign:"):
-                # example message: campaign:do_stuff:01234566789
+                # example message: campaign:do_stuff:01234566789:192.168.53.60
 
                 import vote
 
                 election_details = Primitives.parse_cmd(message)  # ("reason", "representative")
                 reason = election_details[0]
+                candidate = election_details[1]
 
                 election_list = self.read_nodestate(9)
                 election_tuple_index = Primitives.find_election_index(election_list, reason)
@@ -924,27 +925,25 @@ class Client:
 
                         winning_reason = ""
 
+                        winning_candidate = ""
+
                         for campaign_tuple in campaign_list:
                             if campaign_tuple[1] == winning_token:
                                 winning_reason = campaign_tuple[0]
+                                winning_candidate = campaign_tuple[1]
 
                         election_log_msg = str(winning_token) + " won the election for: " + winning_reason
                         Primitives.log(election_log_msg, in_log_level="Info")
 
                         this_campaign = self.read_nodestate(7)  # TODO: this could cause or suffer from race conditions
 
-                        # If we won the network election, shed our node's pseudonymity by telling the network
-                        # to elect [our Local IP] as network representative for [reason]
+                        Primitives.log(winning_candidate+ " won the election for: " + winning_reason, in_log_level="Info")
+                        elect_msg = self.prepare("elect:" + winning_reason + ":" + winning_candidate)
+                        self.broadcast(elect_msg, do_mesh_propagation=True)
 
-                        if this_campaign == int(winning_token):
-                            Primitives.log("We won the election for: " + winning_reason, in_log_level="Info")
-                            elect_msg = self.prepare("elect:" + winning_reason + ":" + str(Primitives.get_local_ip()))
-                            self.broadcast(elect_msg, do_mesh_propagation=True)
+                        self.write_nodestate(nodeState, 11, True)  # set is_cluster_rep = True
 
-                            self.write_nodestate(nodeState, 11, True)  # set is_cluster_rep = True
-
-                        else:
-                            self.write_nodestate(nodeState, 11, False)  # set is_cluster_rep = False
+                        self.write_nodestate(nodeState, 11, False)  # set is_cluster_rep = False
 
                         # Cleanup
                         self.write_nodestate(nodeState, 7, 0)   # reset this_campaign to 0
