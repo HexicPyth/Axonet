@@ -40,7 +40,7 @@ def respond_start(message, nodeState):
     print("Writing Data: " + data)
 
     # Write it to page [op_id]
-    client.write_to_page(op_id, data, signing=False)
+    _client.write_to_page(op_id, data, signing=False)
 
     # Callback to discover module
     is_cluster_rep = (_primitives.find_representative(election_list, "discovery-" + op_id)
