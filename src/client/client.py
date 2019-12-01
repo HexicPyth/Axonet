@@ -449,6 +449,19 @@ class Client:
 
         elif sig not in message_list or sig == no_prop:
 
+            # Append message signature to the message list, or in the case of sig=no_prop, do nothing.
+            if sig != no_prop and propagation_allowed:
+                new_message_list = list(message_list)
+                new_message_list.append(sig)
+                self.write_nodestate(nodeState, 1, new_message_list)
+                # End of respond()
+
+                # Propagate the message to the rest of the network.
+                Primitives.log(str('Broadcasting: ' + full_message), in_log_level="Debug")
+
+                propagation_mode = self.read_nodestate(12)
+                self.broadcast(full_message, do_mesh_propagation=propagation_mode)
+
             # Don't spam stdout with hundreds of kilobytes of text during pagefile syncing/file transfer
             if len(message) < 100 and "\n" not in message:
                 message_received_log = str('Received: ' + message
@@ -1092,19 +1105,6 @@ class Client:
                         if not do_mesh_propagation:
                             do_mesh_propagation = True
                             self.write_nodestate(nodeState, 12, do_mesh_propagation)
-
-            # Append message signature to the message list, or in the case of sig=no_prop, do nothing.
-            if sig != no_prop and propagation_allowed:
-                new_message_list = list(message_list)
-                new_message_list.append(sig)
-                self.write_nodestate(nodeState, 1, new_message_list)
-                # End of respond()
-
-                # Propagate the message to the rest of the network.
-                Primitives.log(str('Broadcasting: ' + full_message), in_log_level="Debug")
-
-                propagation_mode = self.read_nodestate(12)
-                self.broadcast(full_message, do_mesh_propagation=propagation_mode)
 
     def listen(self, connection):
         # Listen for incoming messages and call self.respond() to respond to them.
