@@ -799,8 +799,10 @@ class Client:
                     # Remove any extra newlines from page
                     raw_lines = list(set(open(file_path).readlines()))
 
-                    existing_lines = [raw_line for raw_line in raw_lines
-                                if raw_line != "\n" and raw_line[:2] != "##"]
+                    existing_lines = list(set(
+                                [raw_line for raw_line in raw_lines
+                                if raw_line != "\n" and raw_line[:2] != "##"]))
+
 
                     # Write changes to page
                     open(file_path, 'w').writelines(set(existing_lines))
@@ -828,14 +830,14 @@ class Client:
                             hosts_pagefile = ''.join(
                                 [item[0][10:] for item in election_list if item[0][:10] == "discovery-"])
 
-                            added_peers = open("../inter/mem/" + hosts_pagefile + ".bin", "r+").readlines()
-
                             if is_cluster_rep and existing_lines < network_size:
                                 self.broadcast(self.prepare("fetch:" + hosts_pagefile + ":discovery"),
                                                do_mesh_propagation=False)
 
-                            module_loaded = ""
-                            self.write_nodestate(nodeState, 5, module_loaded)
+                            if existing_lines >= network_size:
+                                # If we're done, unload 'discovery'
+                                module_loaded = ""
+                                self.write_nodestate(nodeState, 5, module_loaded)
 
             if message.startswith("find:"):
                 import finder
@@ -1197,7 +1199,10 @@ class Client:
         self.write_nodestate(nodeState, 3, True)  # Set terminated = True
 
         # noinspection PyProtectedMember
-        os._exit(0)  # kill oneself so much passion that the python dev's made this private.
+
+        # kill oneself and all children (threads) with so much passion that
+        # the python dev's made this method private.
+        os._exit(0)
 
     def initialize(self, port=3705, net_architecture="complete", remote_addresses=None, command_execution=False,
                    default_log_level="Debug", modules=None, net_size=0):
