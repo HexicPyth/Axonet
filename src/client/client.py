@@ -658,7 +658,7 @@ class Client:
                         is_cluster_rep = (Primitives.find_representative(election_list, "discovery-" + page_id)
                                           == Primitives.get_local_ip())
 
-                        if is_cluster_rep or len(page_lines) <= network_size-1:
+                        if is_cluster_rep and len(page_lines) <= network_size-1:
                             sync_msg = self.prepare("sync:" + page_id + ":" + page_contents)
                             self.broadcast(sync_msg, do_mesh_propagation=True)
 
