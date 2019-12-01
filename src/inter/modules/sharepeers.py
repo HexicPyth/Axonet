@@ -35,7 +35,7 @@ def respond_start(message, nodeState):
     print("Local IP: " + data)
 
     file_path = "../inter/mem/" + op_id + "/bin"
-    raw_lines = list(set(open(file_path).readlines()))
+    raw_lines = list(set(open(file_path, "a+").readlines()))
 
     existing_lines = [raw_line for raw_line in raw_lines
                       if raw_line != "\n" and raw_line[:2] != "##"]
