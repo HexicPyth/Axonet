@@ -35,7 +35,8 @@ def respond_start(message, nodeState):
 
     print("Local IP: " + data)
 
-    file_path = "../../inter/mem/" + op_id + "/bin"
+    print(os.getcwd())
+    file_path = os.path.abspath("../../inter/mem/" + op_id + ".bin")
     raw_lines = list(set(open(file_path, "a+").readlines()))
 
     existing_lines = [raw_line for raw_line in raw_lines
