@@ -697,7 +697,7 @@ class Client:
                         print("(fetch) page lines: "+str(len(page_lines)))
                         print("(fetch) network size: "+str(network_size))
 
-                        if len(page_lines) < network_size:
+                        if is_cluster_rep and network_size > len(page_lines):
                             print("(fetch) syncing "+page_id+".bin"+"...")
                             sync_msg = self.prepare("sync:" + page_id + ":" + page_contents)
                             self.broadcast(sync_msg, do_mesh_propagation=True)
