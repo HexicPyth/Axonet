@@ -699,8 +699,11 @@ class Client:
 
                         if is_cluster_rep and network_size > len(page_lines):
                             print("(fetch) syncing "+page_id+".bin"+"...")
-                            sync_msg = self.prepare("sync:" + page_id + ":" + page_contents)
-                            self.broadcast(sync_msg, do_mesh_propagation=False)
+
+                            sync_msg = self.prepare("sync:" + page_id + ":" + page_contents, salt=False)
+                            out_sig = sync_msg[:16]
+                            if out_sig not in message_list:
+                                self.broadcast(sync_msg, do_mesh_propagation=False)
 
                         else:
                             print("(fetch) not syncing "+page_id+".bin"+"..."+"; All contributions"
@@ -709,7 +712,6 @@ class Client:
 
                 # Else if arguments[1] doesn't exist queue a normal fetch: routine
                 except TypeError:
-
                     sync_msg = self.prepare("sync:" + page_id + ":" + page_contents)
                     self.broadcast(sync_msg, do_mesh_propagation=True)
 
