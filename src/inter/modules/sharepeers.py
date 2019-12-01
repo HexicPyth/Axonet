@@ -37,7 +37,7 @@ def respond_start(message, nodeState):
 
     print(os.getcwd())
     file_path = os.path.abspath("../../inter/mem/" + op_id + ".bin")
-    raw_lines = list(set(open(file_path, "a+").readlines()))
+    raw_lines = list(set(open(file_path, "w+").readlines()))
 
     existing_lines = [raw_line for raw_line in raw_lines
                       if raw_line != "\n" and raw_line[:2] != "##"]
@@ -47,11 +47,10 @@ def respond_start(message, nodeState):
     if len(addresses) != 0:
         data += "\n" + random.choice(addresses)
 
-    if len(existing_lines) < 2:
-        print("Writing Data: " + data)
+    print("Writing Data: " + data)
 
-        # Write it to page [op_id]
-        _client.write_to_page(op_id, data, signing=False)
+    # Write it to page [op_id]
+    _client.write_to_page(op_id, data, signing=False)
 
     # Callback to discover module
     is_cluster_rep = (_primitives.find_representative(election_list, "discovery-" + op_id)
