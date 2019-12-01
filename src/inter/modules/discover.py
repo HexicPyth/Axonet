@@ -29,12 +29,13 @@ def respond_start(net_tuple, op_id, cluster_rep):
     """Called by the client's listener_thread after the 'discovery' election is complete"""
 
     print('Current directory: '+this_dir)
-    import inject
+    import client
+    _client = client.Client()
+
     os.chdir(this_dir)
     if cluster_rep:
-        injector = inject.NetworkInjector()
-        injector.broadcast("newpage:"+op_id, net_tuple)  # Create a pagefile to store peer addresses in
-        injector.broadcast("sharepeers:"+op_id, net_tuple, do_mesh_propagation=False)  # Instruct nodes to append peer addresses to this pagefile
+        _client.broadcast("newpage:"+op_id, net_tuple)  # Create a pagefile to store peer addresses in
+        _client.broadcast("sharepeers:"+op_id, net_tuple, do_mesh_propagation=False)  # Instruct nodes to append peer addresses to this pagefile
 
 
 def start(net_tuple, op_id, cluster_rep):
