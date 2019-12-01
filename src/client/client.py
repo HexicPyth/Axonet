@@ -846,7 +846,7 @@ class Client:
                             print('(sync)Network size: ' + str(network_size))
                             print("(sync)Lines: " + str(existing_lines))
 
-                            if network_size > len(existing_lines):
+                            if is_cluster_rep and network_size > len(existing_lines):
                                 print("(sync)Not done...")
                                 print("(sync) fetching "+page_id+".bin"+"...")
                                 self.broadcast(self.prepare("fetch:" + hosts_pagefile + ":discovery"),
