@@ -690,11 +690,10 @@ class Client:
                     election_list = self.read_nodestate(9)
 
                     if arguments[1] == "discovery":
-
                         is_cluster_rep = (Primitives.find_representative(election_list, "discovery-" + page_id)
                                           == Primitives.get_local_ip())
 
-                        if is_cluster_rep and len(page_lines) < network_size+1:
+                        if len(page_lines) < network_size:
                             sync_msg = self.prepare("sync:" + page_id + ":" + page_contents)
                             self.broadcast(sync_msg, do_mesh_propagation=True)
 
@@ -813,16 +812,19 @@ class Client:
                                    + str(len(net_tuple) + 1), in_log_level="Debug")
 
                     if len(existing_lines) >= network_size:
-                        pass
+
+                        module_loaded = ""
+                        self.write_nodestate(nodeState, 5, module_loaded)
                         # We've received contributions from every node on the network.
                         # Now do module-specific I/O
 
                     else:
-                        print()
 
                         module_loaded = self.read_nodestate(5)
                         election_list = self.read_nodestate(9)
                         is_cluster_rep = self.read_nodestate(11)
+
+                        print("Fetch: module loaded: " + module_loaded)
 
                         if module_loaded == "discovery":
                             # TODO: Make this support multiple peer discoveries without reinitializing
@@ -830,14 +832,13 @@ class Client:
                             hosts_pagefile = ''.join(
                                 [item[0][10:] for item in election_list if item[0][:10] == "discovery-"])
 
-                            if is_cluster_rep and existing_lines < network_size:
+                            if len(existing_lines) < network_size:
+                                print("Not done...")
+                                print("Existing lines: "+str(len(existing_lines)))
+                                print('Network size: '+str(network_size))
+                                print("Lines: "+str(existing_lines))
                                 self.broadcast(self.prepare("fetch:" + hosts_pagefile + ":discovery"),
                                                do_mesh_propagation=False)
-
-                            if existing_lines >= network_size:
-                                # If we're done, unload 'discovery'
-                                module_loaded = ""
-                                self.write_nodestate(nodeState, 5, module_loaded)
 
             if message.startswith("find:"):
                 import finder

@@ -28,7 +28,7 @@ def respond_start(message, nodeState):
 
     new_module_loaded = "discovery"
 
-    nodeState = _client.write_nodestate(nodeState, 4, new_module_loaded, void=False)  # set module_loaded = "discover"
+    nodeState = _client.write_nodestate(nodeState, 5, new_module_loaded, void=False)  # set module_loaded = "discover"
     nodeState = _client.write_nodestate(nodeState, 12, True, void=False)  # Set network propagation mode to mesh
 
     data = _primitives.get_local_ip()
@@ -39,13 +39,14 @@ def respond_start(message, nodeState):
     file_path = os.path.abspath("../../inter/mem/" + op_id + ".bin")
     raw_lines = list(set(open(file_path, "w+").readlines()))
 
+
     existing_lines = [raw_line for raw_line in raw_lines
                       if raw_line != "\n" and raw_line[:2] != "##"]
 
     addresses = [item[1] for item in net_tuple if item not in existing_lines]
-
-    if len(addresses) != 0:
-        data += "\n" + random.choice(addresses)
+    
+    for address in addresses:
+        data += "\n"+address
 
     print("Writing Data: " + data)
 
