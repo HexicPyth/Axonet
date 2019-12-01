@@ -71,16 +71,20 @@ class Client:
         return nodeState[index]
 
     @staticmethod
-    def prepare(message):
+    def prepare(message, salt=True):
         """ Assign unique hashes to messages ready for transport.
             Returns (new hashed message) -> str """
 
         out = ""
 
         # Assign a timestamp
-        timestamp = str(datetime.datetime.utcnow())
-        stamped_message = timestamp + message
-        out += stamped_message
+        if salt:
+            timestamp = str(datetime.datetime.utcnow())
+            stamped_message = timestamp + message
+            out += stamped_message
+
+        else:
+            out += message
 
         # Generate the hash and append the message to it
         sig = sha3_224(out.encode()).hexdigest()[:16]
@@ -937,7 +941,7 @@ class Client:
                         this_campaign = self.read_nodestate(7)  # TODO: this could cause or suffer from race conditions
 
                         Primitives.log(winning_candidate+ " won the election for: " + winning_reason, in_log_level="Info")
-                        elect_msg = self.prepare("elect:" + winning_reason + ":" + winning_candidate)
+                        elect_msg = self.prepare("elect:" + winning_reason + ":" + winning_candidate, salt=False)
                         self.broadcast(elect_msg, do_mesh_propagation=True)
 
                         self.write_nodestate(nodeState, 11, True)  # set is_cluster_rep = True
