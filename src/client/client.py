@@ -295,7 +295,7 @@ class Client:
     def send(self, connection, message, sign=True):
         """Helper function to encode a given message and send it to a given server.
             Set sign=False to disable automatic message signing(useful for no_prop things)
-            Doesn't Return. """
+            """
 
         sock = connection[0]
 
@@ -316,25 +316,41 @@ class Client:
         except OSError:
             self.disconnect(connection)
 
-    def broadcast(self, message, do_mesh_propagation=True):
+    def broadcast(self, message, do_mesh_propagation=True, in_nodeState=None):
         global ring_prop
         # do_message_propagation=None means use global config in nodeState[12]
 
-        self.permute_network_tuple()
-        net_tuple = self.read_nodestate(0)
+        if in_nodeState:
+            net_tuple = in_nodeState[0]
+            message_list = in_nodeState[1]
+
+
+        else:
+            self.permute_network_tuple()
+            net_tuple = self.read_nodestate(0)
+            message_list = self.read_nodestate(1)
 
         # If not bootstrapped, do ring network propagation. Else, do fully-complete style propagation.
-        message_list = self.read_nodestate(1)
 
         if do_mesh_propagation == "not set":
-            do_mesh_propagation = self.read_nodestate(12)
+
+            if in_nodeState:
+                do_mesh_propagation = in_nodeState[12]
+
+            else:
+                do_mesh_propagation = self.read_nodestate(12)
 
         if not do_mesh_propagation:
             Primitives.log("Message propagation mode: ring", in_log_level="Debug")
             # Network not bootstrapped yet, do ring network propagation
             if message[:16] != ring_prop:
                 message = ring_prop + ":" + message
-                self.write_nodestate(nodeState, 1, message_list)
+
+                if in_nodeState:
+                    self.write_nodestate(in_nodeState, 1, message_list)
+
+                else:
+                    self.write_nodestate(nodeState, 1, message_list)
 
         if do_mesh_propagation:
             """ network bootstrapped or do_mesh_propagation override is active, do fully-complete/mesh style
@@ -343,6 +359,9 @@ class Client:
 
         for connection in net_tuple:
             self.send(connection, message, sign=False)  # Send a message to each node( = Broadcast)
+
+        if in_nodeState:
+            return nodeState
 
     @staticmethod
     def run_external_command(command):
@@ -1015,7 +1034,8 @@ class Client:
                     Primitives.log(str(new_election_list), in_log_level="Debug")
 
                     if is_cluster_rep:
-                        discover.respond_start(net_tuple, op_id, is_cluster_rep)
+                        new_nodestate = discover.respond_start(nodeState, op_id, is_cluster_rep)
+                        self.overwrite_nodestate(new_nodestate)
 
             # Write the remote addresses of all connected nodes to the pagefile established by $discover
             if message.startswith("sharepeers:"):

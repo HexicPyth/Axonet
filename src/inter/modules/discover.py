@@ -25,7 +25,7 @@ def initiate(net_tuple):
     injector.broadcast("vote:discovery-"+op_id, net_tuple)
 
 
-def respond_start(net_tuple, op_id, cluster_rep):
+def respond_start(nodeState, op_id, cluster_rep):
     """Called by the client's listener_thread after the 'discovery' election is complete"""
 
     print('Current directory: '+this_dir)
@@ -33,9 +33,22 @@ def respond_start(net_tuple, op_id, cluster_rep):
     _client = client.Client()
 
     os.chdir(this_dir)
+
+    net_tuple = nodeState[0]
+
     if cluster_rep:
-        _client.broadcast("newpage:"+op_id, net_tuple)  # Create a pagefile to store peer addresses in
-        _client.broadcast("sharepeers:"+op_id, net_tuple, do_mesh_propagation=False)  # Instruct nodes to append peer addresses to this pagefile
+        # Create a pagefile to store peer addresses in
+        new_nodeState = _client.broadcast("newpage:"+op_id, in_nodeState=nodeState)
+
+        # Instruct nodes to append peer addresses to this pagefile
+        new_nodeState = _client.broadcast("sharepeers:"+op_id, in_nodeState=new_nodeState, do_mesh_propagation=False)
+
+        return new_nodeState
+
+    else:
+
+        # Do nothing...
+        return nodeState
 
 
 def start(net_tuple, op_id, cluster_rep):
