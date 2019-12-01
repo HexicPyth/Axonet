@@ -18,6 +18,7 @@ _primitives = primitives.Primitives('Client', 'Debug')
 
 def respond_start(message, nodeState):
     """Called by the client's listener_thread when it received a vote: flag"""
+    os.chdir(this_dir)
 
     net_tuple = nodeState[0]
     election_list = nodeState[9]
@@ -34,7 +35,7 @@ def respond_start(message, nodeState):
 
     print("Local IP: " + data)
 
-    file_path = "../inter/mem/" + op_id + "/bin"
+    file_path = "../../inter/mem/" + op_id + "/bin"
     raw_lines = list(set(open(file_path, "a+").readlines()))
 
     existing_lines = [raw_line for raw_line in raw_lines
