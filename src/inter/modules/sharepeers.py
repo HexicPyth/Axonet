@@ -34,8 +34,16 @@ def respond_start(message, nodeState):
 
     print("Local IP: " + data)
 
-    addresses = [item[1] for item in net_tuple]
-    data += "\n" + '\n'.join(addresses)
+    file_path = "../inter/mem/" + op_id + "/bin"
+    raw_lines = list(set(open(file_path).readlines()))
+
+    existing_lines = [raw_line for raw_line in raw_lines
+                      if raw_line != "\n" and raw_line[:2] != "##"]
+
+    addresses = [item[1] for item in net_tuple if item not in existing_lines]
+
+    if len(addresses) != 0:
+        data += "\n" + random.choice(addresses)
 
     print("Writing Data: " + data)
 
