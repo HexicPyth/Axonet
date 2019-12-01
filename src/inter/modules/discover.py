@@ -38,10 +38,12 @@ def respond_start(nodeState, op_id, cluster_rep):
 
     if cluster_rep:
         # Create a pagefile to store peer addresses in
-        new_nodeState = _client.broadcast("newpage:"+op_id, in_nodeState=nodeState)
+        new_nodeState = _client.broadcast(_client.prepare("newpage:"+op_id),
+                                          in_nodeState=nodeState)
 
         # Instruct nodes to append peer addresses to this pagefile
-        new_nodeState = _client.broadcast("sharepeers:"+op_id, in_nodeState=new_nodeState, do_mesh_propagation=False)
+        new_nodeState = _client.broadcast(_client.prepare("sharepeers:"+op_id),
+                                          in_nodeState=new_nodeState, do_mesh_propagation=False)
 
         return new_nodeState
 
