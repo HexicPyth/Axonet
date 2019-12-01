@@ -700,7 +700,7 @@ class Client:
                         if is_cluster_rep and network_size > len(page_lines):
                             print("(fetch) syncing "+page_id+".bin"+"...")
                             sync_msg = self.prepare("sync:" + page_id + ":" + page_contents)
-                            self.broadcast(sync_msg, do_mesh_propagation=True)
+                            self.broadcast(sync_msg, do_mesh_propagation=False)
 
                         else:
                             print("(fetch) not syncing "+page_id+".bin"+"..."+"; All contributions"
