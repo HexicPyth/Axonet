@@ -44,7 +44,7 @@ def respond_start(message, nodeState):
                       if raw_line != "\n" and raw_line[:2] != "##"]
 
     addresses = [item[1] for item in net_tuple if item not in existing_lines]
-    
+
     for address in addresses:
         data += "\n"+address
 

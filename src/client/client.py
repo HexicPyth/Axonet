@@ -688,14 +688,24 @@ class Client:
 
                 try:
                     election_list = self.read_nodestate(9)
+                    module_loaded = self.read_nodestate(5)
 
-                    if arguments[1] == "discovery":
+                    if arguments[1] == "discovery" and module_loaded == "discovery":
                         is_cluster_rep = (Primitives.find_representative(election_list, "discovery-" + page_id)
                                           == Primitives.get_local_ip())
 
+                        print("(fetch) page lines: "+str(len(page_lines)))
+                        print("(fetch) network size: "+str(network_size))
+
                         if len(page_lines) < network_size:
+                            print("(fetch) syncing "+page_id+".bin"+"...")
                             sync_msg = self.prepare("sync:" + page_id + ":" + page_contents)
                             self.broadcast(sync_msg, do_mesh_propagation=True)
+
+                        else:
+                            print("(fetch) not syncing "+page_id+".bin"+"..."+"; All contributions"
+                                                                              " have been written...")
+                            self.write_nodestate(module_loaded, 5, "")  # unload 'discovery'
 
                 # Else if arguments[1] doesn't exist queue a normal fetch: routine
                 except TypeError:
@@ -824,7 +834,7 @@ class Client:
                         election_list = self.read_nodestate(9)
                         is_cluster_rep = self.read_nodestate(11)
 
-                        print("Fetch: module loaded: " + module_loaded)
+                        print("sync: module loaded: " + module_loaded)
 
                         if module_loaded == "discovery":
                             # TODO: Make this support multiple peer discoveries without reinitializing
@@ -832,13 +842,18 @@ class Client:
                             hosts_pagefile = ''.join(
                                 [item[0][10:] for item in election_list if item[0][:10] == "discovery-"])
 
-                            if len(existing_lines) < network_size:
-                                print("Not done...")
-                                print("Existing lines: "+str(len(existing_lines)))
-                                print('Network size: '+str(network_size))
-                                print("Lines: "+str(existing_lines))
+                            print("(sync)Existing lines: " + str(len(existing_lines)))
+                            print('(sync)Network size: ' + str(network_size))
+                            print("(sync)Lines: " + str(existing_lines))
+
+                            if network_size > len(existing_lines):
+                                print("(sync)Not done...")
+                                print("(sync) fetching "+page_id+".bin"+"...")
                                 self.broadcast(self.prepare("fetch:" + hosts_pagefile + ":discovery"),
                                                do_mesh_propagation=False)
+
+                            elif len(existing_lines) >= network_size:
+                                print("(sync) not fetching: "+page_id+".bin"+'; All contributions have been written')
 
             if message.startswith("find:"):
                 import finder
