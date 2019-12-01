@@ -658,7 +658,7 @@ class Client:
                         is_cluster_rep = (Primitives.find_representative(election_list, "discovery-" + page_id)
                                           == Primitives.get_local_ip())
 
-                        if is_cluster_rep and len(page_lines) <= network_size-1:
+                        if is_cluster_rep and len(page_lines) < network_size+1:
                             sync_msg = self.prepare("sync:" + page_id + ":" + page_contents)
                             self.broadcast(sync_msg, do_mesh_propagation=True)
 
@@ -997,7 +997,8 @@ class Client:
 
                     Primitives.log(str(new_election_list), in_log_level="Debug")
 
-                    discover.respond_start(net_tuple, op_id, is_cluster_rep)
+                    if is_cluster_rep:
+                        discover.respond_start(net_tuple, op_id, is_cluster_rep)
 
             # Write the remote addresses of all connected nodes to the pagefile established by $discover
             if message.startswith("sharepeers:"):
