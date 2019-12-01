@@ -47,10 +47,11 @@ def respond_start(message, nodeState):
     if len(addresses) != 0:
         data += "\n" + random.choice(addresses)
 
-    print("Writing Data: " + data)
+    if len(existing_lines) < 2:
+        print("Writing Data: " + data)
 
-    # Write it to page [op_id]
-    _client.write_to_page(op_id, data, signing=False)
+        # Write it to page [op_id]
+        _client.write_to_page(op_id, data, signing=False)
 
     # Callback to discover module
     is_cluster_rep = (_primitives.find_representative(election_list, "discovery-" + op_id)
