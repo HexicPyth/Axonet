@@ -1,0 +1,10 @@
+{
+  "port" : 3705,
+  "remote_addresses" : [],
+  "command_execution" : true,
+  "default_log_level" : "Info",
+  "modules" : ["core_count"],
+  "net_size" :  4
+
+
+}

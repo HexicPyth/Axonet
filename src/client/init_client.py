@@ -2,8 +2,15 @@
 # Script automating the starting of the client individually.
 # Initialize the client
 import client
+import json
 
 port = 3705
+
+with open("client_configuration.json") as client_configuration:
+    client_config_data = json.load(client_configuration)
+    for var in client_config_data:
+        print(var, json.loads(var))
+
 
 
 def init(network_architecture):
