@@ -3,7 +3,7 @@
   "remote_addresses" : [],
   "command_execution" : true,
   "default_log_level" : "Info",
-  "modules" : ["core_count"],
+  "modules" : ["corecount"],
   "net_size" :  4
 
 
