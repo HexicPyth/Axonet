@@ -4,9 +4,10 @@
 import client
 import json
 
-port = 3705
 
 with open("client_configuration.json") as client_configuration:
+
+    """Sets each variable equal to the value given in the client_configuration.json file"""
     client_config_data = json.load(client_configuration)
     port = client_config_data["port"]
     remote_addresses = client_config_data["remote_addresses"]
