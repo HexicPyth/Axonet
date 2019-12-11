@@ -616,7 +616,7 @@ class Server:
                                 Primitives.log("Not disconnecting from localhost, dimwit.", in_log_level="Warning")
 
                         # The injector ran cleanly and we still have a multi-node network. Continue as normal.
-                        if injector_return_value == 0 and len(net_tuple) >= 1:
+                        if injector_return_value == 0 and len(net_tuple) >= 1:  #
 
                             try:
                                 Primitives.log(str(net_tuple), in_log_level="Debug")
