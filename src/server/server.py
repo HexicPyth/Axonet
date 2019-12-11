@@ -164,7 +164,7 @@ class Server:
             """ network bootstrapped or do_mesh_propagation override is active, do fully-complete/mesh style
                 message propagation """
             Primitives.log("Message propagation mode: fully-complete/mesh", in_log_level="Debug")
-
+        
         else:
             Primitives.log("Message propagation mode: ring", in_log_level="Debug")
 
@@ -213,9 +213,13 @@ class Server:
         net_tuple = self.read_nodestate(0)
 
         # 1. Kill localhost client
-        localhost_socket = self.lookup_socket("127.0.0.1")
-        localhost_connection = (localhost_socket, "127.0.0.1")
-        self.send(localhost_connection, "stop")
+        try:
+            localhost_socket = self.lookup_socket("127.0.0.1")
+            localhost_connection = (localhost_socket, "127.0.0.1")
+            self.send(localhost_connection, "stop")
+
+        except ConnectionRefusedError:
+            pass        # Localhost is already disconnected
 
         log_msg = "Attempting to gracefully disconnect and disassociate from all clients..."
         Primitives.log(log_msg, in_log_level="Info")
@@ -278,6 +282,7 @@ class Server:
 
              If [connection] is localhost then the client is already dead (hence the receive error);
              Permit localhost disconnect..."""
+
             self.disconnect(connection, disallow_local_disconnect=False)
             return
 
@@ -291,6 +296,14 @@ class Server:
             new_message_list = list(message_list)
             new_message_list.append(message_sig)
             self.write_nodestate(nodeState, 1, new_message_list)
+
+            # Now, forward message to localhost as no_prop in case
+            # message propagation path didn't include this node's client
+            # (This behavior is technically permitted in ring mode)
+
+            localhost_message = no_prop + message
+            localhost_connection = (localhost, "127.0.0.1")
+            self.send(localhost_connection, localhost_message, signing=False)
 
         # Server received a unique message. Respond accordingly.
         if sig not in message_list:
@@ -413,6 +426,12 @@ class Server:
                     localhost_connection = (localhost_socket, localhost_address)
 
                     self.send(localhost_connection, full_message, signing=False)
+
+        # If message propagation allows, forward all received message to client as no_prop.
+        if sig != no_prop and sig != ring_prop:
+            message_to_client = no_prop+message
+            localhost_connection = (localhost, "127.0.0.1")
+            self.send(localhost_connection, message_to_client)
 
     def disconnect(self, connection, disallow_local_disconnect=True):
         """Try to disconnect from a socket as cleanly as possible.
