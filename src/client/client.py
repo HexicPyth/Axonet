@@ -43,7 +43,6 @@ original_path = os.path.dirname(os.path.realpath(__file__))
 network_size = 0
 network_architecture = ""  # "complete" or "mesh"
 output_node = ""  # Address of one remote node from init_client
-our_part_numbers = []
 
 os.chdir(original_path)
 Primitives = primitives.Primitives(sub_node, log_level)
@@ -864,8 +863,16 @@ class Client:
 
             if message.startswith("find:"):
                 import finder
-                global our_part_numbers
-                finder.respond_start(message, sub_node, log_level, our_part_numbers)
+                import readPartNumbers
+                part_number_list = []
+
+                local_ip = Primitives.get_local_ip()
+                our_parts = readPartNumbers.find_my_parts(local_ip)
+                for item in our_parts:
+                    part_number_list.append(item[0])
+                    print(item[0])
+
+                finder.respond_start(message, sub_node, log_level, part_number_list)
 
             # Provide server's a means of communicating readiness to clients. This is used during file proxying
             # to form a feedback loop between the proxy and client, that way the client doesn't ever exceed the
