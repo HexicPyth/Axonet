@@ -4,7 +4,8 @@
   "command_execution" : true,
   "default_log_level" : "Info",
   "modules" : ["corecount"],
-  "net_size" :  4
+  "net_size" :  4,
+  "network_architecture" : "mesh"
 
 
 }
