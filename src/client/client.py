@@ -533,27 +533,11 @@ class Client:
                 arguments = Primitives.parse_cmd(message)  # arguments[0] = variable to configure; [1] = value
                 print(str(arguments))
 
-                if arguments[0] == "network_size":
+                import config_client
+                os.chdir(this_dir)
+                config_client.config_argument(arguments, sub_node, log_level)
 
-                    try:
-                        new_network_size = int(arguments[1])
-                        network_size = new_network_size
-                        Primitives.log("Successfully set network_size to: " + str(network_size), in_log_level="Info")
 
-                    except TypeError:
-
-                        Primitives.log("config: target value not int; ignoring...", in_log_level="Warning")
-
-                elif arguments[0] == "network_architecture":
-                    # Changes from any architecture --> mesh must be done while network size <= 2
-                    # any architecture --> fully-connected should always work
-
-                    new_network_architecture = arguments[1]
-
-                    if type(new_network_architecture) == str:
-                        network_architecture = new_network_architecture
-                        Primitives.log("Successfully set network_architecture to: " + network_architecture,
-                                       in_log_level="Info")
 
             # Instruct clients to connect to remote servers.
             if message.startswith("ConnectTo:"):
