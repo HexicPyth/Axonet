@@ -11,7 +11,7 @@ import primitives
 import client
 import readPartNumbers
 
-os.chdir(os.path.abspath('../../../client/'))
+os.chdir(os.path.abspath('../../client/'))
 print(os.getcwd())
 
 

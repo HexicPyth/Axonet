@@ -864,10 +864,11 @@ class Client:
             if message.startswith("find:"):
                 import finder
                 import readPartNumbers
+                os.chdir(this_dir)
                 part_number_list = []
 
                 local_ip = Primitives.get_local_ip()
-                our_parts = readPartNumbers.find_my_parts(local_ip)
+                our_parts = readPartNumbers.find_my_parts(local_ip, path_to_client=this_dir)
                 for item in our_parts:
                     part_number_list.append(item[0])
                     print(item[0])
