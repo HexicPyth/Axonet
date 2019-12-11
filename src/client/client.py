@@ -317,6 +317,7 @@ class Client:
             self.disconnect(connection)
 
     def broadcast(self, message, do_mesh_propagation=True, in_nodeState=None):
+
         global ring_prop
         # do_message_propagation=None means use global config in nodeState[12]
 
@@ -339,18 +340,21 @@ class Client:
 
             else:
                 do_mesh_propagation = self.read_nodestate(12)
-
-        if not do_mesh_propagation:
-            Primitives.log("Message propagation mode: ring", in_log_level="Debug")
+                
+            
+            Primitives.log("Doing mesh propagation: "+str(do_mesh_propagation), in_log_level="Debug")
             # Network not bootstrapped yet, do ring network propagation
             if message[:16] != ring_prop:
                 message = ring_prop + ":" + message
+
+        if not do_mesh_propagation:
 
                 if in_nodeState:
                     self.write_nodestate(in_nodeState, 1, message_list)
 
                 else:
                     self.write_nodestate(nodeState, 1, message_list)
+
 
         if do_mesh_propagation:
             """ network bootstrapped or do_mesh_propagation override is active, do fully-complete/mesh style
@@ -467,8 +471,8 @@ class Client:
         # it should not be propagated(no_prop).
 
         elif sig not in message_list or sig == no_prop:
-
             # Append message signature to the message list, or in the case of sig=no_prop, do nothing.
+            
             if sig != no_prop and propagation_allowed:
                 new_message_list = list(message_list)
                 new_message_list.append(sig)
@@ -482,6 +486,7 @@ class Client:
                 self.broadcast(full_message, do_mesh_propagation=propagation_mode)
 
             # Don't spam stdout with hundreds of kilobytes of text during pagefile syncing/file transfer
+
             if len(message) < 100 and "\n" not in message:
                 message_received_log = str('Received: ' + message
                                            + " (" + sig + ")" + " from: " + address)
@@ -509,6 +514,7 @@ class Client:
 
                 # Enable fully-complete/mesh propagation, regardless of actual network architecture,
                 # to peer pressure isolated/edge nodes into dying on command
+
 
                 # Inform localhost to follow suit.
                 localhost_connection = (localhost, "127.0.0.1")

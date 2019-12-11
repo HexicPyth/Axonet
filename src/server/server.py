@@ -164,7 +164,7 @@ class Server:
             """ network bootstrapped or do_mesh_propagation override is active, do fully-complete/mesh style
                 message propagation """
             Primitives.log("Message propagation mode: fully-complete/mesh", in_log_level="Debug")
-
+        
         else:
             Primitives.log("Message propagation mode: ring", in_log_level="Debug")
 
