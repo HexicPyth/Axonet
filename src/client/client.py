@@ -439,14 +439,13 @@ class Client:
         sleep(random.uniform(0.012, 0.08))  # 12mS - 80mS
 
         if sig == ring_prop:
-
-          """Sending messages in ring mode adds a special signature on top of the signed message, so to get
-             the actual signature(not the ring propagation delimiter) we need to remove the delimiter, then
-             process the message as usual."""
+            """Sending messages in ring mode adds a special signature on top of the signed message, so to get
+               the actual signature(not the ring propagation delimiter) we need to remove the delimiter, then
+               process the message as usual."""
 
             message = full_message[17:]  # Remove the ring propagation delimiter
             message_sig = message[:16]  # Get the actual message signature
-      
+
             sig = message_sig   # Make the signature local variable point to the actual message signature, not ring_prop
             message = message[17:]  # Remove the message signature from the message to reveal just the payload
 
@@ -1055,7 +1054,6 @@ class Client:
 
                     is_cluster_rep = (new_leader == Primitives.get_local_ip())
 
-                                   in_log_level="Debug")
                     print("is_cluster_rep: "+str(is_cluster_rep))
 
                     Primitives.log(str(new_election_list), in_log_level="Debug")
