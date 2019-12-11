@@ -1,0 +1,2 @@
+rm Racks.csv
+wget http://73.17.34.121/Racks.csv
