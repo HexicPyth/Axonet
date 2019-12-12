@@ -439,9 +439,9 @@ class Client:
 
         if sig == ring_prop:
 
-          """Sending messages in ring mode adds a special signature on top of the signed message, so to get
-             the actual signature(not the ring propagation delimiter) we need to remove the delimiter, then
-             process the message as usual."""
+            """Sending messages in ring mode adds a special signature on top of the signed message, so to get
+               the actual signature(not the ring propagation delimiter) we need to remove the delimiter, then
+               process the message as usual."""
 
             message = full_message[17:]  # Remove the ring propagation delimiter
             message_sig = message[:16]  # Get the actual message signature
@@ -454,16 +454,15 @@ class Client:
             self.write_nodestate(nodeState, 1, new_message_list)
 
         """Axonet stores the signatures of all received messages in a global lookup table. Messages are propagated in
-        a which which (inevitably) leads to most nodes receiving identical messages from many independent sending nodes.
+        a way which (inevitably) leads to most nodes receiving identical messages from many independent sending nodes.
         Nodes only need to respond to each message once, so the message signatures are stored in a global lookup table
         (message_list = nodeState[1]). 
-        
+
         Depending on the network configuration/architecture, nodes will either refuse
         to send messages with signatures that appear in the message_list(ring propagation), or refuse to respond to
         messages with signatures appearing in the message_list(mesh/fully-complete message propagation)"""
 
         if sig in message_list:
-
             not_responding_to_msg = str("Not responding to " + sig)
             Primitives.log(not_responding_to_msg, in_log_level="Debug")
 
