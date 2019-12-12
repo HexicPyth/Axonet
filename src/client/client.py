@@ -43,7 +43,6 @@ original_path = os.path.dirname(os.path.realpath(__file__))
 network_size = 0
 network_architecture = ""  # "complete" or "mesh"
 output_node = ""  # Address of one remote node from init_client
-our_part_numbers = []
 
 os.chdir(original_path)
 Primitives = primitives.Primitives(sub_node, log_level)
@@ -535,27 +534,11 @@ class Client:
                 arguments = Primitives.parse_cmd(message)  # arguments[0] = variable to configure; [1] = value
                 print(str(arguments))
 
-                if arguments[0] == "network_size":
+                import config_client
+                os.chdir(this_dir)
+                config_client.config_argument(arguments, sub_node, log_level)
 
-                    try:
-                        new_network_size = int(arguments[1])
-                        network_size = new_network_size
-                        Primitives.log("Successfully set network_size to: " + str(network_size), in_log_level="Info")
 
-                    except TypeError:
-
-                        Primitives.log("config: target value not int; ignoring...", in_log_level="Warning")
-
-                elif arguments[0] == "network_architecture":
-                    # Changes from any architecture --> mesh must be done while network size <= 2
-                    # any architecture --> fully-connected should always work
-
-                    new_network_architecture = arguments[1]
-
-                    if type(new_network_architecture) == str:
-                        network_architecture = new_network_architecture
-                        Primitives.log("Successfully set network_architecture to: " + network_architecture,
-                                       in_log_level="Info")
 
             # Instruct clients to connect to remote servers.
             if message.startswith("ConnectTo:"):
@@ -865,8 +848,17 @@ class Client:
 
             if message.startswith("find:"):
                 import finder
-                global our_part_numbers
-                finder.respond_start(message, sub_node, log_level, our_part_numbers)
+                import readPartNumbers
+                os.chdir(this_dir)
+                part_number_list = []
+
+                local_ip = Primitives.get_local_ip()
+                our_parts = readPartNumbers.find_my_parts(local_ip, path_to_client=this_dir)
+                for item in our_parts:
+                    part_number_list.append(item[0])
+                    print(item[0])
+
+                finder.respond_start(message, sub_node, log_level, part_number_list)
 
             # Provide server's a means of communicating readiness to clients. This is used during file proxying
             # to form a feedback loop between the proxy and client, that way the client doesn't ever exceed the
@@ -1055,7 +1047,6 @@ class Client:
 
                     is_cluster_rep = (new_leader == Primitives.get_local_ip())
 
-                                   in_log_level="Debug")
                     print("is_cluster_rep: "+str(is_cluster_rep))
 
                     Primitives.log(str(new_election_list), in_log_level="Debug")

@@ -9,6 +9,10 @@ sys.path.insert(0, '../../../server/')
 sys.path.insert(0, (os.path.abspath('../../inter/misc')))
 import primitives
 import client
+import readPartNumbers
+
+os.chdir(os.path.abspath('../../client/'))
+print(os.getcwd())
 
 
 def led_on(shelf_num):
@@ -17,24 +21,20 @@ def led_on(shelf_num):
     # RPI GPIO module
 
 
-def respond_start(message, sub_node, log_level, our_part_numbers):
+def respond_start(message, sub_node, log_level, part_number_list):
+    _primitives = primitives.Primitives(sub_node, log_level)
+    arguments = _primitives.parse_cmd(message)
 
-    Primitives = primitives.Primitives(sub_node, log_level)
-    arguments = Primitives.parse_cmd(message)
     print(arguments)
     part_number = arguments[0]
     print(part_number)
-    if part_number in our_part_numbers:
+    """  local_ip = _primitives.get_local_ip()
+    our_parts = readPartNumbers.find_my_parts(local_ip)
+    for item in our_parts:
+        part_number_list.append(item[0])
+        print(item[0])"""
+    if part_number in part_number_list:
         print("We found it")
-    """
-    if part_number in inventory:
-        part
-    except:
-        this pi does not have the part
-    
-    """
-
-    ###
 
     """Called by the client's listener_thread when it received a [name]: flag"""
 
