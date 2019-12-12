@@ -32,7 +32,7 @@ def worker(action):  # Worker function
 
     elif action == 'client.py':
         print("Initializing client...")
-        thread = threading.Thread(target=init_client.init, args=(network_architecture,))
+        thread = threading.Thread(target=init_client.init)
         thread.start()
         print('Client has been successfully initialized')
 
