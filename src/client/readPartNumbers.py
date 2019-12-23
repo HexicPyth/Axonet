@@ -5,6 +5,7 @@ import os
 sys.path.insert(0, (os.path.abspath('../misc')))
 
 import primitives
+import os
 
 _primitives = primitives.Primitives("Client", "Debug")
 
@@ -26,12 +27,16 @@ def find_my_parts(local_ip, path_to_client=None):
 
     _primitives.log("Fetching part numbers for " + local_ip + "...", in_log_level="Debug")
 
+    try:
+        part_number_assignments = open("Racks.csv")
+    except FileNotFoundError:
+        os.system("sh ./refreshPartNumbers")
+        part_number_assignments = open("Racks.csv")
 
-    with open("Racks.csv") as part_number_assignments:
-        csv_reader = csv.reader(part_number_assignments, delimiter=',')
-        for row in csv_reader:
-            if ip_byte_four in row[3]:
-                our_parts.append((row[0], row[1], row[4]))
+    csv_reader = csv.reader(part_number_assignments, delimiter=',')
+    for row in csv_reader:
+        if ip_byte_four in row[3]:
+            our_parts.append((row[0], row[1], row[4]))
 
     _primitives.log("Found "+str(len(our_parts)) + " parts assigned to "+local_ip+"...", in_log_level='Debug')
 
