@@ -57,19 +57,17 @@ class Client:
 
     @staticmethod
     def lock(lock, name=None):
-        
-        if name and type(name) == str:
-            print("locking "+name)
+        # if name and type(name) == str:
+        #   print("locking "+name)
 
-        #print("Fuck that, not locking anything...")
         lock.acquire()
 
     @staticmethod
     def release(lock, name=None):
-        if name and type(name) == str:
-            print("releasing "+name)
 
-        #print("Fuck that, not releasing anything...")
+        # if name and type(name) == str:
+        #    print("releasing "+name)
+
         lock.release()
 
     def overwrite_nodestate(self, in_nodestate):

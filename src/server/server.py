@@ -56,16 +56,18 @@ class Server:
     @staticmethod
     def lock(lock, name=None):
 
-        if name and type(name) == str:
-            print("locking " + name)
-            lock.acquire()
+        # if name and type(name) == str:
+        #    print("locking " + name)
+
+        lock.acquire()
 
     @staticmethod
     def release(lock, name=None):
 
-        if name and type(name) == str:
-            #print("releasing " + name)
-            lock.release()
+        # if name and type(name) == str:
+            # print("releasing " + name)
+
+        lock.release()
 
     def write_nodestate(self, in_nodestate, index, value):
         global nodeState
