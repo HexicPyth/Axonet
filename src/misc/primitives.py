@@ -88,6 +88,7 @@ class Primitives:
         Returns None if self.receiveall fails, or nothing at all otherwise.
         """
 
+
         sock = connection[0]
         try:
             raw_msg_length = self.receiveall(sock, 4)

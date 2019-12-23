@@ -32,6 +32,10 @@ sub_node = "Server"
 
 nodeState = [(), [], False, False, False, [], False]
 
+nodestate_lock = threading.Lock()
+send_lock = threading.Lock()
+receive_lock = threading.Lock()
+
 this_dir = os.path.dirname(os.path.abspath(__file__))
 
 try:
@@ -50,15 +54,40 @@ original_path = os.path.dirname(os.path.realpath(__file__))
 class Server:
 
     @staticmethod
-    def write_nodestate(in_nodestate, index, value):
-        global nodeState
-        in_nodestate[index] = value
+    def lock(lock, name=None):
 
-        nodeState = list(in_nodestate)
+        if name and type(name) == str:
+            print("locking " + name)
+            lock.acquire()
 
     @staticmethod
-    def read_nodestate(index):
-        return nodeState[index]
+    def release(lock, name=None):
+
+        if name and type(name) == str:
+            #print("releasing " + name)
+            lock.release()
+
+    def write_nodestate(self, in_nodestate, index, value):
+        global nodeState
+        global nodestate_lock
+
+        self.lock(nodestate_lock, name="nodeState")
+
+        in_nodestate[index] = value
+        nodeState = list(in_nodestate)
+
+        self.release(nodestate_lock, name="Nodestate")
+
+    def read_nodestate(self, index):
+        global nodestate_lock
+        global nodeState
+
+        # Don't read nodeState while some other thread is writing to it!
+        self.lock(nodestate_lock, name="nodeState")
+        current_nodestate = list(nodeState)
+        self.release(nodestate_lock, name="Nodestate")
+
+        return current_nodestate[index]
 
     @staticmethod
     def prepare(message):
@@ -118,16 +147,22 @@ class Server:
     https://stackoverflow.com/users/9530/adam-rosenfield """
 
     def send(self, connection, message, signing=True):
+        global send_lock
+
+
         sock = connection[0]
         address = connection[1]
 
         if signing:
             msg = self.prepare(message).encode('utf-8')
+
         else:
             msg = message.encode('utf-8')
 
         # Prefix each message with a 4-byte length (network byte order). Message lengths must be less than (2^32)-4.
         msg = struct.pack('>I', len(msg)) + msg
+
+        self.lock(send_lock, name="Send lock")
 
         try:
             sock.sendall(msg)
@@ -139,6 +174,8 @@ class Server:
                 Primitives.log(log_msg, in_log_level="Warning")
 
                 self.disconnect(connection)
+
+        self.release(send_lock, name="Send lock")
 
     def broadcast(self, message, do_mesh_propagation=True):
         global ring_prop
@@ -169,6 +206,8 @@ class Server:
             Primitives.log("Message propagation mode: ring", in_log_level="Debug")
 
         for connection in net_tuple:
+
+            # Deadlock here
             self.send(connection, message, signing=False)  # Send a message to each node( = Broadcast)
 
     def append(self, in_socket, address):
@@ -476,6 +515,8 @@ class Server:
         """Listen for incoming messages in one thread, manage the network injector in another.
         Doesn't return anything. """
 
+        global receive_lock
+
         def listener(conn):
 
             # some variables are defined in the parent function listen(), so the names are _changed
@@ -498,7 +539,7 @@ class Server:
                     else:
                         self.respond(incoming, conn)
 
-                except (OSError, TypeError):
+                except (IsADirectoryError, EnvironmentError):  # DEBUG, OSError, TypeError
                     # OSError - Something terrible happened trying to receive from a node
                     # TypeError - A socket is apparently NoneType now. That's bad
 

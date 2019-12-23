@@ -29,6 +29,11 @@ localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes 
 
 # Mutable state; Write with writeState(), Read with readState(). Contains default values until changed
 nodeState = [(), [], False, False, [], "", [], 0, [], [], False, False, False]
+nodestate_lock = threading.Lock()
+command_execution_lock = threading.Lock()
+fileIO_lock = threading.Lock()
+send_lock = threading.Lock()
+receive_lock = threading.Lock()
 
 # Immutable state: Constant node parameters set upon initialization
 PORT = 3705
@@ -51,12 +56,36 @@ Primitives = primitives.Primitives(sub_node, log_level)
 class Client:
 
     @staticmethod
-    def overwrite_nodestate(in_nodestate):
+    def lock(lock, name=None):
+        
+        if name and type(name) == str:
+            print("locking "+name)
+
+        #print("Fuck that, not locking anything...")
+        lock.acquire()
+
+    @staticmethod
+    def release(lock, name=None):
+        if name and type(name) == str:
+            print("releasing "+name)
+
+        #print("Fuck that, not releasing anything...")
+        lock.release()
+
+    def overwrite_nodestate(self, in_nodestate):
+        global nodestate_lock
+        self.lock(nodestate_lock, name="nodeState")
+
         global nodeState
         nodeState = in_nodestate
 
-    @staticmethod
-    def write_nodestate(in_nodestate, index, value, void=True):
+        self.release(nodestate_lock, name="nodeState")
+
+    def write_nodestate(self, in_nodestate, index, value, void=True):
+        global nodestate_lock
+
+        self.lock(nodestate_lock, name="nodeState")
+
         global nodeState
 
         in_nodestate[index] = value
@@ -64,10 +93,21 @@ class Client:
         nodeState = list(in_nodestate)
 
         if not void:
+            self.release(nodestate_lock, name="nodeState")
+
             return nodeState
 
+        self.release(nodestate_lock, name="nodeState")
+
+
     def read_nodestate(self, index):
-        return nodeState[index]
+        global nodeState, nodestate_lock
+
+        self.lock(nodestate_lock, name="nodeState")
+        current_nodeState = nodeState
+        self.release(nodestate_lock, name="nodeState")
+
+        return current_nodeState[index]
 
     @staticmethod
     def prepare(message, salt=True):
@@ -191,7 +231,7 @@ class Client:
                        "\nNew Network Tuple: " + str(net_tuple), in_log_level="Debug")
 
     def connect(self, connection, address, port, local=False):
-        """ Connect to a remote server and handle the connection(i.e append it).
+        """ Connect to a remote server and handle the connection(i.e append it to network_tuple).
             Doesn't return. """
 
         connecting_to_server = self.read_nodestate(2)
@@ -295,6 +335,9 @@ class Client:
         """Helper function to encode a given message and send it to a given server.
             Set sign=False to disable automatic message signing(useful for no_prop things)
             """
+        global send_lock
+
+        self.lock(send_lock, name="Send lock")
 
         sock = connection[0]
 
@@ -314,6 +357,8 @@ class Client:
         # from the network tuple to avoid conflict.
         except OSError:
             self.disconnect(connection)
+
+        self.release(send_lock, name="Send lock")
 
     def broadcast(self, message, do_mesh_propagation=True, in_nodeState=None):
 
@@ -339,8 +384,7 @@ class Client:
 
             else:
                 do_mesh_propagation = self.read_nodestate(12)
-                
-            
+
             Primitives.log("Doing mesh propagation: "+str(do_mesh_propagation), in_log_level="Debug")
             # Network not bootstrapped yet, do ring network propagation
             if message[:16] != ring_prop:
@@ -354,7 +398,6 @@ class Client:
                 else:
                     self.write_nodestate(nodeState, 1, message_list)
 
-
         if do_mesh_propagation:
             """ network bootstrapped or do_mesh_propagation override is active, do fully-complete/mesh style
                 message propagation """
@@ -366,19 +409,24 @@ class Client:
         if in_nodeState:
             return nodeState
 
-    @staticmethod
-    def run_external_command(command):
+    def run_external_command(self, command):
+        global command_execution_lock
         # Given a string containing a UNIX command, execute it.
         # Disable this by setting command_execution=False
         # Returns 0 -> (int)
 
+        self.lock(command_execution_lock, name="command execution")
         os.system(command)
+        self.release(command_execution_lock, name="command execution")
+
         return 0
 
-    @staticmethod
-    def write_to_page(page_id, data, signing=True):
+    def write_to_page(self, page_id, data, signing=True):
         global ADDR_ID
+        global fileIO_lock
         """ Append data to a given pagefile by ID."""
+
+        self.lock(fileIO_lock, name="File I/O")
 
         Primitives.log("Writing to page:" + page_id, in_log_level="Info")
         os.chdir(original_path)
@@ -404,6 +452,8 @@ class Client:
         this_page = open(file_path, "a+")
         this_page.write(data_line)
         this_page.close()
+
+        self.release(fileIO_lock, name="File I/O")
 
     def respond(self, connection, msg):
         """ We received a message, reply with an appropriate response.
@@ -536,8 +586,6 @@ class Client:
                 import config_client
                 os.chdir(this_dir)
                 config_client.config_argument(arguments, sub_node, log_level)
-
-
 
             # Instruct clients to connect to remote servers.
             if message.startswith("ConnectTo:"):
@@ -1148,7 +1196,10 @@ class Client:
         # Also, deal with disconnections as they are most likely to throw errors here.
         # Returns nothing.
 
+        global receive_lock
+
         def listener_thread(conn):
+            global receive_lock
             in_sock = conn[0]
             terminated = self.read_nodestate(3)
             listener_terminated = False  # Terminate when set
@@ -1156,11 +1207,13 @@ class Client:
             while not listener_terminated and not terminated:
                 incoming = Primitives.receive(conn)
                 raw_message = incoming
+
+                print("Raw message: "+str(raw_message))
                 try:
                     if incoming:
                         self.respond(conn, raw_message)
 
-                except ArithmeticError:  # DEBUG TypeError
+                except TypeError:
                     conn_severed_msg = str("Connection to " + str(in_sock)
                                            + "was severed or disconnected."
                                            + "(TypeError: listen() -> listener_thread()")
@@ -1299,7 +1352,6 @@ class Client:
                 try:
                     connection = (sock, remote_address)
                     self.connect(connection, remote_address, port)
-
                     Primitives.log(str("Starting listener on " + remote_address), in_log_level="Info")
                     self.listen(connection)
 
