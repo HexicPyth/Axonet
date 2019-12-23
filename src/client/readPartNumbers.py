@@ -27,11 +27,8 @@ def find_my_parts(local_ip, path_to_client=None):
 
     _primitives.log("Fetching part numbers for " + local_ip + "...", in_log_level="Debug")
 
-    try:
-        part_number_assignments = open("Racks.csv")
-    except FileNotFoundError:
-        os.system("sh ./refreshPartNumbers")
-        part_number_assignments = open("Racks.csv")
+    os.system("sh ./refreshPartNumbers")
+    part_number_assignments = open("Racks.csv")
 
     csv_reader = csv.reader(part_number_assignments, delimiter=',')
     for row in csv_reader:
@@ -41,6 +38,7 @@ def find_my_parts(local_ip, path_to_client=None):
     _primitives.log("Found "+str(len(our_parts)) + " parts assigned to "+local_ip+"...", in_log_level='Debug')
 
     return our_parts
+
 
 if __name__ == "__main__":
     print(find_my_parts(_primitives.get_local_ip()))
