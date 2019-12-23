@@ -33,7 +33,7 @@ nodestate_lock = threading.Lock()
 command_execution_lock = threading.Lock()
 fileIO_lock = threading.Lock()
 send_lock = threading.Lock()
-receive_lock = threading.Lock()
+respond_lock = threading.Lock()
 
 # Immutable state: Constant node parameters set upon initialization
 PORT = 3705
@@ -462,6 +462,8 @@ class Client:
         global log_level
         global nodeState
         global ring_prop
+
+        self.lock(respond_lock, name="Respond lock")
 
         full_message = str(msg)
         message = full_message[17:]  # Message without signature
@@ -1189,6 +1191,8 @@ class Client:
                             do_mesh_propagation = True
                             self.write_nodestate(nodeState, 12, do_mesh_propagation)
 
+        self.release(respond_lock, name="Respond lock")
+
     def listen(self, connection):
         # Listen for incoming messages and call self.respond() to respond to them.
         # Also, deal with disconnections as they are most likely to throw errors here.
@@ -1206,7 +1210,6 @@ class Client:
                 incoming = Primitives.receive(conn)
                 raw_message = incoming
 
-                print("Raw message: "+str(raw_message))
                 try:
                     if incoming:
                         self.respond(conn, raw_message)
