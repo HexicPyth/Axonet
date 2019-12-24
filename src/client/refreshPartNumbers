@@ -1,2 +1,0 @@
-rm Racks.csv -f
-wget http://73.17.34.121/hosted/Racks.csv

@@ -1,13 +1,22 @@
 import csv
 import sys
 import os
-
+import urllib.request
+import urllib.error
 sys.path.insert(0, (os.path.abspath('../misc')))
 
 import primitives
 import os
 
 _primitives = primitives.Primitives("Client", "Debug")
+
+
+def download_racks_csv(url):
+    response = urllib.request.urlopen(url)
+    data = response.read()  # a `bytes` object
+    text = data.decode('utf-8')  # a `str`; this step can't be used if data is binary
+    racks_file = open("Racks.csv", "w")
+    racks_file.write(text)
 
 
 def find_my_parts(local_ip, path_to_client=None):
@@ -27,8 +36,20 @@ def find_my_parts(local_ip, path_to_client=None):
 
     _primitives.log("Fetching part numbers for " + local_ip + "...", in_log_level="Debug")
 
-    os.system("sh ./refreshPartNumbers")
-    part_number_assignments = open("Racks.csv")
+    try:
+        download_racks_csv('http://73.17.34.121/hosted/Racks.csv')
+        part_number_assignments = open("Racks.csv")
+
+    except urllib.error.URLError:
+        print("ERROR: No internet connection detected; cannot download Racks file... Searching for local copy...")
+
+        try:
+            part_number_assignments = open("Racks.csv")
+            print("Local Racks.csv found! Proceeding...")
+
+        except FileNotFoundError:
+            print("ERROR: No local Racks file found; cannot proceed; returning no parts")
+            return []
 
     csv_reader = csv.reader(part_number_assignments, delimiter=',')
     for row in csv_reader:
