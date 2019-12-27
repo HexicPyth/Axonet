@@ -48,6 +48,7 @@ original_path = os.path.dirname(os.path.realpath(__file__))
 network_size = 0
 network_architecture = ""  # "complete" or "mesh"
 output_node = ""  # Address of one remote node from init_client
+directory_server = ""  # URL to 'hosted' directory of directory server...
 
 os.chdir(original_path)
 Primitives = primitives.Primitives(sub_node, log_level)
@@ -270,7 +271,9 @@ class Client:
                     Primitives.log("Connecting to localhost server...", in_log_level="Info")
 
                     sock.connect(("127.0.0.1", port))
-                    # The socket object we apppended earlier was automatically
+                    self.append(sock, "127.0.0.1")
+
+                    # The socket object we appended earlier was automatically
                     # destroyed by the OS because connections to 0.0.0.0 are illegal...
                     # Connect to localhost with raddr=127.0.0.1...
 
@@ -1119,6 +1122,7 @@ class Client:
 
             # Ring Network --> Mesh network bootstrapping routine
             if message.startswith("bootstrap:"):
+                global directory_server
                 arguments = Primitives.parse_cmd(message)
 
                 # arguments[0] = network architecture to boostrap into (e.x "mesh")
@@ -1128,31 +1132,16 @@ class Client:
                 net_architecture = arguments[0]
                 c_ext = int(arguments[1])
 
-                # Find peer discovery output pagefile
-                hosts_pagefile = ''.join([item[0][10:] for item in election_list if item[0][:10] == "discovery-"])
-                Primitives.log("Hosts pagefile is " + hosts_pagefile + ".bin", in_log_level="Info")
-
-                print("Output node: " + str(output_node))
-
-                print(str(election_list))
-
-                try:
-                    pagefile = open("../inter/mem/" + hosts_pagefile + ".bin", "r+")
-                    potential_peers = pagefile.readlines()
-                    pagefile.close()
-
-                except FileNotFoundError:
-                    Primitives.log(hosts_pagefile + ".bin" + " does not exist.", in_log_level="Warning")
-                    potential_peers = None
+                potential_peers = [line for line in Primitives.download_file(directory_server + "hosts.bin").split('\n')
+                                   if line not in ("", '', "\n")]
 
                 chosen_peers = []
-
                 if potential_peers:
                     for peer in potential_peers:
                         if peer == Primitives.get_local_ip() + "\n":  # Do not try to pick ourselves as a remote node
                             potential_peers.remove(peer)
 
-                if potential_peers:
+                if potential_peers != 1:
                     if net_architecture == "mesh":
                         print("Network tuple:")
                         print(str(net_tuple))
@@ -1274,7 +1263,7 @@ class Client:
         os._exit(0)
 
     def initialize(self, port=3705, net_architecture="complete", remote_addresses=None, command_execution=False,
-                   default_log_level="Debug", modules=None, net_size=0, assigned_part_numbers=[]):
+                   default_log_level="Debug", modules=None, net_size=0, input_directory_server=""):
 
         # Initialize the client, set any global variable that need to be set, etc.
 
@@ -1289,7 +1278,7 @@ class Client:
         global network_architecture
         global network_size
         global output_node
-        global our_part_numbers
+        global directory_server
 
         # Global variable assignment
         PORT = port
@@ -1297,7 +1286,8 @@ class Client:
         log_level = default_log_level
         network_architecture = net_architecture
         network_size = net_size
-        our_part_numbers = assigned_part_numbers
+        print("Input directory server: "+input_directory_server)
+        directory_server = input_directory_server
 
         if remote_addresses:
             output_node = random.choice(remote_addresses)

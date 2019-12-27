@@ -2,10 +2,9 @@
   "port" : 3705,
   "remote_addresses" : [],
   "command_execution" : true,
-  "default_log_level" : "Info",
+  "default_log_level" : "Debug",
   "modules" : ["corecount"],
-  "net_size" :  4,
-  "network_architecture" : "mesh"
-
-
+  "net_size" :  28,
+  "network_architecture" : "mesh",
+  "directory_server" : "http://73.17.34.121/hosted/"
 }

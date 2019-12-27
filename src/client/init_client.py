@@ -15,13 +15,14 @@ with open("client_configuration.json") as client_configuration:
     default_log_level = client_config_data["default_log_level"]
     modules = client_config_data["modules"]
     net_size = client_config_data["net_size"]
+    directory_server = client_config_data["directory_server"]
 
 
 def init():
     x = client.Client()
     x.initialize(port=port, net_architecture=network_architecture, remote_addresses=remote_addresses,
                  command_execution=command_execution, default_log_level=default_log_level, modules=modules,
-                 net_size=net_size)
+                 net_size=net_size, input_directory_server=directory_server)
 
 
 if __name__ == "__main__":
