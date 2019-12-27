@@ -2,6 +2,8 @@ import struct
 import socket
 import datetime
 import sys
+import urllib.request, urllib.error
+
 from hashlib import sha3_224
 
 
@@ -64,6 +66,17 @@ class Primitives:
         data_to_hash = local_addr + addr_salt
         addr_id = sha3_224(data_to_hash.encode()).hexdigest()[:32]
         return addr_id
+
+    def download_file(self, url):
+        try:
+            response = urllib.request.urlopen(url)
+            data = response.read()  # a `bytes` object
+            text = data.decode('utf-8')  # a `str`; this step can't be used if data is binary
+            return text
+
+        except urllib.error.URLError:
+            self.log("Cannot access " + url + "; Check your internet connection and try again")
+            return 1
 
     @staticmethod
     def prepare(message):
