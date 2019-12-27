@@ -336,6 +336,7 @@ class Client:
         """Helper function to encode a given message and send it to a given server.
             Set sign=False to disable automatic message signing(useful for no_prop things)
             """
+
         global send_lock
 
         self.lock(send_lock, name="Send lock")
@@ -399,6 +400,7 @@ class Client:
                 else:
                     self.write_nodestate(nodeState, 1, message_list)
 
+
         if do_mesh_propagation:
             """ network bootstrapped or do_mesh_propagation override is active, do fully-complete/mesh style
                 message propagation """
@@ -412,6 +414,7 @@ class Client:
 
     def run_external_command(self, command):
         global command_execution_lock
+
         # Given a string containing a UNIX command, execute it.
         # Disable this by setting command_execution=False
         # Returns 0 -> (int)
@@ -491,10 +494,9 @@ class Client:
         sleep(random.uniform(0.012, 0.08))  # 12mS - 80mS
 
         if sig == ring_prop:
-
             """Sending messages in ring mode adds a special signature on top of the signed message, so to get
-               the actual signature(not the ring propagation delimiter) we need to remove the delimiter, then
-               process the message as usual."""
+             the actual signature(not the ring propagation delimiter) we need to remove the delimiter, then
+             process the message as usual."""
 
             message = full_message[17:]  # Remove the ring propagation delimiter
             message_sig = message[:16]  # Get the actual message signature
@@ -514,6 +516,7 @@ class Client:
         Depending on the network configuration/architecture, nodes will either refuse
         to send messages with signatures that appear in the message_list(ring propagation), or refuse to respond to
         messages with signatures appearing in the message_list(mesh/fully-complete message propagation)"""
+
 
         if sig in message_list:
             not_responding_to_msg = str("Not responding to " + sig)
@@ -854,6 +857,7 @@ class Client:
                                 [raw_line for raw_line in raw_lines
                                 if raw_line != "\n" and raw_line[:2] != "##"]))
   
+
                     # Write changes to page
                     open(file_path, 'w').writelines(set(existing_lines))
 
@@ -998,6 +1002,7 @@ class Client:
                                    "Attempting to initiate our election protocol with any information we"
                                    "can collect.", in_log_level="Warning")
 
+
                 # This node has initialized it's election_list, do actual campaign work...
                 # If election_list[election_tuple_index] is not -1 or "TBD" then that election has already completed
                 # so we don't want to disrupt it by continuing to campaign after-the-fact...
@@ -1024,6 +1029,7 @@ class Client:
 
                         campaign_tokens = [campaign_tuple[1] for campaign_tuple in campaign_list
                                          if campaign_tuple[0] == reason]
+
 
                         winning_token = max(campaign_tokens)
 
