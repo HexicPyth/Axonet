@@ -12,15 +12,33 @@ import primitives
 
 
 def change_port(arguments):
-
     try:
         if int(arguments[2]):
-
-            with open("client_configuration.json")as client_configuration:
+            with open('client_configuration.json', 'r')as client_configuration:
                 client_config = json.load(client_configuration)
-                client_config['port'] = arguments[2]
-                json.dumps(client_config, indent=3)
+                client_config['port'] = int(arguments[2])
+                client_configuration.close()
+            with open('client_configuration.json', 'w')as client_configuration:
+                client_configuration.seek(0)
+                json.dump(client_config, client_configuration)
+                client_configuration.close()
+
+    except (ValueError, TypeError):
+        print("That is not a valid port")
+
+
+def config_net_size(arguments):
+    try:
+        if int(arguments[2]):
+            with open('client_configuration.json', 'r')as client_configuration:
+                client_config = json.load(client_configuration)
+                client_config['net_size'] = int(arguments[2])
+                client_configuration.close()
+            with open('client_configuration.json', 'w')as client_configuration:
+                client_configuration.seek(0)
+                json.dump(client_config, client_configuration)
                 print(client_config['port'])
+                client_configuration.close()
 
     except (ValueError, TypeError):
         print("That is not a valid port")
@@ -51,7 +69,6 @@ def config_argument(arguments, sub_node, log_level):
             _primitives.log("Successfully set network_architecture to: " + network_architecture,
                             in_log_level="Info")
     elif arguments[0] == "permanent":
-        print("we made it this far")
         if arguments[1] == "port":
 
             change_port(arguments)
@@ -66,6 +83,7 @@ def config_argument(arguments, sub_node, log_level):
         elif arguments[1] == "modules":
             pass
         elif arguments[1] == "network_size" or arguments[1] == "net_size":
+            config_net_size(arguments)
             pass
         else:
             print("Error \"" + arguments[1] + "\" isn't correct syntax")
