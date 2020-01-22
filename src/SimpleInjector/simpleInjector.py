@@ -110,5 +110,4 @@ if __name__ == '__main__':
         run(ip=argv[0], msg=argv[1])
 
     else:
-        #run(ip="127.0.0.1")  # No arguments were provided; we will take input via stdin and send to localhost
-        run(ip="127.0.0.1", msg="No msg")
+        run()
