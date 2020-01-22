@@ -29,6 +29,9 @@ localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes 
 
 # Mutable state; Write with writeState(), Read with readState(). Contains default values until changed
 nodeState = [(), [], False, False, [], "", [], 0, [], [], False, False, False]
+nodeConfig = [3705, False, "", "Client", "ffffffffffffffff", "eeeeeeeeeeeeeeeeAZs"]
+
+# Thread locks
 nodestate_lock = threading.Lock()
 command_execution_lock = threading.Lock()
 fileIO_lock = threading.Lock()
@@ -422,7 +425,7 @@ class Client:
 
         return 0
 
-    def write_to_page(self, page_id, data, signing=True):
+    def write_to_page(self, page_id, data, signing=True, filter_duplicate_data=True):
         global ADDR_ID
         global fileIO_lock
         """ Append data to a given pagefile by ID."""
@@ -453,6 +456,11 @@ class Client:
         this_page = open(file_path, "a+")
         this_page.write(data_line)
         this_page.close()
+
+        if filter_duplicate_data:
+            # Remove duplicate data
+            unique_lines = set(open(file_path).readlines())
+            open(file_path, 'w').writelines(set(unique_lines))
 
         self.release(fileIO_lock, name="File I/O")
 
@@ -661,6 +669,9 @@ class Client:
                             if not connection_status:
                                 try:
                                     self.connect(new_connection, connect_to_address, PORT)
+
+                                    # Connection was successful, cache address to hosts file and start listening...
+                                    self.write_to_page('hosts', connect_to_address, False)
                                     self.listen(new_connection)
 
                                 except OSError:
@@ -717,6 +728,8 @@ class Client:
                 pagefile = open("../inter/mem/" + page_id + ".bin", "r+")
 
                 page_lines = pagefile.readlines()
+
+                pagefile.close()
 
                 # Don't sync comments
                 for string in page_lines:
@@ -1132,11 +1145,33 @@ class Client:
                 net_architecture = arguments[0]
                 c_ext = int(arguments[1])
 
-                potential_peers = [line for line in Primitives.download_file(directory_server + "hosts.bin").split('\n')
-                                   if line not in ("", '', "\n")]
+                try:
+                    print("Trying to download hosts...")
+                    directory_server_hostsfile_contents = Primitives.download_file(directory_server + "hosts.bin")
+                    directory_server_hosts = directory_server_hostsfile_contents.split('\n')
+                    potential_peers = [line for line in directory_server_hosts
+                                       if line not in ("", '', "\n")]
+                    print(potential_peers)
+
+                    # Cache these hosts so we can use them again if the directory server becomes inaccessible
+                    self.write_to_page('hosts', directory_server_hostsfile_contents, False)
+
+                except AttributeError:
+                    # download_file returned an integer(1) because the directory server is not reachable
+                    Primitives.log("Directory server not reachable... using cached hosts...")
+
+                    try:
+                        os.chdir(original_path)
+                        hosts_lines = open("../inter/mem/hosts.bin", "r+").readlines()
+                        potential_peers = [host_entry for host_entry in hosts_lines if host_entry != "\n"]
+
+                    except FileNotFoundError:
+                        # Fuck fuck fuck this is bad!
+                        Primitives.log("No cached hosts found, refusing to bootstrap!")
+                        potential_peers = 1
 
                 chosen_peers = []
-                if potential_peers:
+                if potential_peers and potential_peers != 1:
                     for peer in potential_peers:
                         if peer == Primitives.get_local_ip() + "\n":  # Do not try to pick ourselves as a remote node
                             potential_peers.remove(peer)
