@@ -844,15 +844,18 @@ class Client:
                 import finder
                 import readPartNumbers
                 os.chdir(this_dir)
-                part_number_list = []
+                line_number_list = []
 
                 local_ip = Primitives.get_local_ip()
                 our_parts = readPartNumbers.find_my_parts(local_ip, path_to_client=this_dir)
                 for item in our_parts:
-                    part_number_list.append(item[0])
-                    print(item[0])
+                    print(item)
+                    itemparsed = item.split(',')
+                    line_num = itemparsed([-2]).strip(' ') # Finds 2nd to last number in part tuple and removes the
+                    line_number_list.append(line_num)
+                    print(line_num)
 
-                finder.respond_start(message, sub_node, log_level, part_number_list)
+                finder.respond_start(message, sub_node, log_level, line_number_list)
 
             # Provide server's a means of communicating readiness to clients. This is used during file proxying
             # to form a feedback loop between the proxy and client, that way the client doesn't ever exceed the
