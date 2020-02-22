@@ -53,12 +53,16 @@ def run(ip=None, msg=None):
         try:
             _socket.connect((ip, 3705))
 
-        except socket.gaierror:
+        except (socket.gaierror, ConnectionRefusedError, OSError):
             print("Error: Could not connect to remote host; terminating...")
-            quit()
+            sys.exit(1)
 
     elif not ip:
-        _socket.connect(("127.0.0.1", 3705))
+        try:
+            _socket.connect(("127.0.0.1", 3705))
+        except (socket.gaierror, ConnectionRefusedError, OSError):
+            print("Error: Could not connect to remote host; terminating...")
+            sys.exit(1)
 
     if not msg:
         msg = input("Enter message here")
@@ -75,11 +79,11 @@ def run(ip=None, msg=None):
 
         except (BrokenPipeError, OSError):
             print("An error occurred sending to localhost; Quietly dying...")
-            quit()
+            sys.exit(1)
 
     if msg == "stop":
         send_to_localhost(msg)
-        quit()
+        sys.exit(1)
 
     else:
         # Unnecessary shit for complicated network operations
@@ -104,7 +108,7 @@ if __name__ == '__main__':
     argv = sys.argv[1:]
     if len(argv) > 2:
         print("Error: SimpleInjector takes two arguments; Terminating...")
-        quit()
+        sys.exit(1)
 
     if len(argv) == 2:
         run(ip=argv[0], msg=argv[1])
