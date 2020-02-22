@@ -14,22 +14,24 @@ from hashlib import sha3_224
 this_dir = os.path.dirname(os.path.realpath(__file__))
 os.chdir(this_dir)
 
-# Insert the server, misc, and src/inter directories to PATH so we can use modules like inject, vote, discover, etc.
+# Insert the server, misc, and src/inter/* directories to PATH so we can use modules like inject, vote, discover, etc.
 sys.path.insert(0, (os.path.abspath('../server')))
 sys.path.insert(0, (os.path.abspath('../misc')))
 sys.path.insert(0, (os.path.abspath('../inter/')))
 sys.path.insert(0, (os.path.abspath('../inter/modules')))
-
 # Imports from PATH
 import primitives
 
-# Globals
+# Immutable state; Constant node parameters set upon initialization and/or configuration
+_original_path = os.path.dirname(os.path.realpath(__file__))
+no_prop = "ffffffffffffffff"
+ring_prop = "eeeeeeeeeeeeeeee"
 localhost = socket.socket()
 localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes TIME_WAIT-ing. Add SO_REUSEADDR.
+nodeConfig = [3705, False, "Debug", "Client", None, None, _original_path, 0, "", "", "", localhost]
 
 # Mutable state; Write with writeState(), Read with readState(). Contains default values until changed
 nodeState = [(), [], False, False, [], "", [], 0, [], [], False, False, False]
-nodeConfig = [3705, False, "", "Client", "ffffffffffffffff", "eeeeeeeeeeeeeeeeAZs"]
 
 # Thread locks
 nodestate_lock = threading.Lock()
@@ -38,31 +40,16 @@ fileIO_lock = threading.Lock()
 send_lock = threading.Lock()
 respond_lock = threading.Lock()
 
-# Immutable state: Constant node parameters set upon initialization
-PORT = 3705
-allow_command_execution = False  # Don't execute arbitrary UNIX commands when casually asked, that's bad :]
-log_level = ""  # "Debug", "Info", or "Warning"; To be set by init
-sub_node = "Client"
-no_prop = "ffffffffffffffff"  # True:[message] = No message propagation.
-ring_prop = "eeeeeeeeeeeeeeee"
-SALT = None  # Will be set to a 128-bit hexadecimal token(by self.init) for making address identifiers
-ADDR_ID = None  # Another 128-bit hexadecimal token that wil be salted with SALT, and set by init()
-original_path = os.path.dirname(os.path.realpath(__file__))
-network_size = 0
-network_architecture = ""  # "complete" or "mesh"
-output_node = ""  # Address of one remote node from init_client
-directory_server = ""  # URL to 'hosted' directory of directory server...
-
-os.chdir(original_path)
-Primitives = primitives.Primitives(sub_node, log_level)
+os.chdir(_original_path)
+Primitives = primitives.Primitives("Client", "")
 
 
 class Client:
 
     @staticmethod
     def lock(lock, name=None):
-        # if name and type(name) == str:
-        #   print("locking "+name)
+        if name and type(name) == str:
+         Primitives.log("Locking: "+name, in_log_level="Info")
 
         lock.acquire()
 
@@ -74,12 +61,17 @@ class Client:
 
         lock.release()
 
-    def overwrite_nodestate(self, in_nodestate):
+    def overwrite_nodestate(self, in_nodestate, write_nodeConfig=False):
         global nodestate_lock
         self.lock(nodestate_lock, name="nodeState")
 
-        global nodeState
-        nodeState = in_nodestate
+        global nodeState, nodeConfig
+
+        if not write_nodeConfig:
+            nodeState = in_nodestate
+
+        else:
+            nodeConfig = in_nodestate
 
         self.release(nodestate_lock, name="nodeState")
 
@@ -88,28 +80,50 @@ class Client:
 
         self.lock(nodestate_lock, name="nodeState")
 
-        global nodeState
+        global nodeState, nodeConfig
+
 
         in_nodestate[index] = value
 
-        nodeState = list(in_nodestate)
+        if void:
+            if in_nodestate == nodeConfig:
+                print("Setting nodeConfig["+str(index)+"]"+" to "+str(value))
+                nodeConfig = list(in_nodestate)
+
+            else:
+                print("Setting nodeState["+str(index)+"]"+" to "+str(value))
+
+                nodeState = list(in_nodestate)
+
+            self.release(nodestate_lock, name="nodeState")
 
         if not void:
             self.release(nodestate_lock, name="nodeState")
-
-            return nodeState
-
-        self.release(nodestate_lock, name="nodeState")
+            return in_nodestate
 
 
-    def read_nodestate(self, index):
+
+    def read_nodestate(self, index, in_nodestate=None):
         global nodeState, nodestate_lock
 
         self.lock(nodestate_lock, name="nodeState")
-        current_nodeState = nodeState
+
+        if not in_nodestate:
+            current_nodeState = nodeState
+
+        else:
+            current_nodeState = in_nodestate
+
         self.release(nodestate_lock, name="nodeState")
 
         return current_nodeState[index]
+
+    def read_nodeConfig(self, index):
+        global nodeConfig
+        return self.read_nodestate(index, in_nodestate=nodeConfig)
+
+    def write_nodeConfig(self, _nodeConfig, index, value):
+        return self.write_nodestate(nodeConfig, index, value)
 
     @staticmethod
     def prepare(message, salt=True):
@@ -174,7 +188,7 @@ class Client:
             network tuple, which when permuted, thwarts many timing attacks. ''
             Doesn't return """
 
-        Primitives.log("Permuting the network tuple", in_log_level="Info")
+        Primitives.log("Permuting the network tuple", in_log_level="Debug")
 
         net_tuple = self.read_nodestate(0)
         net_list = list(net_tuple)
@@ -241,6 +255,7 @@ class Client:
 
         # Make a real copy of the network tuple
         # Then append our new connection (will be removed if connection fails)
+        print(self.read_nodestate(0))
         net_tuple = tuple(self.read_nodestate(0))
 
         # Don't connect to an address we're already connected to.
@@ -263,7 +278,10 @@ class Client:
                 if not local:
 
                     Primitives.log(str("Connecting to " + address), in_log_level="Info")
+
+                    sock.settimeout(5)
                     sock.connect((address, port))
+
                     Primitives.log("Successfully connected.", in_log_level="Info")
                     self.append(sock, address)
                     self.write_nodestate(nodeState, 2, False)  # set connecting_to_server = False
@@ -330,7 +348,7 @@ class Client:
             Primitives.log("Already disconnected from that address, passing...", in_log_level="Warning")
             pass
 
-    """ The following function was written by StackOverflow user 
+    """ The following send() function was written by StackOverflow user 
     Adam Rosenfield, then modified by me, HexicPyth.
     https://stackoverflow.com/a/17668009
     https://stackoverflow.com/users/9530/adam-rosenfield """
@@ -436,7 +454,7 @@ class Client:
         self.lock(fileIO_lock, name="File I/O")
 
         Primitives.log("Writing to page:" + page_id, in_log_level="Info")
-        os.chdir(original_path)
+        os.chdir(self.read_nodeConfig(6))
 
         # Write page data pseudonymously with ADDR_ID
         if signing:
@@ -471,9 +489,6 @@ class Client:
         """ We received a message, reply with an appropriate response.
             Doesn't return. """
 
-        global network_architecture
-        global network_size
-        global log_level
         global nodeState
         global ring_prop
 
@@ -484,11 +499,13 @@ class Client:
         sig = full_message[:16]  # Just the signature
         address = connection[1]
 
-        os.chdir(original_path)
 
         net_tuple = self.read_nodestate(0)
         message_list = self.read_nodestate(1)
         propagation_allowed = True
+        original_path = self.read_nodeConfig(6)
+        os.chdir(original_path)
+
 
         if address == "127.0.0.1":
             Primitives.log("Received message from 127.0.0.1; This is a violation of protocol; "
@@ -524,7 +541,6 @@ class Client:
         Depending on the network configuration/architecture, nodes will either refuse
         to send messages with signatures that appear in the message_list(ring propagation), or refuse to respond to
         messages with signatures appearing in the message_list(mesh/fully-complete message propagation)"""
-
 
         if sig in message_list:
             not_responding_to_msg = str("Not responding to " + sig)
@@ -569,18 +585,14 @@ class Client:
                 """ Simple way to test our connection to a given node."""
 
                 Primitives.log("echoing...", in_log_level="Info")
-                echo.initiate(self.read_nodestate(0), network_architecture, connection, no_prop)
+                echo.initiate(self.read_nodestate(0), self.read_nodeConfig(8), connection, no_prop)
 
             # Terminate this node and quit
             if message == "stop":
                 """ instruct all nodes to disconnect from each other and exit cleanly."""
 
-                # Enable fully-complete/mesh propagation, regardless of actual network architecture,
-                # to peer pressure isolated/edge nodes into dying on command
-
-
                 # Inform localhost to follow suit.
-                localhost_connection = (localhost, "127.0.0.1")
+                localhost_connection = (self.read_nodeConfig(11), "127.0.0.1")
                 self.send(localhost_connection, "stop")
 
                 # The node will already be terminated by the time it gets to the end of the function and runs the
@@ -599,7 +611,7 @@ class Client:
 
                 import config_client
                 os.chdir(this_dir)
-                config_client.config_argument(arguments, sub_node, log_level)
+                config_client.config_argument(arguments, self.read_nodeConfig(3), self.read_nodeConfig(2))
 
             # Instruct clients to connect to remote servers.
             if message.startswith("ConnectTo:"):
@@ -637,7 +649,7 @@ class Client:
                         Primitives.log(not_connecting_msg, in_log_level="Warning")
 
                     else:
-
+                        network_architecture = self.read_nodeConfig(8)
                         mesh_network = (network_architecture == "mesh")  # True if network architecture is mesh
                         sent_by_localhost = (address == "127.0.0.1" or address == Primitives.get_local_ip())
 
@@ -671,6 +683,7 @@ class Client:
                             # If we're not connected to said node
                             if not connection_status:
                                 try:
+                                    PORT = self.read_nodeConfig(0)
                                     self.connect(new_connection, connect_to_address, PORT)
 
                                     # Connection was successful, cache address to hosts file and start listening...
@@ -696,7 +709,7 @@ class Client:
             if message.startswith('exec:'):
                 import exec
 
-                exec.initiate(message, allow_command_execution)
+                exec.initiate(message, self.read_nodeConfig(1))
 
             # Create a new pagefile in src/inter/mem which will presumably store some data generated by a
             # concurrent network algorithm
@@ -747,6 +760,7 @@ class Client:
                     module_loaded = self.read_nodestate(5)
 
                     if arguments[1] == "discovery" and module_loaded == "discovery":
+                        network_size = self.read_nodeConfig(7)
                         is_cluster_rep = (Primitives.find_representative(election_list, "discovery-" + page_id)
                                           == Primitives.get_local_ip())
 
@@ -809,12 +823,13 @@ class Client:
                     duplicate = False
                     local = False
 
+                    network_size = self.read_nodeConfig(7)
                     Primitives.log("Receiving " + str(len(sync_data)) + " bytes of data from network",
                                    in_log_level="Info")
 
                     for line in valid_pagelines:
 
-                        if log_level == "Debug":
+                        if self.read_nodeConfig(2) == "Debug":
                             print("Line: " + line)
                             print('Data: ' + sync_data)
 
@@ -837,7 +852,7 @@ class Client:
                                 pass
 
                             else:
-                                if log_level == "Debug":
+                                if self.read_nodeConfig(2) == "Debug":
                                     module_loaded = self.read_nodestate(5)
 
                                     do_write = False
@@ -925,7 +940,7 @@ class Client:
                     part_number_list.append(item[0])
                     print(item[0])
 
-                finder.respond_start(message, sub_node, log_level, part_number_list)
+                finder.respond_start(message, self.read_nodeConfig(3), self.read_nodeConfig(2), part_number_list)
 
             # Provide server's a means of communicating readiness to clients. This is used during file proxying
             # to form a feedback loop between the proxy and client, that way the client doesn't ever exceed the
@@ -975,7 +990,7 @@ class Client:
                                    in_log_level="Warning")
 
                 # Localhost needs to remove said node too!
-                localhost_conn = (localhost, "127.0.0.1")
+                localhost_conn = (self.read_nodeConfig(11), "127.0.0.1")
                 self.send(localhost_conn, no_prop + ":" + message, sign=False)
 
             # Start a network election which selects a suitable node to do some task
@@ -1015,7 +1030,6 @@ class Client:
                                    "Attempting to initiate our election protocol with any information we"
                                    "can collect.", in_log_level="Warning")
 
-
                 # This node has initialized it's election_list, do actual campaign work...
                 # If election_list[election_tuple_index] is not -1 or "TBD" then that election has already completed
                 # so we don't want to disrupt it by continuing to campaign after-the-fact...
@@ -1033,9 +1047,10 @@ class Client:
                     this_campaign_list = list(set(this_campaign_list))  # Remove any duplicate entries
 
                     Primitives.log(str(len(this_campaign_list)) + " nodes have cast votes for "+election_details[0])
-                    Primitives.log("Network size: "+str(network_size))
+                    Primitives.log("Network size: "+str(self.read_nodeConfig(7)))
 
                     # If all votes are cast, elect a leader.
+                    network_size = self.read_nodeConfig(7)
                     if len(this_campaign_list) == network_size:
           
                         # The node with the greatest campaign token is elected cluster representative.
@@ -1187,7 +1202,7 @@ class Client:
                         print("Network tuple:")
                         print(str(net_tuple))
 
-                        this_node = (localhost, "127.0.0.1")
+                        this_node = (self.read_nodeConfig(11), "127.0.0.1")
 
                         # Disconnect from everything other than localhost
                         for peer in net_tuple:
@@ -1210,7 +1225,7 @@ class Client:
                         # Bootstrap!
                         for peer_address in chosen_peers:
                             external_connection = (socket.socket(), peer_address)
-                            self.connect(external_connection, peer_address, PORT)
+                            self.connect(external_connection, peer_address, self.read_nodeConfig(0))
 
                         # Great, bootstrapping was successful
                         # Set global message propagation mode to mesh
@@ -1264,7 +1279,6 @@ class Client:
         threading.Thread(target=listener_thread, args=(connection,), name='listener_thread').start()
 
     def terminate(self):
-        global localhost
         # Disconnect from the network and exit the client cleanly.
         # Returns 0 -> int (duh)
 
@@ -1290,7 +1304,8 @@ class Client:
             address = connection[1]
             Primitives.log(str("Terminating connection to " + address), in_log_level="Info")
             self.disconnect(connection, disallow_local_disconnect=False)
-            localhost.close()
+            _localhost = self.read_nodeConfig(11)
+            _localhost.close()
 
             index += 1
 
@@ -1306,38 +1321,31 @@ class Client:
     def initialize(self, port=3705, net_architecture="complete", remote_addresses=None, command_execution=False,
                    default_log_level="Debug", modules=None, net_size=0, input_directory_server=""):
 
-        # Initialize the client, set any global variable that need to be set, etc.
-
-        global allow_command_execution
-        global localhost
-        global log_level
-        global PORT
+        # Initialize the client, setup nodeConfig, bootstrap...
+        global nodeConfig
         global Primitives
-        global sub_node
-        global SALT
-        global ADDR_ID
-        global network_architecture
-        global network_size
-        global output_node
-        global directory_server
 
-        # Global variable assignment
-        PORT = port
-        allow_command_execution = command_execution
-        log_level = default_log_level
-        network_architecture = net_architecture
-        network_size = net_size
-        print("Input directory server: "+input_directory_server)
-        directory_server = input_directory_server
+        SALT = secrets.token_hex(16) # Generate SALT
+
+        # nodeConfig assignments
+        self.write_nodeConfig(nodeConfig, 0, port)
+        self.write_nodeConfig(nodeConfig, 1, command_execution)
+        self.write_nodeConfig(nodeConfig, 2, default_log_level)
+
+        # nodeConfig[3] isn't user configurable
+        Primitives = primitives.Primitives(self.read_nodeConfig(3), self.read_nodeConfig(2))
+        self.write_nodeConfig(nodeConfig, 4, SALT)
+        self.write_nodeConfig(nodeConfig, 5, Primitives.gen_addr_id(SALT)) # Generate ADDR_ID
+        # nodeConfig[6] isn't user configurable
+        self.write_nodeConfig(nodeConfig, 7, net_size)
+        self.write_nodeConfig(nodeConfig, 8, net_architecture)
+        self.write_nodeConfig(nodeConfig, 9, None) # We'll reset this shortly if needed
+        self.write_nodeConfig(nodeConfig, 10, input_directory_server)
+        # nodeConfig[11] is magic; don't touch
 
         if remote_addresses:
             output_node = random.choice(remote_addresses)
-        else:
-            output_node = None
-
-        Primitives = primitives.Primitives(sub_node, log_level)
-        SALT = secrets.token_hex(16)
-        ADDR_ID = Primitives.gen_addr_id(SALT)
+            self.write_nodeConfig(nodeConfig, 9, output_node)
 
         new_loaded_modules = []
 
@@ -1351,7 +1359,7 @@ class Client:
 
         # Stage 0
         Primitives.log("Initializing...", in_log_level="Info")
-        localhost_connection = (localhost, '127.0.0.1')
+        localhost_connection = (self.read_nodeConfig(11), '127.0.0.1')
 
         try:
             self.connect(localhost_connection, 'localhost', port, local=True)
@@ -1384,11 +1392,11 @@ class Client:
                 try:
                     connection = (sock, remote_address)
                     self.connect(connection, remote_address, port)
-                    Primitives.log(str("Starting listener on " + remote_address), in_log_level="Info")
+                    Primitives.log(str("Starting listener on " + remote_address), in_log_level="")
                     self.listen(connection)
 
-                    if network_architecture == "complete":
-                        self.send(connection, no_prop + ":echo", sign=False)  # TODO: why?
+                    if net_architecture == "complete":
+                        self.send(connection, no_prop + ":echo", sign=False)
 
                 except ConnectionRefusedError:
                     Primitives.log("Unable to connect to remove server; Failed to bootstrap.",

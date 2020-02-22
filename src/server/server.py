@@ -210,6 +210,7 @@ class Server:
         for connection in net_tuple:
 
             # Deadlock here
+            print("Sending "+message + "to " + str(connection))
             self.send(connection, message, signing=False)  # Send a message to each node( = Broadcast)
 
     def append(self, in_socket, address):
