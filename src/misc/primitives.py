@@ -137,7 +137,10 @@ class Primitives:
                 raw_packet = (sock.recv(n - len(data)))
                 packet = raw_packet.decode()  # If this fails, we still have a packet to work with/debug
 
-            except OSError:
+            except socket.timeout:
+                return None
+
+            except OSError:  # ReceiveAll
                 self.log("Connection probably down or terminated (OSError: receiveall()",
                          in_log_level="Warning")
                 raise ValueError
