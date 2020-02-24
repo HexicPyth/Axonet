@@ -2,6 +2,8 @@ import struct
 import socket
 import datetime
 import sys
+import urllib.request, urllib.error
+
 from hashlib import sha3_224
 
 
@@ -65,6 +67,17 @@ class Primitives:
         addr_id = sha3_224(data_to_hash.encode()).hexdigest()[:32]
         return addr_id
 
+    def download_file(self, url):
+        try:
+            response = urllib.request.urlopen(url)
+            data = response.read()  # a `bytes` object
+            text = data.decode('utf-8')  # a `str`; this step can't be used if data is binary
+            return text
+
+        except urllib.error.URLError:
+            self.log("Cannot access " + url + "; Check your internet connection and try again")
+            return 1
+
     @staticmethod
     def prepare(message):
         """ Assign unique hashes to messages ready for transport.
@@ -87,6 +100,7 @@ class Primitives:
         """ Read message length and unpack it into an integer
         Returns None if self.receiveall fails, or nothing at all otherwise.
         """
+
 
         sock = connection[0]
         try:
@@ -123,7 +137,10 @@ class Primitives:
                 raw_packet = (sock.recv(n - len(data)))
                 packet = raw_packet.decode()  # If this fails, we still have a packet to work with/debug
 
-            except OSError:
+            except socket.timeout:
+                return None
+
+            except OSError:  # ReceiveAll
                 self.log("Connection probably down or terminated (OSError: receiveall()",
                          in_log_level="Warning")
                 raise ValueError

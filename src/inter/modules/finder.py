@@ -13,7 +13,7 @@ sys.path.insert(0, '../../../server/')
 sys.path.insert(0, (os.path.abspath('../../inter/misc')))
 import primitives
 import client
-import readPartNumbers
+import readPartNumbers\
 
 os.chdir(os.path.abspath('../../client/'))
 print(os.getcwd())
@@ -26,11 +26,13 @@ def respond_start(message, sub_node, log_level, line_number_list):
     print(arguments)
     line_number = arguments[0]
     print(line_number)
+    
     """  local_ip = _primitives.get_local_ip()
     our_parts = readPartNumbers.find_my_parts(local_ip)
     for item in our_parts:
         part_number_list.append(item[0])
         print(item[0])"""
+
     if line_number in line_number_list:
         print("We found it")
 

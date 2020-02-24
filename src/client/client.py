@@ -14,60 +14,114 @@ from hashlib import sha3_224
 this_dir = os.path.dirname(os.path.realpath(__file__))
 os.chdir(this_dir)
 
-# Insert the server, misc, and src/inter directories to PATH so we can use modules like inject, vote, discover, etc.
+# Insert the server, misc, and src/inter/* directories to PATH so we can use modules like inject, vote, discover, etc.
 sys.path.insert(0, (os.path.abspath('../server')))
 sys.path.insert(0, (os.path.abspath('../misc')))
 sys.path.insert(0, (os.path.abspath('../inter/')))
 sys.path.insert(0, (os.path.abspath('../inter/modules')))
-
 # Imports from PATH
 import primitives
 
-# Globals
+# Immutable state; Constant node parameters set upon initialization and/or configuration
+_original_path = os.path.dirname(os.path.realpath(__file__))
+no_prop = "ffffffffffffffff"
+ring_prop = "eeeeeeeeeeeeeeee"
 localhost = socket.socket()
 localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes TIME_WAIT-ing. Add SO_REUSEADDR.
+nodeConfig = [3705, False, "Debug", "Client", None, None, _original_path, 0, "", "", "", localhost]
 
 # Mutable state; Write with writeState(), Read with readState(). Contains default values until changed
 nodeState = [(), [], False, False, [], "", [], 0, [], [], False, False, False]
 
-# Immutable state: Constant node parameters set upon initialization
-PORT = 3705
-allow_command_execution = False  # Don't execute arbitrary UNIX commands when casually asked, that's bad :]
-log_level = ""  # "Debug", "Info", or "Warning"; To be set by init
-sub_node = "Client"
-no_prop = "ffffffffffffffff"  # True:[message] = No message propagation.
-ring_prop = "eeeeeeeeeeeeeeee"
-SALT = None  # Will be set to a 128-bit hexadecimal token(by self.init) for making address identifiers
-ADDR_ID = None  # Another 128-bit hexadecimal token that wil be salted with SALT, and set by init()
-original_path = os.path.dirname(os.path.realpath(__file__))
-network_size = 0
-network_architecture = ""  # "complete" or "mesh"
-output_node = ""  # Address of one remote node from init_client
+# Thread locks
+nodestate_lock = threading.Lock()
+command_execution_lock = threading.Lock()
+fileIO_lock = threading.Lock()
+send_lock = threading.Lock()
+respond_lock = threading.Lock()
 
-os.chdir(original_path)
-Primitives = primitives.Primitives(sub_node, log_level)
+os.chdir(_original_path)
+Primitives = primitives.Primitives("Client", "")
 
 
 class Client:
 
     @staticmethod
-    def overwrite_nodestate(in_nodestate):
-        global nodeState
-        nodeState = in_nodestate
+    def lock(lock, name=None):
+        if name and type(name) == str:
+         Primitives.log("Locking: "+name, in_log_level="Info")
+
+        lock.acquire()
 
     @staticmethod
-    def write_nodestate(in_nodestate, index, value, void=True):
-        global nodeState
+    def release(lock, name=None):
+
+        # if name and type(name) == str:
+        #    print("releasing "+name)
+
+        lock.release()
+
+    def overwrite_nodestate(self, in_nodestate, write_nodeConfig=False):
+        global nodestate_lock
+        self.lock(nodestate_lock, name="nodeState")
+
+        global nodeState, nodeConfig
+
+        if not write_nodeConfig:
+            nodeState = in_nodestate
+
+        else:
+            nodeConfig = in_nodestate
+
+        self.release(nodestate_lock, name="nodeState")
+
+    def write_nodestate(self, in_nodestate, index, value, void=True):
+        global nodestate_lock
+
+        self.lock(nodestate_lock, name="nodeState")
+
+        global nodeState, nodeConfig
+
 
         in_nodestate[index] = value
 
-        nodeState = list(in_nodestate)
+        if void:
+            if in_nodestate == nodeConfig:
+                print("Setting nodeConfig["+str(index)+"]"+" to "+str(value))
+                nodeConfig = list(in_nodestate)
+
+            else:
+                print("Setting nodeState["+str(index)+"]"+" to "+str(value))
+
+                nodeState = list(in_nodestate)
+
+            self.release(nodestate_lock, name="nodeState")
 
         if not void:
-            return nodeState
+            self.release(nodestate_lock, name="nodeState")
+            return in_nodestate
 
-    def read_nodestate(self, index):
-        return nodeState[index]
+    def read_nodestate(self, index, in_nodestate=None):
+        global nodeState, nodestate_lock
+
+        self.lock(nodestate_lock, name="nodeState")
+
+        if not in_nodestate:
+            current_nodeState = nodeState
+
+        else:
+            current_nodeState = in_nodestate
+
+        self.release(nodestate_lock, name="nodeState")
+
+        return current_nodeState[index]
+
+    def read_nodeConfig(self, index):
+        global nodeConfig
+        return self.read_nodestate(index, in_nodestate=nodeConfig)
+
+    def write_nodeConfig(self, _nodeConfig, index, value):
+        return self.write_nodestate(nodeConfig, index, value)
 
     @staticmethod
     def prepare(message, salt=True):
@@ -132,7 +186,7 @@ class Client:
             network tuple, which when permuted, thwarts many timing attacks. ''
             Doesn't return """
 
-        Primitives.log("Permuting the network tuple", in_log_level="Info")
+        Primitives.log("Permuting the network tuple", in_log_level="Debug")
 
         net_tuple = self.read_nodestate(0)
         net_list = list(net_tuple)
@@ -191,7 +245,7 @@ class Client:
                        "\nNew Network Tuple: " + str(net_tuple), in_log_level="Debug")
 
     def connect(self, connection, address, port, local=False):
-        """ Connect to a remote server and handle the connection(i.e append it).
+        """ Connect to a remote server and handle the connection(i.e append it to network_tuple).
             Doesn't return. """
 
         connecting_to_server = self.read_nodestate(2)
@@ -199,6 +253,7 @@ class Client:
 
         # Make a real copy of the network tuple
         # Then append our new connection (will be removed if connection fails)
+        print(self.read_nodestate(0))
         net_tuple = tuple(self.read_nodestate(0))
 
         # Don't connect to an address we're already connected to.
@@ -221,7 +276,10 @@ class Client:
                 if not local:
 
                     Primitives.log(str("Connecting to " + address), in_log_level="Info")
+
+                    sock.settimeout(5)
                     sock.connect((address, port))
+
                     Primitives.log("Successfully connected.", in_log_level="Info")
                     self.append(sock, address)
                     self.write_nodestate(nodeState, 2, False)  # set connecting_to_server = False
@@ -232,7 +290,9 @@ class Client:
                     Primitives.log("Connecting to localhost server...", in_log_level="Info")
 
                     sock.connect(("127.0.0.1", port))
-                    # The socket object we apppended earlier was automatically
+                    self.append(sock, "127.0.0.1")
+
+                    # The socket object we appended earlier was automatically
                     # destroyed by the OS because connections to 0.0.0.0 are illegal...
                     # Connect to localhost with raddr=127.0.0.1...
 
@@ -286,7 +346,7 @@ class Client:
             Primitives.log("Already disconnected from that address, passing...", in_log_level="Warning")
             pass
 
-    """ The following function was written by StackOverflow user 
+    """ The following send() function was written by StackOverflow user 
     Adam Rosenfield, then modified by me, HexicPyth.
     https://stackoverflow.com/a/17668009
     https://stackoverflow.com/users/9530/adam-rosenfield """
@@ -295,6 +355,10 @@ class Client:
         """Helper function to encode a given message and send it to a given server.
             Set sign=False to disable automatic message signing(useful for no_prop things)
             """
+
+        global send_lock
+
+        self.lock(send_lock, name="Send lock")
 
         sock = connection[0]
 
@@ -314,6 +378,8 @@ class Client:
         # from the network tuple to avoid conflict.
         except OSError:
             self.disconnect(connection)
+
+        self.release(send_lock, name="Send lock")
 
     def broadcast(self, message, do_mesh_propagation=True, in_nodeState=None):
 
@@ -339,8 +405,9 @@ class Client:
 
             else:
                 do_mesh_propagation = self.read_nodestate(12)
-
-            Primitives.log("Doing mesh propagation: " + str(do_mesh_propagation), in_log_level="Debug")
+                
+            Primitives.log("Doing mesh propagation: "+str(do_mesh_propagation), in_log_level="Debug")
+  
             # Network not bootstrapped yet, do ring network propagation
             if message[:16] != ring_prop:
                 message = ring_prop + ":" + message
@@ -349,9 +416,6 @@ class Client:
 
             if in_nodeState:
                 self.write_nodestate(in_nodeState, 1, message_list)
-
-            else:
-                self.write_nodestate(nodeState, 1, message_list)
 
         if do_mesh_propagation:
             """ network bootstrapped or do_mesh_propagation override is active, do fully-complete/mesh style
@@ -364,22 +428,28 @@ class Client:
         if in_nodeState:
             return nodeState
 
-    @staticmethod
-    def run_external_command(command):
+    def run_external_command(self, command):
+        global command_execution_lock
+
         # Given a string containing a UNIX command, execute it.
         # Disable this by setting command_execution=False
         # Returns 0 -> (int)
 
+        self.lock(command_execution_lock, name="command execution")
         os.system(command)
+        self.release(command_execution_lock, name="command execution")
+
         return 0
 
-    @staticmethod
-    def write_to_page(page_id, data, signing=True):
+    def write_to_page(self, page_id, data, signing=True, filter_duplicate_data=True):
         global ADDR_ID
+        global fileIO_lock
         """ Append data to a given pagefile by ID."""
 
+        self.lock(fileIO_lock, name="File I/O")
+
         Primitives.log("Writing to page:" + page_id, in_log_level="Info")
-        os.chdir(original_path)
+        os.chdir(self.read_nodeConfig(6))
 
         # Write page data pseudonymously with ADDR_ID
         if signing:
@@ -403,26 +473,34 @@ class Client:
         this_page.write(data_line)
         this_page.close()
 
+        if filter_duplicate_data:
+            # Remove duplicate data
+            unique_lines = set(open(file_path).readlines())
+            open(file_path, 'w').writelines(set(unique_lines))
+
+        self.release(fileIO_lock, name="File I/O")
+
     def respond(self, connection, msg):
         """ We received a message, reply with an appropriate response.
             Doesn't return. """
 
-        global network_architecture
-        global network_size
-        global log_level
         global nodeState
         global ring_prop
+
+        self.lock(respond_lock, name="Respond lock")
 
         full_message = str(msg)
         message = full_message[17:]  # Message without signature
         sig = full_message[:16]  # Just the signature
         address = connection[1]
 
-        os.chdir(original_path)
 
         net_tuple = self.read_nodestate(0)
         message_list = self.read_nodestate(1)
         propagation_allowed = True
+        original_path = self.read_nodeConfig(6)
+        os.chdir(original_path)
+
 
         if address == "127.0.0.1":
             Primitives.log("Received message from 127.0.0.1; This is a violation of protocol; "
@@ -437,8 +515,8 @@ class Client:
 
         if sig == ring_prop:
             """Sending messages in ring mode adds a special signature on top of the signed message, so to get
-            the actual signature(not the ring propagation delimiter) we need to remove the delimiter, then
-            process the message as usual."""
+             the actual signature(not the ring propagation delimiter) we need to remove the delimiter, then
+             process the message as usual."""
 
             message = full_message[17:]  # Remove the ring propagation delimiter
             message_sig = message[:16]  # Get the actual message signature
@@ -451,16 +529,15 @@ class Client:
             self.write_nodestate(nodeState, 1, new_message_list)
 
         """Axonet stores the signatures of all received messages in a global lookup table. Messages are propagated in
-        a which which (inevitably) leads to most nodes receiving identical messages from many independent sending nodes.
+        a way which (inevitably) leads to most nodes receiving identical messages from many independent sending nodes.
         Nodes only need to respond to each message once, so the message signatures are stored in a global lookup table
         (message_list = nodeState[1]). 
-        
+
         Depending on the network configuration/architecture, nodes will either refuse
         to send messages with signatures that appear in the message_list(ring propagation), or refuse to respond to
         messages with signatures appearing in the message_list(mesh/fully-complete message propagation)"""
 
         if sig in message_list:
-
             not_responding_to_msg = str("Not responding to " + sig)
             Primitives.log(not_responding_to_msg, in_log_level="Debug")
 
@@ -503,7 +580,7 @@ class Client:
                 """ Simple way to test our connection to a given node."""
 
                 Primitives.log("echoing...", in_log_level="Info")
-                echo.initiate(self.read_nodestate(0), network_architecture, connection, no_prop)
+                echo.initiate(self.read_nodestate(0), self.read_nodeConfig(8), connection, no_prop)
 
             # Terminate this node and quit
             if message == "stop":
@@ -513,7 +590,7 @@ class Client:
                 # to peer pressure isolated/edge nodes into dying on command
 
                 # Inform localhost to follow suit.
-                localhost_connection = (localhost, "127.0.0.1")
+                localhost_connection = (self.read_nodeConfig(11), "127.0.0.1")
                 self.send(localhost_connection, "stop")
 
                 # The node will already be terminated by the time it gets to the end of the function and runs the
@@ -531,7 +608,8 @@ class Client:
 
                 import config_client
                 os.chdir(this_dir)
-                config_client.config_argument(arguments, sub_node, log_level)
+
+                config_client.config_argument(arguments, self.read_nodeConfig(3), self.read_nodeConfig(2))
 
             # Instruct clients to connect to remote servers.
             if message.startswith("ConnectTo:"):
@@ -569,7 +647,7 @@ class Client:
                         Primitives.log(not_connecting_msg, in_log_level="Warning")
 
                     else:
-
+                        network_architecture = self.read_nodeConfig(8)
                         mesh_network = (network_architecture == "mesh")  # True if network architecture is mesh
                         sent_by_localhost = (address == "127.0.0.1" or address == Primitives.get_local_ip())
 
@@ -603,7 +681,11 @@ class Client:
                             # If we're not connected to said node
                             if not connection_status:
                                 try:
+                                    PORT = self.read_nodeConfig(0)
                                     self.connect(new_connection, connect_to_address, PORT)
+
+                                    # Connection was successful, cache address to hosts file and start listening...
+                                    self.write_to_page('hosts', connect_to_address, False)
                                     self.listen(new_connection)
 
                                 except OSError:
@@ -625,7 +707,7 @@ class Client:
             if message.startswith('exec:'):
                 import exec
 
-                exec.initiate(message, allow_command_execution)
+                exec.initiate(message, self.read_nodeConfig(1))
 
             # Create a new pagefile in src/inter/mem which will presumably store some data generated by a
             # concurrent network algorithm
@@ -661,6 +743,8 @@ class Client:
 
                 page_lines = pagefile.readlines()
 
+                pagefile.close()
+
                 # Don't sync comments
                 for string in page_lines:
                     if string[:1] == "#":
@@ -674,6 +758,7 @@ class Client:
                     module_loaded = self.read_nodestate(5)
 
                     if arguments[1] == "discovery" and module_loaded == "discovery":
+                        network_size = self.read_nodeConfig(7)
                         is_cluster_rep = (Primitives.find_representative(election_list, "discovery-" + page_id)
                                           == Primitives.get_local_ip())
 
@@ -736,12 +821,13 @@ class Client:
                     duplicate = False
                     local = False
 
+                    network_size = self.read_nodeConfig(7)
                     Primitives.log("Receiving " + str(len(sync_data)) + " bytes of data from network",
                                    in_log_level="Info")
 
                     for line in valid_pagelines:
 
-                        if log_level == "Debug":
+                        if self.read_nodeConfig(2) == "Debug":
                             print("Line: " + line)
                             print('Data: ' + sync_data)
 
@@ -764,7 +850,7 @@ class Client:
                                 pass
 
                             else:
-                                if log_level == "Debug":
+                                if self.read_nodeConfig(2) == "Debug":
                                     module_loaded = self.read_nodestate(5)
 
                                     do_write = False
@@ -794,8 +880,8 @@ class Client:
                     raw_lines = list(set(open(file_path).readlines()))
 
                     existing_lines = list(set(
-                        [raw_line for raw_line in raw_lines
-                         if raw_line != "\n" and raw_line[:2] != "##"]))
+                                [raw_line for raw_line in raw_lines
+                                if raw_line != "\n" and raw_line[:2] != "##"]))
 
                     # Write changes to page
                     open(file_path, 'w').writelines(set(existing_lines))
@@ -844,11 +930,13 @@ class Client:
                 import finder
                 import readPartNumbers
                 os.chdir(this_dir)
+
                 line_number_list = []
 
                 local_ip = Primitives.get_local_ip()
                 our_parts = readPartNumbers.find_my_parts(local_ip, path_to_client=this_dir)
                 for item in our_parts:
+                  
                     print(item)
                     itemparsed = item.split(',')
                     line_num = itemparsed([-2]).strip(' ') # Finds 2nd to last number in part tuple and removes the
@@ -856,6 +944,7 @@ class Client:
                     print(line_num)
 
                 finder.respond_start(message, sub_node, log_level, line_number_list)
+
 
             # Provide server's a means of communicating readiness to clients. This is used during file proxying
             # to form a feedback loop between the proxy and client, that way the client doesn't ever exceed the
@@ -905,7 +994,7 @@ class Client:
                                    in_log_level="Warning")
 
                 # Localhost needs to remove said node too!
-                localhost_conn = (localhost, "127.0.0.1")
+                localhost_conn = (self.read_nodeConfig(11), "127.0.0.1")
                 self.send(localhost_conn, no_prop + ":" + message, sign=False)
 
             # Start a network election which selects a suitable node to do some task
@@ -961,16 +1050,18 @@ class Client:
 
                     this_campaign_list = list(set(this_campaign_list))  # Remove any duplicate entries
 
-                    Primitives.log(str(len(this_campaign_list)) + " nodes have cast votes for " + election_details[0])
-                    Primitives.log("Network size: " + str(network_size))
+                    Primitives.log(str(len(this_campaign_list)) + " nodes have cast votes for "+election_details[0])
+                    Primitives.log("Network size: "+str(self.read_nodeConfig(7)))
 
                     # If all votes are cast, elect a leader.
+                    network_size = self.read_nodeConfig(7)
                     if len(this_campaign_list) == network_size:
 
                         # The node with the greatest campaign token is elected cluster representative.
 
                         campaign_tokens = [campaign_tuple[1] for campaign_tuple in campaign_list
                                            if campaign_tuple[0] == reason]
+
 
                         winning_token = max(campaign_tokens)
 
@@ -1044,8 +1135,7 @@ class Client:
                     self.write_nodestate(nodeState, 10, False)  # Set ongoing_election = False
 
                     is_cluster_rep = (new_leader == Primitives.get_local_ip())
-
-                    print("is_cluster_rep: " + str(is_cluster_rep))
+                    print("is_cluster_rep: "+str(is_cluster_rep))
 
                     Primitives.log(str(new_election_list), in_log_level="Debug")
 
@@ -1070,6 +1160,7 @@ class Client:
 
             # Ring Network --> Mesh network bootstrapping routine
             if message.startswith("bootstrap:"):
+                global directory_server
                 arguments = Primitives.parse_cmd(message)
 
                 # arguments[0] = network architecture to boostrap into (e.x "mesh")
@@ -1079,36 +1170,43 @@ class Client:
                 net_architecture = arguments[0]
                 c_ext = int(arguments[1])
 
-                # Find peer discovery output pagefile
-                hosts_pagefile = ''.join([item[0][10:] for item in election_list if item[0][:10] == "discovery-"])
-                Primitives.log("Hosts pagefile is " + hosts_pagefile + ".bin", in_log_level="Info")
-
-                print("Output node: " + str(output_node))
-
-                print(str(election_list))
-
                 try:
-                    pagefile = open("../inter/mem/" + hosts_pagefile + ".bin", "r+")
-                    potential_peers = pagefile.readlines()
-                    pagefile.close()
+                    print("Trying to download hosts...")
+                    directory_server_hostsfile_contents = Primitives.download_file(directory_server + "hosts.bin")
+                    directory_server_hosts = directory_server_hostsfile_contents.split('\n')
+                    potential_peers = [line for line in directory_server_hosts
+                                       if line not in ("", '', "\n")]
+                    print(potential_peers)
 
-                except FileNotFoundError:
-                    Primitives.log(hosts_pagefile + ".bin" + " does not exist.", in_log_level="Warning")
-                    potential_peers = None
+                    # Cache these hosts so we can use them again if the directory server becomes inaccessible
+                    self.write_to_page('hosts', directory_server_hostsfile_contents, False)
+
+                except AttributeError:
+                    # download_file returned an integer(1) because the directory server is not reachable
+                    Primitives.log("Directory server not reachable... using cached hosts...")
+
+                    try:
+                        os.chdir(original_path)
+                        hosts_lines = open("../inter/mem/hosts.bin", "r+").readlines()
+                        potential_peers = [host_entry for host_entry in hosts_lines if host_entry != "\n"]
+
+                    except FileNotFoundError:
+                        # Fuck fuck fuck this is bad!
+                        Primitives.log("No cached hosts found, refusing to bootstrap!")
+                        potential_peers = 1
 
                 chosen_peers = []
-
-                if potential_peers:
+                if potential_peers and potential_peers != 1:
                     for peer in potential_peers:
                         if peer == Primitives.get_local_ip() + "\n":  # Do not try to pick ourselves as a remote node
                             potential_peers.remove(peer)
 
-                if potential_peers:
+                if potential_peers != 1:
                     if net_architecture == "mesh":
                         print("Network tuple:")
                         print(str(net_tuple))
 
-                        this_node = (localhost, "127.0.0.1")
+                        this_node = (self.read_nodeConfig(11), "127.0.0.1")
 
                         # Disconnect from everything other than localhost
                         for peer in net_tuple:
@@ -1131,7 +1229,7 @@ class Client:
                         # Bootstrap!
                         for peer_address in chosen_peers:
                             external_connection = (socket.socket(), peer_address)
-                            self.connect(external_connection, peer_address, PORT)
+                            self.connect(external_connection, peer_address, self.read_nodeConfig(0))
 
                         # Great, bootstrapping was successful
                         # Set global message propagation mode to mesh
@@ -1142,12 +1240,17 @@ class Client:
                             do_mesh_propagation = True
                             self.write_nodestate(nodeState, 12, do_mesh_propagation)
 
+        self.release(respond_lock, name="Respond lock")
+
     def listen(self, connection):
         # Listen for incoming messages and call self.respond() to respond to them.
         # Also, deal with disconnections as they are most likely to throw errors here.
         # Returns nothing.
 
+        global receive_lock
+
         def listener_thread(conn):
+            global receive_lock
             in_sock = conn[0]
             terminated = self.read_nodestate(3)
             listener_terminated = False  # Terminate when set
@@ -1155,11 +1258,12 @@ class Client:
             while not listener_terminated and not terminated:
                 incoming = Primitives.receive(conn)
                 raw_message = incoming
+
                 try:
                     if incoming:
                         self.respond(conn, raw_message)
 
-                except ArithmeticError:  # DEBUG TypeError
+                except TypeError:
                     conn_severed_msg = str("Connection to " + str(in_sock)
                                            + "was severed or disconnected."
                                            + "(TypeError: listen() -> listener_thread()")
@@ -1179,7 +1283,6 @@ class Client:
         threading.Thread(target=listener_thread, args=(connection,), name='listener_thread').start()
 
     def terminate(self):
-        global localhost
         # Disconnect from the network and exit the client cleanly.
         # Returns 0 -> int (duh)
 
@@ -1205,7 +1308,8 @@ class Client:
             address = connection[1]
             Primitives.log(str("Terminating connection to " + address), in_log_level="Info")
             self.disconnect(connection, disallow_local_disconnect=False)
-            localhost.close()
+            _localhost = self.read_nodeConfig(11)
+            _localhost.close()
 
             index += 1
 
@@ -1219,39 +1323,33 @@ class Client:
         os._exit(0)
 
     def initialize(self, port=3705, net_architecture="complete", remote_addresses=None, command_execution=False,
-                   default_log_level="Debug", modules=None, net_size=0, assigned_part_numbers=[]):
+                   default_log_level="Debug", modules=None, net_size=0, input_directory_server=""):
 
-        # Initialize the client, set any global variable that need to be set, etc.
-
-        global allow_command_execution
-        global localhost
-        global log_level
-        global PORT
+        # Initialize the client, setup nodeConfig, bootstrap...
+        global nodeConfig
         global Primitives
-        global sub_node
-        global SALT
-        global ADDR_ID
-        global network_architecture
-        global network_size
-        global output_node
-        global our_part_numbers
 
-        # Global variable assignment
-        PORT = port
-        allow_command_execution = command_execution
-        log_level = default_log_level
-        network_architecture = net_architecture
-        network_size = net_size
-        our_part_numbers = assigned_part_numbers
+        SALT = secrets.token_hex(16) # Generate SALT
+
+        # nodeConfig assignments
+        self.write_nodeConfig(nodeConfig, 0, port)
+        self.write_nodeConfig(nodeConfig, 1, command_execution)
+        self.write_nodeConfig(nodeConfig, 2, default_log_level)
+
+        # nodeConfig[3] isn't user configurable
+        Primitives = primitives.Primitives(self.read_nodeConfig(3), self.read_nodeConfig(2))
+        self.write_nodeConfig(nodeConfig, 4, SALT)
+        self.write_nodeConfig(nodeConfig, 5, Primitives.gen_addr_id(SALT)) # Generate ADDR_ID
+        # nodeConfig[6] isn't user configurable
+        self.write_nodeConfig(nodeConfig, 7, net_size)
+        self.write_nodeConfig(nodeConfig, 8, net_architecture)
+        self.write_nodeConfig(nodeConfig, 9, None) # We'll reset this shortly if needed
+        self.write_nodeConfig(nodeConfig, 10, input_directory_server)
+        # nodeConfig[11] is magic; don't touch
 
         if remote_addresses:
             output_node = random.choice(remote_addresses)
-        else:
-            output_node = None
-
-        Primitives = primitives.Primitives(sub_node, log_level)
-        SALT = secrets.token_hex(16)
-        ADDR_ID = Primitives.gen_addr_id(SALT)
+            self.write_nodeConfig(nodeConfig, 9, output_node)
 
         new_loaded_modules = []
 
@@ -1265,7 +1363,7 @@ class Client:
 
         # Stage 0
         Primitives.log("Initializing...", in_log_level="Info")
-        localhost_connection = (localhost, '127.0.0.1')
+        localhost_connection = (self.read_nodeConfig(11), '127.0.0.1')
 
         try:
             self.connect(localhost_connection, 'localhost', port, local=True)
@@ -1298,12 +1396,11 @@ class Client:
                 try:
                     connection = (sock, remote_address)
                     self.connect(connection, remote_address, port)
-
-                    Primitives.log(str("Starting listener on " + remote_address), in_log_level="Info")
+                    Primitives.log(str("Starting listener on " + remote_address), in_log_level="")
                     self.listen(connection)
 
-                    if network_architecture == "complete":
-                        self.send(connection, no_prop + ":echo", sign=False)  # TODO: why?
+                    if net_architecture == "complete":
+                        self.send(connection, no_prop + ":echo", sign=False)
 
                 except ConnectionRefusedError:
                     Primitives.log("Unable to connect to remove server; Failed to bootstrap.",

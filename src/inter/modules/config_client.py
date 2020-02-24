@@ -43,8 +43,6 @@ def config_net_size(arguments):
     except (ValueError, TypeError):
         print("That is not a valid port")
 
-
-def config_argument(arguments, sub_node, log_level):
     _primitives = primitives.Primitives(sub_node, log_level)
     print(arguments, "there are the arguments")
     if arguments[0] == "network_size":
@@ -70,8 +68,8 @@ def config_argument(arguments, sub_node, log_level):
                             in_log_level="Info")
     elif arguments[0] == "permanent":
         if arguments[1] == "port":
-
             change_port(arguments)
+
         elif arguments[1] == "network_architecture":
             pass
         elif arguments[1] == "remote_addresses":
@@ -87,3 +85,23 @@ def config_argument(arguments, sub_node, log_level):
             pass
         else:
             print("Error \"" + arguments[1] + "\" isn't correct syntax")
+
+
+#TODO: What's going on here?
+"""
+def port(arguments):
+    print("?????????????????")
+    try:
+        if int(arguments[2]):
+
+            with open("client_configuration.json")as client_configuration:
+                client_config = json.load(client_configuration)
+                client_config['port'] = arguments[2]
+                json.dumps(client_config, indent=3)
+                print(client_config['port'])
+        else:
+            print("That is not a valid port")
+    except TypeError:
+        print("That is not a valid port")
+
+"""
