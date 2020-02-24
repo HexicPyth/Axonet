@@ -101,8 +101,6 @@ class Client:
             self.release(nodestate_lock, name="nodeState")
             return in_nodestate
 
-
-
     def read_nodestate(self, index, in_nodestate=None):
         global nodeState, nodestate_lock
 

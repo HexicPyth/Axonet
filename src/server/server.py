@@ -151,7 +151,6 @@ class Server:
     def send(self, connection, message, signing=True):
         global send_lock
 
-
         sock = connection[0]
         address = connection[1]
 
@@ -552,11 +551,11 @@ class Server:
 
                         print("TERMINATED: "+str(_terminated))
                         if address == Primitives.get_local_ip() or address == "127.0.0.1" and not _terminated:
+                            Primitives.log("Something happened to localhost; not disconnecting",
+                                           in_log_level="Warning")
 
-                                Primitives.log("Something happened to localhost; not disconnecting",
-                                               in_log_level="Warning")
+                            print("TERMINATED: "+str(_terminated))
 
-                                print("TERMINATED: "+str(_terminated))
                         else:
                             try:
                                 self.disconnect(conn)
