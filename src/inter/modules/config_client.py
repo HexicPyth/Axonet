@@ -11,7 +11,38 @@ sys.path.insert(0, (os.path.abspath('../../inter/misc')))
 import primitives
 
 
-def config_argument(arguments, sub_node, log_level):
+def change_port(arguments):
+    try:
+        if int(arguments[2]):
+            with open('client_configuration.json', 'r')as client_configuration:
+                client_config = json.load(client_configuration)
+                client_config['port'] = int(arguments[2])
+                client_configuration.close()
+            with open('client_configuration.json', 'w')as client_configuration:
+                client_configuration.seek(0)
+                json.dump(client_config, client_configuration)
+                client_configuration.close()
+
+    except (ValueError, TypeError):
+        print("That is not a valid port")
+
+
+def config_net_size(arguments):
+    try:
+        if int(arguments[2]):
+            with open('client_configuration.json', 'r')as client_configuration:
+                client_config = json.load(client_configuration)
+                client_config['net_size'] = int(arguments[2])
+                client_configuration.close()
+            with open('client_configuration.json', 'w')as client_configuration:
+                client_configuration.seek(0)
+                json.dump(client_config, client_configuration)
+                print(client_config['port'])
+                client_configuration.close()
+
+    except (ValueError, TypeError):
+        print("That is not a valid port")
+
     _primitives = primitives.Primitives(sub_node, log_level)
     print(arguments, "there are the arguments")
     if arguments[0] == "network_size":
@@ -36,10 +67,9 @@ def config_argument(arguments, sub_node, log_level):
             _primitives.log("Successfully set network_architecture to: " + network_architecture,
                             in_log_level="Info")
     elif arguments[0] == "permanent":
-
         if arguments[1] == "port":
-            pass
-            # port(arguments)
+            change_port(arguments)
+
         elif arguments[1] == "network_architecture":
             pass
         elif arguments[1] == "remote_addresses":
@@ -51,11 +81,13 @@ def config_argument(arguments, sub_node, log_level):
         elif arguments[1] == "modules":
             pass
         elif arguments[1] == "network_size" or arguments[1] == "net_size":
+            config_net_size(arguments)
             pass
         else:
             print("Error \"" + arguments[1] + "\" isn't correct syntax")
 
 
+#TODO: What's going on here?
 """
 def port(arguments):
     print("?????????????????")

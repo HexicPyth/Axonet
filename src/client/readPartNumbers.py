@@ -10,14 +10,12 @@ import os
 
 _primitives = primitives.Primitives("Client", "Debug")
 
-
 def download_racks_csv(url):
     response = urllib.request.urlopen(url)
     data = response.read()  # a `bytes` object
     text = data.decode('utf-8')  # a `str`; this step can't be used if data is binary
     racks_file = open("Racks.csv", "w")
     racks_file.write(text)
-
 
 def find_my_parts(local_ip, path_to_client=None):
     """Given a nodes static IP, find all part numbers assigned to it in the master spreadsheet
@@ -60,7 +58,5 @@ def find_my_parts(local_ip, path_to_client=None):
 
     return our_parts
 
-
 if __name__ == "__main__":
     print(find_my_parts(_primitives.get_local_ip()))
-
