@@ -1,9 +1,7 @@
 import os
 import sys
 import time
-import board
-import busio
-from adafruit_ht16k33 import segments
+
 
 # Allow us to import the client
 this_dir = os.path.dirname(os.path.realpath(__file__))
@@ -11,12 +9,18 @@ os.chdir(this_dir)
 sys.path.insert(0, '../../../client/')
 sys.path.insert(0, '../../../server/')
 sys.path.insert(0, (os.path.abspath('../../inter/misc')))
+try:
+    import board
+    import busio
+    from adafruit_ht16k33 import segments
+except ImportError:
+    print("Not a raspberry so cant import board")
+
 import primitives
 import client
-import readPartNumbers\
+import readPartNumbers
 
 os.chdir(os.path.abspath('../../client/'))
-print(os.getcwd())
 
 
 def respond_start(message, sub_node, log_level, line_number_list):
