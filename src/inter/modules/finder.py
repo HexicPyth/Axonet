@@ -30,15 +30,10 @@ def respond_start(message, sub_node, log_level, line_number_list):
     print(arguments)
     line_number = arguments[0]
     print(line_number)
-    
-    """  local_ip = _primitives.get_local_ip()
-    our_parts = readPartNumbers.find_my_parts(local_ip)
-    for item in our_parts:
-        part_number_list.append(item[0])
-        print(item[0])"""
 
     if line_number in line_number_list:
         print("We found it")
+        # If the last four bytes of our IP
 
     """Called by the client's listener_thread when it received a [name]: flag"""
 

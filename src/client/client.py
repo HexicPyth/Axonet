@@ -28,7 +28,7 @@ no_prop = "ffffffffffffffff"
 ring_prop = "eeeeeeeeeeeeeeee"
 localhost = socket.socket()
 localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes TIME_WAIT-ing. Add SO_REUSEADDR.
-nodeConfig = [3705, False, "Debug", "Client", None, None, _original_path, 0, "", "", "", localhost]
+nodeConfig = [3705, False, "Debug", "Client", None, None, _original_path, 0, "", "", "", localhost] # 13 bytes + context
 
 # Mutable state; Write with writeState(), Read with readState(). Contains default values until changed
 nodeState = [(), [], False, False, [], "", [], 0, [], [], False, False, False]
@@ -390,7 +390,6 @@ class Client:
             net_tuple = in_nodeState[0]
             message_list = in_nodeState[1]
 
-
         else:
             self.permute_network_tuple()
             net_tuple = self.read_nodestate(0)
@@ -442,7 +441,6 @@ class Client:
         return 0
 
     def write_to_page(self, page_id, data, signing=True, filter_duplicate_data=True):
-        global ADDR_ID
         global fileIO_lock
         """ Append data to a given pagefile by ID."""
 
@@ -459,6 +457,7 @@ class Client:
                which external nodes can use to direct messages to anonymous destination nodes without requiring them
                to reveal their identity."""
 
+            ADDR_ID = self.read_nodeConfig(5)
             data_line = str(ADDR_ID + ":" + data + "\n")
 
         # Write data completely anonymously
@@ -596,7 +595,6 @@ class Client:
                 # The node will already be terminated by the time it gets to the end of the function and runs the
                 # message propagation algorithm; broadcast now, then stop
                 self.broadcast(full_message, do_mesh_propagation=True)
-                propagation_allowed = False
 
                 # Do so ourselves
                 self.terminate()
@@ -881,7 +879,7 @@ class Client:
 
                     existing_lines = list(set(
                                 [raw_line for raw_line in raw_lines
-                                if raw_line != "\n" and raw_line[:2] != "##"]))
+                                 if raw_line != "\n" and raw_line[:2] != "##"]))
 
                     # Write changes to page
                     open(file_path, 'w').writelines(set(existing_lines))
@@ -1336,15 +1334,14 @@ class Client:
         self.write_nodeConfig(nodeConfig, 0, port)
         self.write_nodeConfig(nodeConfig, 1, command_execution)
         self.write_nodeConfig(nodeConfig, 2, default_log_level)
-
         # nodeConfig[3] isn't user configurable
         Primitives = primitives.Primitives(self.read_nodeConfig(3), self.read_nodeConfig(2))
         self.write_nodeConfig(nodeConfig, 4, SALT)
-        self.write_nodeConfig(nodeConfig, 5, Primitives.gen_addr_id(SALT)) # Generate ADDR_ID
+        self.write_nodeConfig(nodeConfig, 5, Primitives.gen_addr_id(SALT))  # Generate ADDR_ID
         # nodeConfig[6] isn't user configurable
         self.write_nodeConfig(nodeConfig, 7, net_size)
         self.write_nodeConfig(nodeConfig, 8, net_architecture)
-        self.write_nodeConfig(nodeConfig, 9, None) # We'll reset this shortly if needed
+        self.write_nodeConfig(nodeConfig, 9, None)  # We'll reset this shortly if needed
         self.write_nodeConfig(nodeConfig, 10, input_directory_server)
         # nodeConfig[11] is magic; don't touch
 
