@@ -69,7 +69,7 @@ class Primitives:
 
     def download_file(self, url):
         try:
-            response = urllib.request.urlopen(url)
+            response = urllib.request.urlopen(url, timeout=2)
             data = response.read()  # a `bytes` object
             text = data.decode('utf-8')  # a `str`; this step can't be used if data is binary
             return text

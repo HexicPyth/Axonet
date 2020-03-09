@@ -1185,6 +1185,8 @@ class Client:
                         os.chdir(original_path)
                         hosts_lines = open("../inter/mem/hosts.bin", "r+").readlines()
                         potential_peers = [host_entry for host_entry in hosts_lines if host_entry != "\n"]
+                        if len(potential_peers) == 0:
+                            raise FileNotFoundError("No potential peers found; hosts.bin empty")
 
                     except FileNotFoundError:
                         # Fuck fuck fuck this is bad!
@@ -1216,9 +1218,12 @@ class Client:
 
                         # Select remote peers to bootstrap with
                         for i in range(0, c_ext):
-                            chosen_peer = random.choice(potential_peers)
-                            potential_peers.remove(chosen_peer)
-                            chosen_peers.append(chosen_peer.strip("\n"))
+                            try:
+                                chosen_peer = random.choice(potential_peers)
+                                potential_peers.remove(chosen_peer)
+                                chosen_peers.append(chosen_peer.strip("\n"))
+                            except IndexError:
+                                break
 
                         Primitives.log("Disassociation successful. Ready for bootstrap...", in_log_level="Info")
 
