@@ -936,7 +936,8 @@ class Client:
                 line_number_list = []
 
                 local_ip = Primitives.get_local_ip()
-                our_parts = readPartNumbers.find_my_parts(local_ip, path_to_client=this_dir)
+                directory_server = self.read_nodeConfig(10)
+                our_parts = readPartNumbers.find_my_parts(local_ip, directory_server, path_to_client=this_dir)
                 for item in our_parts:
                   
                     print(item)

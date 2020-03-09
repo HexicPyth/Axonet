@@ -17,7 +17,8 @@ def download_racks_csv(url):
     racks_file = open("Racks.csv", "w")
     racks_file.write(text)
 
-def find_my_parts(local_ip, path_to_client=None):
+
+def find_my_parts(local_ip, directory_server, path_to_client=None):
     """Given a nodes static IP, find all part numbers assigned to it in the master spreadsheet
         Returns list [(part number, part name, line #), ..., (part number n, part name n, line # n)]"""
     if path_to_client:
@@ -35,8 +36,13 @@ def find_my_parts(local_ip, path_to_client=None):
     _primitives.log("Fetching part numbers for " + local_ip + "...", in_log_level="Debug")
 
     try:
-        download_racks_csv('http://73.17.34.121/hosted/Racks.csv')
-        part_number_assignments = open("Racks.csv")
+        racks_csv_text = _primitives.download_file(directory_server)
+
+        if racks_csv_text != 1:
+            open("Racks.csv", "r+").write(racks_csv_text)
+            part_number_assignments = open("Racks.csv")
+        else:
+            raise urllib.error.URLError("Could not access Racks.csv. Directory server offline?")
 
     except urllib.error.URLError:
         print("ERROR: No internet connection detected; cannot download Racks file... Searching for local copy...")
