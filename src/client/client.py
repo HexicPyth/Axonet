@@ -81,8 +81,6 @@ class Client:
         self.lock(nodestate_lock, name="nodeState")
 
         global nodeState, nodeConfig
-
-
         in_nodestate[index] = value
 
         if void:
@@ -1245,10 +1243,7 @@ class Client:
         # Also, deal with disconnections as they are most likely to throw errors here.
         # Returns nothing.
 
-        global receive_lock
-
         def listener_thread(conn):
-            global receive_lock
             in_sock = conn[0]
             terminated = self.read_nodestate(3)
             listener_terminated = False  # Terminate when set
