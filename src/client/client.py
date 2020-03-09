@@ -276,7 +276,10 @@ class Client:
                     Primitives.log(str("Connecting to " + address), in_log_level="Info")
 
                     sock.settimeout(5)
-                    sock.connect((address, port))
+                    try:
+                        sock.connect((address, port))
+                    except OSError:
+                        Primitives.log("Unable to connect to "+address+". (OSError)", in_log_level="Warning")
 
                     Primitives.log("Successfully connected.", in_log_level="Info")
                     self.append(sock, address)
@@ -287,8 +290,12 @@ class Client:
 
                     Primitives.log("Connecting to localhost server...", in_log_level="Info")
 
-                    sock.connect(("127.0.0.1", port))
-                    self.append(sock, "127.0.0.1")
+                    try:
+                        sock.connect(("127.0.0.1", port))
+                        self.append(sock, "127.0.0.1")
+
+                    except OSError:
+                        Primitives.log("Unable to connect to "+address+". (OSError)", in_log_level="Warning")
 
                     # The socket object we appended earlier was automatically
                     # destroyed by the OS because connections to 0.0.0.0 are illegal...
