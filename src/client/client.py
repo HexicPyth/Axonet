@@ -500,7 +500,6 @@ class Client:
         original_path = self.read_nodeConfig(6)
         os.chdir(original_path)
 
-
         if address == "127.0.0.1":
             Primitives.log("Received message from 127.0.0.1; This is a violation of protocol; "
                            "replacing address with Local IP.", in_log_level="Debug")
@@ -1159,7 +1158,7 @@ class Client:
 
             # Ring Network --> Mesh network bootstrapping routine
             if message.startswith("bootstrap:"):
-                global directory_server
+                directory_server = self.read_nodeConfig(10)
                 arguments = Primitives.parse_cmd(message)
 
                 # arguments[0] = network architecture to boostrap into (e.x "mesh")
