@@ -1,7 +1,9 @@
 import os
 import sys
 import time
-
+import primitives
+import client
+import readPartNumbers
 
 # Allow us to import the client
 this_dir = os.path.dirname(os.path.realpath(__file__))
@@ -13,12 +15,11 @@ try:
     import board
     import busio
     from adafruit_ht16k33 import segments
+
 except ImportError:
     print("Not a raspberry so cant import board")
 
-import primitives
-import client
-import readPartNumbers
+
 
 os.chdir(os.path.abspath('../../client/'))
 
@@ -29,11 +30,13 @@ def respond_start(message, sub_node, log_level, line_number_list):
 
     print(arguments)
     line_number = arguments[0]
+    token = arguments[1]
     print(line_number)
 
     if line_number in line_number_list:
+
         print("We found it")
-        # If the last four bytes of our IP
+        display_token(token)
 
     """Called by the client's listener_thread when it received a [name]: flag"""
 
