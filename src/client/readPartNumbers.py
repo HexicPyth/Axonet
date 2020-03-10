@@ -40,7 +40,7 @@ def find_my_parts(local_ip, directory_server, path_to_client=None):
 
         if racks_csv_text != 1:
             print(os.getcwd())
-            open("./Racks.csv", "r+").write(racks_csv_text)
+            open(os.path.abspath("./Racks.csv"), "r+").write(racks_csv_text)
             part_number_assignments = open("Racks.csv")
         else:
             raise urllib.error.URLError("Could not access Racks.csv. Directory server offline?")
