@@ -36,12 +36,11 @@ def find_my_parts(local_ip, directory_server, path_to_client=None):
     _primitives.log("Fetching part numbers for " + local_ip + "...", in_log_level="Debug")
 
     try:
-        racks_csv_text = _primitives.download_file(directory_server)
+        racks_csv_text = _primitives.download_file(directory_server + "Racks.csv")
 
         if racks_csv_text != 1:
-            print(os.getcwd())
             open(os.path.abspath("./Racks.csv"), "w").write(racks_csv_text)
-            part_number_assignments = open("Racks.csv")
+            part_number_assignments = open("./Racks.csv")
         else:
             raise urllib.error.URLError("Could not access Racks.csv. Directory server offline?")
 
