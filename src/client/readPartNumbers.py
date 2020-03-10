@@ -49,7 +49,7 @@ def find_my_parts(local_ip, directory_server, path_to_client=None):
         print("ERROR: No internet connection detected; cannot download Racks file... Searching for local copy...")
 
         try:
-            part_number_assignments = open("Racks.csv")
+            part_number_assignments = open("./Racks.csv")
             print("Local Racks.csv found! Proceeding...")
 
         except FileNotFoundError:
