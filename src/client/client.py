@@ -928,7 +928,7 @@ class Client:
                                 print(
                                     "(sync) not fetching: " + page_id + ".bin" + '; All contributions have been written')
 
-            if message.startswith("find:"):
+            if message.startswith("find:") or message.startswith("reset:"):
                 import finder
                 import readPartNumbers
                 os.chdir(this_dir)
@@ -938,6 +938,7 @@ class Client:
                 local_ip = Primitives.get_local_ip()
                 directory_server = self.read_nodeConfig(10)
                 our_parts = readPartNumbers.find_my_parts(local_ip, directory_server, path_to_client=this_dir)
+
                 for item in our_parts:
                   
                     print(item)
@@ -947,8 +948,7 @@ class Client:
 
                 sub_node = self.read_nodeConfig(3)
                 log_level = self.read_nodeConfig(2)
-                finder.respond_start(message, sub_node, log_level, line_number_list)
-
+                finder.respond_start(message, sub_node, log_level, line_number_list=line_number_list)
 
             # Provide server's a means of communicating readiness to clients. This is used during file proxying
             # to form a feedback loop between the proxy and client, that way the client doesn't ever exceed the
