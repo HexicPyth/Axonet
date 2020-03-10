@@ -67,4 +67,4 @@ def find_my_parts(local_ip, directory_server, path_to_client=None):
 
 
 if __name__ == "__main__":
-    print(find_my_parts(_primitives.get_local_ip())
+    print(find_my_parts(_primitives.get_local_ip()))
