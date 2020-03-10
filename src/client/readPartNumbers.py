@@ -39,6 +39,7 @@ def find_my_parts(local_ip, directory_server, path_to_client=None):
         racks_csv_text = _primitives.download_file(directory_server)
 
         if racks_csv_text != 1:
+            print(os.getcwd())
             open("Racks.csv", "r+").write(racks_csv_text)
             part_number_assignments = open("Racks.csv")
         else:
@@ -64,5 +65,6 @@ def find_my_parts(local_ip, directory_server, path_to_client=None):
 
     return our_parts
 
+
 if __name__ == "__main__":
-    print(find_my_parts(_primitives.get_local_ip()))
+    print(find_my_parts(_primitives.get_local_ip())
