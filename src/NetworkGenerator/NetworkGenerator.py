@@ -222,7 +222,7 @@ max_network_size = 100
 max_network_c_ext = 20
 
 # Represents an generalized arbitrary sized network as a collection of nodes['1', '2', '3', .... 'N']
-# You may assign these generalized hostname to IP addresses however you wish
+# You may assign these generalized hostnames to IP addresses however you wish
 hosts = [str(x) for x in range(1, max_network_size + 1)]
 
 max_network = gen_network(hosts, max_network_c_ext)
