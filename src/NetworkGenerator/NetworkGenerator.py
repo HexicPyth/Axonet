@@ -245,7 +245,7 @@ compressed_network = compress_network(max_network, network_size, network_c_ext)
 # graph.
 pretty_print(compressed_network)
 
-# Tells you the network_size and approximate c_ext of the finished network. the c_ext should be slighly less than or
+# Tells you the network_size and approximate c_ext of the finished network. the c_ext should be slightly less than or
 # equal to the value specified by network_c_ext
 classify_network(compressed_network)
 
