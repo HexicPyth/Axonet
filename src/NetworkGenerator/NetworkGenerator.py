@@ -197,10 +197,10 @@ def classify_network(in_network):
 
 
 # This is the upper bound on your network's scalability.
-# Count how many nodes you have and multiply that by four seems like a good option :)
+# Counting how many nodes you have and multiply that by 2 to 4 seems like a good option :)
 # (caveat: the complexity of the network generator is roughly O(n^2) so larger networks will consume more CPU
 # resources, don't make this over 200 or so unless you want to crash the Pis :))
-max_network_size = 80
+max_network_size = 100
 
 # This controls the maximum connectedness of your scalable mesh network. Using the comment below for network_c_ext
 # to pick a reasonable value, multiply it by some number >~2.7; round to nearest integer
@@ -221,24 +221,26 @@ network_size = 20
 # This controls the connectedness of your network. It represents how many other nodes each node connects to to form
 # the output mesh. If c_ext = network_size-1 then the network is "fully complete" meaning all nodes are connected to
 # all other nodes. This is the most redundant option, but it is very inefficient and it buts a significant burden
-# on your networking equipment which would have to handle (N^2)-N simultaneous connections
+# on your networking equipment which would have to handle (N^2)-N simultaneous connections where N = network size.
 # (that's 2550 connections for N=51!)
 # The ratio of c_ext to network size roughly determines (on average) the number of nodes which would have to go down
 # before packet delivery to the remaining nodes is impacted. For example, for N=20 and c_ext=5, on average
 # (depends on initial seed) 25% of the nodes(5 of them) would have to go down before packet delivery between the
-# remaining 15 was significantly impacted.
-# I recommend choosing a value which is 10%-30% of your network size
+# remaining 15 was significantly impacted. Recommended value is somewhere in the range of 5%-40% of your network size,
+# anything higher than that yields diminishing returns.
 network_c_ext = 5
 
 # The network compressor turns the maximum size (max_network_size) network into a smaller one which can be
-# incrementally scaled up by increasing network_size without significantly impacting the network architecture.
-# As a side effect of reducing the network size, the equivalent c_ext value of the resultant network often increases
-# significantly, so the scale_down_network_connectedness algorithm is used to reduce it to some sane arbitrary value
-# specified by network_c_ext. scale_down_network_connectedness is lossy and has a hard time reducing the c_ext to values
-# higher than about 3/8 of the input network c_ext, hence why max_c_ext should be >~2.7x larger than the target one.
+# incrementally scaled up to max_network_size by increasing network_size without significantly altering the
+# network architecture. As a side effect of reducing the network size, the ratio of equivalent c_ext to network
+# size increase significantly, so the scale_down_network_connectedness algorithm is used to reduce it c_ext to some
+# sane arbitrary value specified by network_c_ext. (An N=100 c_ext = 20 network is pretty connected already, a
+# compressed N=30 c_ext=18-ish network is pushing the limits of practicality a bit...) scale_down_network_connectedness
+# is lossy and has a hard time reducing the c_ext to values higher than about 3/8 of the input network c_ext,
+# hence why max_c_ext should be >~2.7x larger than the target one.
 compressed_network = compress_network(max_network, network_size, network_c_ext)
 
-# Print the network to stdout as a 2D array displaying the network as a series of trees which connect a parent node
+# Print the network to stdout as a 2D array displaying the network as a series of trees which connects a parent node
 # (a host) to some number of child nodes(peers). The collection of all of these trees represents the finished network
 # graph.
 pretty_print(compressed_network)
