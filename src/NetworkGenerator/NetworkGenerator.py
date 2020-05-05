@@ -3,9 +3,6 @@ import collections
 import pprint
 import string
 
-initial_seed = 6847832947  # random number; value not critical but must be the same across all nodes
-current_seed = initial_seed
-
 # hosts = [item.strip('\n') for item in open("hosts.bin", "r").readlines()][:network_size]
 
 
@@ -196,16 +193,33 @@ def classify_network(in_network):
     return in_network_size, equivalent_c_ext
 
 
-# This is the upper bound on your network's scalability.
-# Counting how many nodes you have and multiply that by 2 to 4 seems like a good option :)
+# See https://drive.google.com/file/d/1INYHo6JnkKYqLyNVMg2fRVyJKrPShAfa/view?usp=sharing for
+# a simple demonstration of how the mesh is generated, and read the comments below to get a deeper understanding
+# of how that simple algorithm(defined in gen_peers()) is modified to provide scalability.
+
+# The default parameters are good for network sizes between 15-100 with a good amount of redundancy
+# (on average, each node is connected to 5 others) and allows adding up to 85 additional nodes(15+85=100 total)
+# before these settings should be modified. There is nothing special about the default value of initial_seed.
+
+# This is a random number which seeds the RNG to ultimately determine the exact network architecture of the finished
+# network. It can be set to any value, although more entropy is better. It must be the same across all nodes in order
+# for each node to generate the same network.
+initial_seed = 6847832947
+current_seed = initial_seed
+
+# This is the upper bound on your network's scalability. It sets the maximum number of nodes which can be added
+# to the network before the network architecture would have to change dramatically to provide them reasonable
+# connectedness. Counting how many nodes you have and multiply that by 2 to 3 seems like a good option :)
 # (caveat: the complexity of the network generator is roughly O(n^2) so larger networks will consume more CPU
-# resources, don't make this over 200 or so unless you want to crash the Pis :))
+# resources, don't make this over 300 or so unless you want to crash the Pis :)) Also, if this is too high
+# you will have to crank the max_network_c_ext up very high to achieve reasonable connectedness(redundancy)
+# which creates a large performance penalty for the network generator.
 max_network_size = 100
 
 # This controls the maximum connectedness of your scalable mesh network. Using the comment below for network_c_ext
 # to pick a reasonable value, multiply it by some number >~2.7; round to nearest integer
 # (The network compressor cannot make a network with a c_ext greater than about 3/8 of the input network c_ext)
-max_network_c_ext = 20  # Maximum value = N-1 = fully complete network
+max_network_c_ext = 20
 
 # Represents an generalized arbitrary sized network as a collection of nodes['1', '2', '3', .... 'N']
 # You may assign these generalized hostname to IP addresses however you wish
@@ -216,7 +230,7 @@ max_network = gen_network(hosts, max_network_c_ext)
 # This is the size of your network. If max_network_size is significantly larger than it, then
 # it can be moderately increased or decreased without significantly impacting the network architecture
 # (Yay scalability!)
-network_size = 20
+network_size = 15
 
 # This controls the connectedness of your network. It represents how many other nodes each node connects to to form
 # the output mesh. If c_ext = network_size-1 then the network is "fully complete" meaning all nodes are connected to
