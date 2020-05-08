@@ -1,9 +1,10 @@
 import random
-import collections
-import pprint
 import string
-
 # hosts = [item.strip('\n') for item in open("hosts.bin", "r").readlines()][:network_size]
+# All of the comments below rely on your understanding of the content in
+# https://drive.google.com/file/d/1INYHo6JnkKYqLyNVMg2fRVyJKrPShAfa/view?usp=sharing
+# (namely the concept of c_ext and the simple mesh network bootstrapping algorithm described there ^^)
+# so, read that first.
 
 
 def reseed():
@@ -14,12 +15,12 @@ def reseed():
 
     # Use the previous seed to generate a new seed
     # which will be applied next time this function is called
-    current_seed = random.randint(0,9999999999)
+    current_seed = random.randint(0, 2**128)
 
 
 def gen_peers(network_graph, node, c_ext, verbose=False):
     reseed()
-    potential_peers = list(hosts)  # make a copy which we can safely mutilate without altering the global hosts list
+    potential_peers = list(max_hosts)  # make a copy which we can safely mutilate without altering the global hosts list
 
     potential_peers.remove(node)  # Remove ourselves from the hosts list so we don't try to connect to ourselves.
     our_peers = network_graph[node]  # Lookup a list of any peers we're already connected to
@@ -75,11 +76,11 @@ def gen_peers(network_graph, node, c_ext, verbose=False):
     return network_graph
 
 
-def gen_network(in_network, c_ext):
+def generate_uncompressed_mesh(in_network, c_ext):
     network_tree = {}
 
     # Make an empty graph
-    for host in hosts:
+    for host in max_hosts:
         network_tree.update({host: []})
 
     for node in in_network:
@@ -126,7 +127,7 @@ def compress_network(in_network, new_network_size, max_c_ext):
     return scale_down_network_connectedness(new_network, max_c_ext)
 
 
-def scale_down_network_connectedness(in_network, max_c_ext):
+def scale_down_network_connectedness(in_network, max_c_ext, verbose=False):
     # Scale down a network to a lower c_ext value
 
     # 1. Find most connected node
@@ -135,7 +136,7 @@ def scale_down_network_connectedness(in_network, max_c_ext):
     # 4. Repeat until c_ext is low enough
 
     new_network = in_network
-    while classify_network(new_network)[1] > max_c_ext:
+    while classify_network(new_network, quiet=True)[1] > max_c_ext:
 
         # 1. Find most connected node
 
@@ -149,7 +150,8 @@ def scale_down_network_connectedness(in_network, max_c_ext):
 
         # (Its this one)
         most_connected_node = hosts_sorted_by_peer_count_descending[0]
-        print("Removing a connection from most connected node: "+most_connected_node)
+        if verbose:
+            print("Removing a connection from most connected node: "+most_connected_node)
 
         # 2. Find peers of most connected node
         most_connected_node_peers = new_network[most_connected_node]
@@ -162,11 +164,11 @@ def scale_down_network_connectedness(in_network, max_c_ext):
         peers_of_most_connected_node_by_peer_count_descending = list({key: value for key, value in reversed(
             sorted(peers_of_most_connected_node_to_peer_count.items(), key=lambda item: item[1]))}.keys())
 
-        # 3. Disconnect mose connected node from its most connected peer
-        print("disconnecting " + peers_of_most_connected_node_by_peer_count_descending[0]
-              + " from " + most_connected_node)
+        if verbose:
+            print("disconnecting " + peers_of_most_connected_node_by_peer_count_descending[0]
+                  + " from " + most_connected_node)
 
-        # Disonnect most connected node from its most connected peer
+        # 3. Disconnect mose connected node from its most connected peer
         most_connected_peer_of_most_connected_node = peers_of_most_connected_node_by_peer_count_descending[0]
         peers_of_most_connected_node_by_peer_count_descending.pop(0)
         new_network.update({most_connected_node: peers_of_most_connected_node_by_peer_count_descending})
@@ -181,16 +183,82 @@ def scale_down_network_connectedness(in_network, max_c_ext):
     return new_network
 
 
-def classify_network(in_network):
+def classify_network(in_network, quiet=False):
     number_of_unidirectional_edges = 0
     in_network_size = len(in_network.keys())
     for host in in_network.keys():
         peers = in_network[host]
         number_of_unidirectional_edges += len(peers)
 
+    # If you count the total number of one-way connections and divide that by the network size you'll get something
+    # that roughly approximates the c_ext value of an arbitrary network
+    # (it actually equals the c_ext value if you use the network generator gen_network() from above)
     equivalent_c_ext = round(number_of_unidirectional_edges/in_network_size, 2)
-    print("Size: " + str(in_network_size) + " c_ext: " + str(equivalent_c_ext))
+    if not quiet:
+        print("Size: " + str(in_network_size) + " c_ext: " + str(equivalent_c_ext))
     return in_network_size, equivalent_c_ext
+
+
+def get_broadcast_ttl(in_network, in_hosts, source, verbose=True):
+
+    # Determine what time-to-live value is needed for a message to be received by all nodes if it is continuously
+    # broadcast by all receiving nodes who haven't already broadcast the message until ttl=0
+    levels = []
+    in_hosts = [hostname + "-0" for hostname in in_hosts]  # Initialize all levels at zero
+
+    hosts_to_discover = in_hosts
+
+    source_queue = []
+    discovered_hosts = []
+    new_source = source + "-0"
+
+    source_peers = in_network[source]
+
+    while hosts_to_discover:
+        new_source_without_level_suffix = new_source.split("-")[0]
+        source_peers = in_network[new_source_without_level_suffix]
+
+        if verbose:
+            print("Undiscovered hosts: " + str(hosts_to_discover))
+            print("Peers of " + new_source + ": " + str(source_peers))
+
+        for peer in source_peers:
+            if peer not in discovered_hosts:
+                if verbose:
+                    print('Discovered ' + peer, end=' ')
+                    print("(Source: " + new_source + ")")
+
+                if peer+"-0" in hosts_to_discover:
+                    hosts_to_discover.remove(peer + "-0")  # All nodes in host_to_discover list have level 0
+
+                    # We keep track of the current level by incrementing an integer to the end of the hostnames
+                    # (preceded by a dash) of each nodes peers corresponding to the level of the source host + 1
+                    # each time we branch off from parent node. This is a very unsatisfying solution but ¯\_(ツ)_/¯
+                    source_layer = new_source[-1]
+                    peer += "-"+str(int(source_layer)+1)
+
+                    discovered_hosts.append(peer)
+
+                if peer not in source_queue:
+                    source_queue.append(peer)
+        try:
+            next_source = source_queue[0]
+            source_queue.remove(next_source)
+        except IndexError:
+            break
+        new_source = next_source
+
+    if verbose:
+        print(discovered_hosts)
+        print(hosts_to_discover)
+
+    levels = [hostname.split("-")[1] for hostname in discovered_hosts]
+    ttl = max(levels)
+    if verbose:
+        print("Message must be broadcast (from node "+source + ") with ttl="+ttl+" to reach all nodes.")
+    return int(ttl)
+
+    # while hosts_to_discover is not empty, remove all nodes we discover by traversing the graph
 
 
 # See https://drive.google.com/file/d/1INYHo6JnkKYqLyNVMg2fRVyJKrPShAfa/view?usp=sharing for
@@ -204,35 +272,36 @@ def classify_network(in_network):
 # This is a random number which seeds the RNG to ultimately determine the exact network architecture of the finished
 # network. It can be set to any value, although more entropy is better. It must be the same across all nodes in order
 # for each node to generate the same network.
-initial_seed = 6847832947
+initial_seed = 253358919245475086853614223034892822600
 current_seed = initial_seed
 
 # This is the upper bound on your network's scalability. It sets the maximum number of nodes which can be added
 # to the network before the network architecture would have to change dramatically to provide them reasonable
-# connectedness. Counting how many nodes you have and multiply that by 2 to 3 seems like a good option :)
+# connectivity to each node. Counting how many nodes you want and multiplying that by 2 or 3 seems like a good option :)
 # (caveat: the complexity of the network generator is roughly O(n^2) so larger networks will consume more CPU
 # resources, don't make this over 300 or so unless you want to crash the Pis :)) Also, if this is too high
 # you will have to crank the max_network_c_ext up very high to achieve reasonable connectedness(redundancy)
 # which creates a large performance penalty for the network generator.
 max_network_size = 100
-
-# This controls the maximum connectedness of your scalable mesh network. Using the comment below for network_c_ext
-# to pick a reasonable value, multiply it by some number >~2.7; round to nearest integer
+max_hosts = [str(x) for x in range(1,max_network_size+1)]
+# This controls the maximum connectedness of your scalable mesh network. Use the comment below for network_c_ext
+# to pick a reasonable value, multiply it by some number >~2.7 to get a value for this; round to nearest integer
 # (The network compressor cannot make a network with a c_ext greater than about 3/8 of the input network c_ext)
-max_network_c_ext = 20
+# max_network_c_ext = 25
+max_network_c_ext = 25
 
 # Represents an generalized arbitrary sized network as a collection of nodes['1', '2', '3', .... 'N']
 # You may assign these generalized hostnames to IP addresses however you wish
-hosts = [str(x) for x in range(1, max_network_size + 1)]
 
-max_network = gen_network(hosts, max_network_c_ext)
+max_network = generate_uncompressed_mesh(max_hosts, max_network_c_ext)
 
-# This is the size of your network. If max_network_size is significantly larger than it, then
-# it can be moderately increased or decreased without significantly impacting the network architecture
-# (Yay scalability!)
-network_size = 15
+# This is the actual size of your network. If it is significantly smaller than max_network_size, then
+# your network can be incrementally increased or decreased(scaled) without significantly impacting the network
+# architecture by modifying this value. (Yay scalability!)
+network_size = 51
+hosts = max_hosts[:network_size]  # max_network_size > network_size so len(max_hosts) > len(hosts)
 
-# This controls the connectedness of your network. It represents how many other nodes each node connects to to form
+# This controls the connectedness of your network. It represents how many other nodes each node connects to it to form
 # the output mesh. If c_ext = network_size-1 then the network is "fully complete" meaning all nodes are connected to
 # all other nodes. This is the most redundant option, but it is very inefficient and it buts a significant burden
 # on your networking equipment which would have to handle (N^2)-N simultaneous connections where N = network size.
@@ -240,26 +309,23 @@ network_size = 15
 # The ratio of c_ext to network size roughly determines (on average) the number of nodes which would have to go down
 # before packet delivery to the remaining nodes is impacted. For example, for N=20 and c_ext=5, on average
 # (depends on initial seed) 25% of the nodes(5 of them) would have to go down before packet delivery between the
-# remaining 15 was significantly impacted. Recommended value is somewhere in the range of 5%-40% of your network size,
-# anything higher than that yields diminishing returns.
-network_c_ext = 5
+# remaining 15 was significantly impacted. Recommended value is in the 3-10 range for networks under 150 nodes.
+# If this value is too low, the network may be unsolvable
+# (some nodes will be completely isolated from the rest of the network) so keep this above 3-ish to avoid this
+network_c_ext = 3
 
 # The network compressor turns the maximum size (max_network_size) network into a smaller one which can be
 # incrementally scaled up to max_network_size by increasing network_size without significantly altering the
 # network architecture. As a side effect of reducing the network size, the ratio of equivalent c_ext to network
-# size increase significantly, so the scale_down_network_connectedness algorithm is used to reduce it c_ext to some
-# sane arbitrary value specified by network_c_ext. (An N=100 c_ext = 20 network is pretty connected already, a
-# compressed N=30 c_ext=18-ish network is pushing the limits of practicality a bit...) scale_down_network_connectedness
-# is lossy and has a hard time reducing the c_ext to values higher than about 3/8 of the input network c_ext,
-# hence why max_c_ext should be >~2.7x larger than the target one.
-compressed_network = compress_network(max_network, network_size, network_c_ext)
+# size increase significantly, so the scale_down_network_connectedness() algorithm is used to reduce the equivalent
+# c_ext to some sane arbitrary value specified by network_c_ext. (An N=100 c_ext = 20 network is pretty connected
+# already, a compressed N=30 c_ext=18-ish network is pushing the limits of practicality a bit...) scale_down_network_
+# connectedness() is lossy and has a hard time reducing the c_ext to values higher than about 3/8 of the input network
+# c_ext, hence why max_c_ext should be >~2.7x larger than the target one.
 
-# Print the network to stdout as a 2D array displaying the network as a series of trees which connects a parent node
-# (a host) to some number of child nodes(peers). The collection of all of these trees represents the finished network
-# graph.
-pretty_print(compressed_network)
+network = compress_network(max_network, network_size, network_c_ext)
+pretty_print(network)
+print(classify_network(network))
 
-# Tells you the network_size and approximate c_ext of the finished network. the c_ext should be slightly less than or
-# equal to the value specified by network_c_ext
-classify_network(compressed_network)
+print(get_broadcast_ttl(network, hosts, '1', verbose=False))
 
