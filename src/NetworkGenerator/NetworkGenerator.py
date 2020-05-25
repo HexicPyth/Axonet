@@ -270,8 +270,7 @@ def get_broadcast_ttl(in_network, in_hosts, source, verbose=True):
 # before these settings should be modified. There is nothing special about the default value of initial_seed.
 
 # This is a random number which seeds the RNG to ultimately determine the exact network architecture of the finished
-# network. It can be set to any value, although more entropy is better. It must be the same across all nodes in order
-# for each node to generate the same network.
+# network. It must be the same across all nodes in order for each node to generate the same network.
 initial_seed = 253358919245475086853614223034892822600
 current_seed = initial_seed
 
@@ -312,7 +311,7 @@ hosts = max_hosts[:network_size]  # max_network_size > network_size so len(max_h
 # remaining 15 was significantly impacted. Recommended value is in the 3-10 range for networks under 150 nodes.
 # If this value is too low, the network may be unsolvable
 # (some nodes will be completely isolated from the rest of the network) so keep this above 3-ish to avoid this
-network_c_ext = 3
+network_c_ext = 5
 
 # The network compressor turns the maximum size (max_network_size) network into a smaller one which can be
 # incrementally scaled up to max_network_size by increasing network_size without significantly altering the
@@ -327,5 +326,5 @@ network = compress_network(max_network, network_size, network_c_ext)
 pretty_print(network)
 print(classify_network(network))
 
-print(get_broadcast_ttl(network, hosts, '1', verbose=False))
+print(get_broadcast_ttl(network, hosts, '1', verbose=True))
 
