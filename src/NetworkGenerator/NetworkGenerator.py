@@ -322,9 +322,8 @@ network_c_ext = 5
 # connectedness() is lossy and has a hard time reducing the c_ext to values higher than about 3/8 of the input network
 # c_ext, hence why max_c_ext should be >~2.7x larger than the target one.
 
-network = compress_network(max_network, network_size, network_c_ext)
-pretty_print(network)
-print(classify_network(network))
+#network = compress_network(max_network, network_size, network_c_ext)
+#pretty_print(network)
+#print(classify_network(network))
 
-print(get_broadcast_ttl(network, hosts, '1', verbose=True))
-
+#print(get_broadcast_ttl(network, hosts, '1', verbose=True))

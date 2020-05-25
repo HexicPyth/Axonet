@@ -12,11 +12,12 @@ sys.path.insert(0, (os.path.abspath('../../server')))
 import primitives
 import client
 
-_client = client.Client()
 _primitives = primitives.Primitives('Client', 'Debug')
 
 
 def respond_start(message, nodeState):
+    _client = client.Client()
+
     """Called by the client's listener_thread when it received a vote: flag"""
     os.chdir(this_dir)
 

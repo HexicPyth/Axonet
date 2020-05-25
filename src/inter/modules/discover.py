@@ -29,7 +29,7 @@ def respond_start(nodeState, op_id, cluster_rep):
     """Called by the client's listener_thread after the 'discovery' election is complete"""
 
     print('Current directory: '+this_dir)
-    import client
+    from src.client import client
     _client = client.Client()
 
     os.chdir(this_dir)

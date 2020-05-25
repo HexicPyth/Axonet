@@ -12,11 +12,12 @@ sys.path.insert(0, (os.path.abspath('../../server')))
 import primitives
 import client
 
-_client = client.Client()
 _primitives = primitives.Primitives('Client', 'Debug')
 
 
 def initiate(net_tuple, arguments):
+    _client = client.Client()
+
     """ Called from the network injector when it receives a $vote:(reason) input"""
     os.chdir(this_dir)
     import inject
@@ -28,6 +29,8 @@ def initiate(net_tuple, arguments):
 
 
 def respond_start(reason, nodeState):
+    _client = client.Client()
+
     """Called by the client's listener_thread when it received a vote: flag"""
 
     new_nodestate = nodeState

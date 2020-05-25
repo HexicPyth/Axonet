@@ -3,12 +3,20 @@ import sys
 import os
 import urllib.request
 import urllib.error
-sys.path.insert(0, (os.path.abspath('../misc')))
-
-import primitives
 import os
 
-_primitives = primitives.Primitives("Client", "Debug")
+sys.path.insert(0, (os.path.abspath('../misc')))
+this_dir = os.path.dirname(os.path.realpath(__file__))
+
+if __name__ == "__main__":
+    # Switch to the directory containing server.py
+    os.chdir(this_dir)
+
+    # Change to project root
+    os.chdir("../../")
+    # Add project root (parent package) to path
+    sys.path.append("./")
+
 
 def download_racks_csv(url):
     response = urllib.request.urlopen(url)
@@ -21,6 +29,10 @@ def download_racks_csv(url):
 def find_my_parts(local_ip, directory_server, path_to_client=None):
     """Given a nodes static IP, find all part numbers assigned to it in the master spreadsheet
         Returns list [(part number, part name, line #), ..., (part number n, part name n, line # n)]"""
+
+    from src.inter.modules import primitives
+    _primitives = primitives.Primitives("Client", "Debug")
+
     if path_to_client:
         try:
             os.chdir(path_to_client)
@@ -48,6 +60,7 @@ def find_my_parts(local_ip, directory_server, path_to_client=None):
         print("ERROR: No internet connection detected; cannot download Racks file... Searching for local copy...")
 
         try:
+            os.chdir(this_dir)
             part_number_assignments = open(os.path.abspath("./Racks.csv"))
             print("Local Racks.csv found! Proceeding...")
 
@@ -66,4 +79,4 @@ def find_my_parts(local_ip, directory_server, path_to_client=None):
 
 
 if __name__ == "__main__":
-    print(find_my_parts(_primitives.get_local_ip()))
+    print(find_my_parts(_primitives.get_local_ip(), "http://192.168.53.33/hosted/"))

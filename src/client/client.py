@@ -5,6 +5,8 @@ import threading
 import datetime
 import os
 import random
+import traceback
+
 import sys
 import secrets
 from time import sleep
@@ -14,14 +16,14 @@ from hashlib import sha3_224
 this_dir = os.path.dirname(os.path.realpath(__file__))
 os.chdir(this_dir)
 
-# Insert the server, misc, and src/inter/* directories to PATH so we can use modules like inject, vote, discover, etc.
-sys.path.insert(0, (os.path.abspath('../server')))
-sys.path.insert(0, (os.path.abspath('../misc')))
-sys.path.insert(0, (os.path.abspath('../inter/')))
-sys.path.insert(0, (os.path.abspath('../inter/modules')))
+# Change to project root
+os.chdir("../../")
+# Add project root (parent package) to path
+sys.path.append("./")
+
 # Imports from PATH
-import primitives
-import traceback
+from src.inter.modules import primitives
+
 
 # Immutable state; Constant node parameters set upon initialization and/or configuration
 _original_path = os.path.dirname(os.path.realpath(__file__))
@@ -45,6 +47,7 @@ os.chdir(_original_path)
 Primitives = primitives.Primitives("Client", "")
 
 
+# noinspection PyUnresolvedReferences
 class Client:
 
     @staticmethod
@@ -579,7 +582,7 @@ class Client:
                 # If received, send back to confirm the presence of successful two-way communication
 
                 if message == "echo":
-                    import echo
+                    from src.inter.modules import echo
 
                     """ Simple way to test our connection to a given node."""
 
@@ -609,10 +612,11 @@ class Client:
                     arguments = Primitives.parse_cmd(message)  # arguments[0] = variable to configure; [1] = value
                     print(str(arguments))
 
-                    import config_client
+                    from src.inter.modules import config_client
                     os.chdir(this_dir)
 
-                    config_client.config_argument(arguments, self.read_nodeConfig(3), self.read_nodeConfig(2))
+                    config_client.config_argument(arguments, self.read_nodeConfig(3),
+                                                  self.read_nodeConfig(2), nodeConfig)
 
                 # Instruct clients to connect to remote servers.
                 if message.startswith("ConnectTo:"):
@@ -708,7 +712,7 @@ class Client:
 
                 # If allowed by client configuration, execute a shell command in the operating system's default terminal
                 if message.startswith('exec:'):
-                    import exec
+                    from src.inter.modules import exec
 
                     exec.initiate(message, self.read_nodeConfig(1))
 
@@ -930,8 +934,8 @@ class Client:
                                         "(sync) not fetching: " + page_id + ".bin" + '; All contributions have been written')
 
                 if message.startswith("find:") or message.startswith("reset:"):
-                    import finder
-                    import readPartNumbers
+                    from src.inter.modules import finder
+                    import readPartNumbers  # This is in client directory
                     os.chdir(this_dir)
 
                     line_number_list = []
@@ -1004,7 +1008,7 @@ class Client:
 
                 # Start a network election which selects a suitable node to do some task
                 if message.startswith("vote:"):
-                    import vote
+                    from src.inter.modules import vote
 
                     arguments = Primitives.parse_cmd(message)
                     reason = arguments[0]
@@ -1019,8 +1023,7 @@ class Client:
                 # Participate in a network election by entering as a candidate
                 if message.startswith("campaign:"):
                     # example message: campaign:do_stuff:01234566789:192.168.53.60
-
-                    import vote
+                    from src.inter.modules import vote
 
                     election_details = Primitives.parse_cmd(message)  # ("reason", "representative")
                     reason = election_details[0]
@@ -1122,7 +1125,7 @@ class Client:
 
                     if reason.startswith('discovery-'):
                         os.chdir(original_path)
-                        import discover
+                        from src.inter.modules import discover
 
                         op_id = reason[10:]
 
@@ -1153,8 +1156,8 @@ class Client:
                     # sharepeers:pagefile
 
                     os.chdir(original_path)
-                    import discover
-                    import sharepeers
+                    from src.inter.modules import discover
+                    from src.inter.modules import sharepeers
 
                     new_nodestate, op_id, is_cluster_rep = sharepeers.respond_start(message, nodeState)
 
@@ -1368,7 +1371,10 @@ class Client:
         for item in modules:
             import_str = "import " + item
             new_loaded_modules.append(item)
-            exec(import_str)
+            try:
+                exec(import_str)
+            except SyntaxError:
+                pass
 
         self.write_nodestate(nodeState, 4, new_loaded_modules)
 

@@ -9,16 +9,19 @@ import datetime
 import threading
 from hashlib import sha3_224
 
-# Add to PATH
-sys.path.insert(0, (os.path.abspath('../inter/')))
-sys.path.insert(0, (os.path.abspath('../inter/scripts')))
-sys.path.insert(0, (os.path.abspath('../inter/modules')))
-sys.path.insert(0, (os.path.abspath('../inter/misc')))
-sys.path.insert(0, (os.path.abspath('../misc')))
+# Switch to the directory containing server.py
+this_dir = os.path.dirname(os.path.realpath(__file__))
+os.chdir(this_dir)
+
+# Change to project root
+os.chdir("../../")
+# Add project root (parent package) to path
+sys.path.append("./")
+
 
 # Imports from PATH
 
-import primitives
+from src.inter.modules import primitives
 
 # Globals
 localhost = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -35,8 +38,6 @@ nodeState = [(), [], False, False, False, [], False]
 nodestate_lock = threading.Lock()
 send_lock = threading.Lock()
 receive_lock = threading.Lock()
-
-this_dir = os.path.dirname(os.path.abspath(__file__))
 
 try:
     # This works when manually executing init_server.py from the current directory
@@ -724,14 +725,15 @@ class Server:
             log_level = default_log_level
             Primitives = primitives.Primitives(sub_node, log_level)
 
-            for item in modules:
-                import_str = "import " + item
+            if modules:
+                for item in modules:
+                    import_str = "import " + item
 
-                loaded_modules = self.read_nodestate(5)
-                loaded_modules.append(item)
-                self.write_nodestate(nodeState, 5, loaded_modules)
+                    loaded_modules = self.read_nodestate(5)
+                    loaded_modules.append(item)
+                    self.write_nodestate(nodeState, 5, loaded_modules)
 
-                exec(import_str)
+                    exec(import_str)
 
             # Set parameters and global variables from their default values
 

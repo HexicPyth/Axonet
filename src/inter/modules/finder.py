@@ -11,6 +11,7 @@ os.chdir(this_dir)
 sys.path.insert(0, '../../../client/')
 sys.path.insert(0, '../../../server/')
 sys.path.insert(0, (os.path.abspath('../../inter/misc')))
+
 try:
     import board
     import busio

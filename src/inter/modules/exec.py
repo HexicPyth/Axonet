@@ -11,12 +11,12 @@ import client
 import primitives
 
 _primitives = primitives.Primitives('Client', 'Debug')
-_client = client.Client()
 
 
 def initiate(message, allow_command_execution):
+    _client = client.Client()
 
-        # Assuming allow_command_execution is set, execute arbitrary UNIX commands in their own threads.
+    # Assuming allow_command_execution is set, execute arbitrary UNIX commands in their own threads.
     if allow_command_execution:
         command = message[5:]
         _primitives.log(str("executing: " + command), in_log_level="Info")
