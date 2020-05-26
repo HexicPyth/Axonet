@@ -17,12 +17,13 @@ network_architecture = "mesh"
 
 
 def worker(action):  # Worker function
-    import init_server
-    import init_client
     global network_architecture
 
     print('action:', action)
     if action == 'server.py':
+
+        os.chdir("../server")
+        import init_server
         print("Initializing server...")
         # Apparently multiprocessing doesn't like starting things that include while loops in the main process,
         # so instead, we'll start the server in a thread (of a child process of a process)
@@ -31,7 +32,10 @@ def worker(action):  # Worker function
         print('Server has been successfully initialized')
 
     elif action == 'client.py':
+        import init_client
+
         print("Initializing client...")
+        os.chdir("../client")
         thread = threading.Thread(target=init_client.init)
         thread.start()
         print('Client has been successfully initialized')

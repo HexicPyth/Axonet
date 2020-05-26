@@ -26,7 +26,7 @@ from src.inter.modules import primitives
 
 
 # Immutable state; Constant node parameters set upon initialization and/or configuration
-_original_path = os.path.dirname(os.path.realpath(__file__))
+_original_path = this_dir
 no_prop = "ffffffffffffffff"
 ring_prop = "eeeeeeeeeeeeeeee"
 localhost = socket.socket()
@@ -43,7 +43,7 @@ fileIO_lock = threading.Lock()
 send_lock = threading.Lock()
 respond_lock = threading.Lock()
 
-os.chdir(_original_path)
+os.chdir(this_dir)
 Primitives = primitives.Primitives("Client", "")
 
 

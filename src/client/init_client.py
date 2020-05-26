@@ -3,6 +3,11 @@
 # Initialize the client
 import client
 import json
+import os
+
+# Switch to the directory containing init_client.py
+this_dir = os.path.dirname(os.path.realpath(__file__))
+os.chdir(this_dir)
 
 with open("client_configuration.json") as client_configuration:
     """Sets each variable equal to the value given in the client_configuration.json file"""
