@@ -1203,52 +1203,16 @@ class Client:
                             Primitives.log("No cached hosts found, refusing to bootstrap!")
                             potential_peers = 1
 
-                    chosen_peers = []
-                    if potential_peers and potential_peers != 1:
-                        for peer in potential_peers:
-                            if peer == Primitives.get_local_ip() + "\n":  # Do not try to connect to ourselves
-                                potential_peers.remove(peer)
+                        # Do the stuff here
 
-                    if potential_peers != 1:
-                        if net_architecture == "mesh":
-                            print("Network tuple:")
-                            print(str(net_tuple))
+                        # Great, bootstrapping was successful
+                        # Set global message propagation mode to mesh
+                        # This was probably already run by sharepeers: assuming peer discovery was run...
+                        do_mesh_propagation = self.read_nodestate(12)
 
-                            this_node = (self.read_nodeconfig(11), "127.0.0.1")
-
-                            # Disconnect from everything other than localhost
-                            for peer in net_tuple:
-
-                                if peer != this_node:
-                                    self.disconnect(peer)
-
-                                else:
-                                    pass  # Don't disconnect from localhost
-
-                            # Select remote peers to bootstrap with
-                            for i in range(0, c_ext):
-                                try:
-                                    chosen_peer = random.choice(potential_peers)
-                                    potential_peers.remove(chosen_peer)
-                                    chosen_peers.append(chosen_peer.strip("\n"))
-                                except IndexError:
-                                    break
-
-                            Primitives.log("Disassociation successful. Ready for bootstrap...", in_log_level="Info")
-
-                            # Bootstrap!
-                            for peer_address in chosen_peers:
-                                external_connection = (socket.socket(), peer_address)
-                                self.connect(external_connection, peer_address, self.read_nodeconfig(0))
-
-                            # Great, bootstrapping was successful
-                            # Set global message propagation mode to mesh
-                            # This was probably already run by sharepeers: assuming peer discovery was run...
-                            do_mesh_propagation = self.read_nodestate(12)
-
-                            if not do_mesh_propagation:
-                                do_mesh_propagation = True
-                                self.write_nodestate(nodeState, 12, do_mesh_propagation)
+                        if not do_mesh_propagation:
+                            do_mesh_propagation = True
+                            self.write_nodestate(nodeState, 12, do_mesh_propagation)
 
         # Catch all errors in respond() and log the traceback to stdout. This keeps the client from crashing due to
         # random errors which may occur in other modules that may/may not have proper exception handling
