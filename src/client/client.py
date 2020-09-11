@@ -489,7 +489,7 @@ class Client:
 
         self.release(fileIO_lock, name="File I/O")
 
-    def download_hosts(self):
+    def download_hosts(self, directory_server):
         print("Trying to download hosts...")
         directory_server_hostsfile_contents = Primitives.download_file(directory_server + "/hosts.bin")
         directory_server_hosts = directory_server_hostsfile_contents.split('\n')
@@ -1190,7 +1190,7 @@ class Client:
                     # Download the hosts file
                     try:
                         print("Trying to download hosts...")
-                        potential_peers, directory_server_hostsfile_contents = self.download_hosts()
+                        potential_peers, directory_server_hostsfile_contents = self.download_hosts(directory_server)
 
                         # Cache these hosts so we can use them again if the directory server becomes inaccessible
                         self.write_to_page('hosts', directory_server_hostsfile_contents, False)
@@ -1212,6 +1212,7 @@ class Client:
                             potential_peers = 1
 
                     import NetworkGenerator
+                    NetworkGenerator.init()
 
                     # Great, bootstrapping was successful
                     # Set global message propagation mode to mesh

@@ -22,7 +22,7 @@ def reseed():
     current_seed = random.randint(0, 2**128)
 
 
-def gen_peers(network_graph, node, c_ext, verbose=False):
+def gen_peers(network_graph, max_hosts, node, c_ext, verbose=False):
     reseed()
     potential_peers = list(max_hosts)  # make a copy which we can safely mutilate without altering the global hosts list
 
@@ -84,11 +84,11 @@ def generate_uncompressed_mesh(in_network, c_ext):
     network_tree = {}
 
     # Make an empty graph
-    for host in max_hosts:
+    for host in in_network:
         network_tree.update({host: []})
 
     for node in in_network:
-        network_tree = gen_peers(network_tree, node, c_ext)
+        network_tree = gen_peers(network_tree, in_network, node, c_ext)
 
     return network_tree
 
@@ -284,39 +284,27 @@ def init():
     initial_seed = 253358919245475086853614223034892822600
     current_seed = initial_seed
 
-    # This is the upper bound on your network's scalability. It sets the maximum number of nodes which can be added
-    # to the network before the network architecture would have to change dramatically to provide them reasonable
-    # connectivity to each node. Counting how many nodes you want and multiplying that by 2 or 3 seems like a good option :)
-    # (caveat: the complexity of the network generator is roughly O(n^2) so larger networks will consume more CPU
-    # resources, don't make this over 300 or so unless you want to crash the Pis :)) Also, if this is too high
-    # you will have to crank the max_network_c_ext up very high to achieve reasonable connectedness(redundancy)
-    # which creates a large performance penalty for the network generator.
-    max_network_size = 100
-
-    # Represents an generalized arbitrary sized network as a collection of nodes['1', '2', '3', .... 'N']
-    # You may assign these generalized hostnames to IP addresses however you wish
-    # or, if you want, you can just replace this list with a list of IP addresses, then you won't have to change anything,
-    # but if you do this you need to make the list at least max_network_size items long
-
-
-    # this assumes a bootstrap: has already been called or each node already had hosts.bin stored locally...
-    hosts_bin_hosts = [hosts_line.strip("\n") for hosts_line in open("../../inter/mem/hosts.bin").readlines()]
+    hosts_bin_hosts = [hosts_line.strip("\n") for hosts_line in open("../inter/mem/hosts.bin").readlines()]
     hosts_bin_hosts = sorted(hosts_bin_hosts, key=lambda ip: struct.unpack("!L", socket.inet_aton(ip))[0])  # Sort it
     hosts_bin_hosts = list(dict.fromkeys(hosts_bin_hosts))  # Remove duplicates
 
-
     max_hosts = hosts_bin_hosts
     print(max_hosts)
+
+    # This is the upper bound on your network's scalability. It sets the maximum number of nodes which can be added
+    # to the network before the network architecture would have to change dramatically to provide them reasonable
+    # connectivity to each node.
+    max_network_size = len(hosts_bin_hosts)  # default: 100
+
     # This controls the maximum connectedness of your scalable mesh network. Use the comment below for network_c_ext
     # to pick a reasonable value, multiply it by some number >~2.7 to get a value for this; round to nearest integer
     # (The network compressor cannot make a network with a c_ext greater than about 3/8 of the input network c_ext)
     # max_network_c_ext = 25
-    max_network_c_ext = 30  # default: 25
-
+    max_network_c_ext = 20  # default: 25
 
     max_network = generate_uncompressed_mesh(max_hosts, max_network_c_ext)
 
-    # This controls the connectedness of your network. It represents how many other nodes each node connects to it to form
+    # This controls the connectedness of your network. It represents how many nodes each node connects to to form
     # the output mesh. If c_ext = network_size-1 then the network is "fully complete" meaning all nodes are connected to
     # all other nodes. This is the most redundant option, but it is very inefficient and it buts a significant burden
     # on your networking equipment which would have to handle (N^2)-N simultaneous connections where N = network size.
@@ -343,3 +331,9 @@ def init():
     # architecture by modifying this value. (Yay scalability!)
     network_size = 5  # default: 51
     hosts = max_hosts[:network_size]  # max_network_size > network_size so len(max_hosts) > len(hosts)
+
+    network = compress_network(max_network, network_size, network_c_ext)
+    pretty_print(network)
+    print(classify_network(network))
+
+    print("broadcast ttl from node 1: " + str(get_broadcast_ttl(network, hosts, '192.168.53.33', verbose=False)))
