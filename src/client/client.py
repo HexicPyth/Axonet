@@ -489,6 +489,17 @@ class Client:
 
         self.release(fileIO_lock, name="File I/O")
 
+    def download_hosts(self):
+        print("Trying to download hosts...")
+        directory_server_hostsfile_contents = Primitives.download_file(directory_server + "/hosts.bin")
+        directory_server_hosts = directory_server_hostsfile_contents.split('\n')
+        potential_peers = [line for line in directory_server_hosts
+                           if line not in ("", '', "\n")]
+
+        # Cache these hosts so we can use them again if the directory server becomes inaccessible
+        self.write_to_page('hosts', directory_server_hostsfile_contents, False)
+        return potential_peers, directory_server_hostsfile_contents
+
     def respond(self, connection, msg):
         """ We received a message, reply with an appropriate response.
             Doesn't return. """
@@ -1179,11 +1190,7 @@ class Client:
                     # Download the hosts file
                     try:
                         print("Trying to download hosts...")
-                        directory_server_hostsfile_contents = Primitives.download_file(directory_server + "/hosts.bin")
-                        directory_server_hosts = directory_server_hostsfile_contents.split('\n')
-                        potential_peers = [line for line in directory_server_hosts
-                                           if line not in ("", '', "\n")]
-                        print(potential_peers)
+                        potential_peers, directory_server_hostsfile_contents = self.download_hosts()
 
                         # Cache these hosts so we can use them again if the directory server becomes inaccessible
                         self.write_to_page('hosts', directory_server_hostsfile_contents, False)
