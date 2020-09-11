@@ -30,7 +30,7 @@ no_prop = "ffffffffffffffff"  # Messages with this as the signature will be trea
 ring_prop = "eeeeeeeeeeeeeeee"  # Messages with this as the signature will be treated specially
 localhost = socket.socket()
 localhost.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Nobody likes TIME_WAIT-ing. Add SO_REUSEADDR.
-nodeConfig = [3705, False, "Debug", "Client", None, None, _original_path, 0, "", "", "", localhost] # 13 bytes + context
+nodeConfig = [3705, False, "Debug", "Client", None, None, _original_path, 0, "", "", "", localhost, 0, 25, 5]
 
 # Mutable state; Write with writeState(), Read with readState(). Contains default values until changed
 nodeState = [(), [], False, False, [], "", [], 0, [], [], False, False, False]
@@ -1204,10 +1204,10 @@ class Client:
                             Primitives.log("No cached hosts found, refusing to bootstrap!")
 
                     import NetworkGenerator
-                    initial_seed = 253358919245475086853614223034892822600  # TODO: add to client_configuration.json
-                    max_network_c_ext = 30  # TODO: add to client_configuration.json
-                    network_c_ext = 3  # TODO: add to client_configuration.json
-                    network_size = 5  # TODO: add to client_configuration.json
+                    initial_seed = self.read_nodeconfig(12)
+                    max_network_c_ext = self.read_nodeconfig(13)
+                    network_c_ext = self.read_nodeconfig(14)
+                    network_size = self.read_nodeconfig(7)
 
                     # potential_peers is only referenced before assignment if no cached hosts are found, which
                     # shouldn't ever happen. TODO: handle this
@@ -1230,7 +1230,7 @@ class Client:
                             pass  # Don't disconnect from localhost
 
                     our_peers = network[Primitives.get_local_ip()]
-                    print("Connecting to: "+str(our_peers))
+                    Primitives.log("Connecting to: "+str(our_peers), in_log_level="Info")
                     for peer in our_peers:
                         sock = socket.socket()
                         connection = (sock, peer)
@@ -1330,7 +1330,8 @@ class Client:
         os._exit(0)
 
     def initialize(self, port=3705, net_architecture="complete", remote_addresses=None, command_execution=False,
-                   default_log_level="Debug", modules=None, net_size=0, input_directory_server=""):
+                   default_log_level="Debug", modules=None, net_size=0, input_directory_server="",
+                   initial_seed=0, max_network_c_ext=25, network_c_ext=5):
 
         # Initialize the client, setup nodeConfig, bootstrap...
         global nodeConfig
@@ -1351,6 +1352,11 @@ class Client:
         self.write_nodeconfig(nodeConfig, 8, net_architecture)
         self.write_nodeconfig(nodeConfig, 9, None)  # We'll reset this shortly if needed
         self.write_nodeconfig(nodeConfig, 10, input_directory_server)
+        # nodeConfig[11] isn't user-configurable
+        self.write_nodeconfig(nodeConfig, 12, initial_seed)
+        self.write_nodeconfig(nodeConfig, 13, max_network_c_ext)
+        self.write_nodeconfig(nodeConfig, 14, network_c_ext)
+        print(nodeConfig)
         # nodeConfig[11] is magic; don't touch
 
         if remote_addresses:
@@ -1375,6 +1381,7 @@ class Client:
         localhost_connection = (self.read_nodeconfig(11), '127.0.0.1')
 
         try:
+            print("!!!", port)
             self.connect(localhost_connection, 'localhost', port, local=True)
 
             Primitives.log("Connection to localhost successful", in_log_level="Info")

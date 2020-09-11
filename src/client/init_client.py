@@ -21,13 +21,22 @@ with open("client_configuration.json") as client_configuration:
     modules = client_config_data["modules"]
     net_size = client_config_data["net_size"]
     directory_server = client_config_data["directory_server"]
+    initial_seed = client_config_data["initial_seed"]
+    max_network_c_ext = client_config_data["max_network_c_ext"]
+    network_c_ext = client_config_data["network_c_ext"]
 
 
 def init():
     x = client.Client()
     x.initialize(port=port, net_architecture=network_architecture, remote_addresses=remote_addresses,
                  command_execution=command_execution, default_log_level=default_log_level, modules=modules,
-                 net_size=net_size, input_directory_server=directory_server)
+                 net_size=net_size, input_directory_server=directory_server, initial_seed=initial_seed,
+                 max_network_c_ext=max_network_c_ext, network_c_ext=network_c_ext)
+    try:
+        x.download_hosts(directory_server)
+    except AttributeError:
+        print("Could not download hosts, is the directory server("+directory_server+")"+" online?")
+
 
 
 if __name__ == "__main__":
