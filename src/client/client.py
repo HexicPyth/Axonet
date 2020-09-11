@@ -22,7 +22,7 @@ sys.path.append("./")
 
 # Import modules from project root
 from src.inter.modules import primitives
-
+from src.inter.modules import NetworkGenerator
 
 # Immutable state; Constant node parameters set upon initialization and/or configuration
 _original_path = this_dir
@@ -1176,6 +1176,7 @@ class Client:
                     net_architecture = arguments[0]
                     c_ext = int(arguments[1])
 
+                    # Download the hosts file
                     try:
                         print("Trying to download hosts...")
                         directory_server_hostsfile_contents = Primitives.download_file(directory_server + "hosts.bin")
@@ -1203,16 +1204,16 @@ class Client:
                             Primitives.log("No cached hosts found, refusing to bootstrap!")
                             potential_peers = 1
 
-                        # Do the stuff here
+                    import NetworkGenerator
 
-                        # Great, bootstrapping was successful
-                        # Set global message propagation mode to mesh
-                        # This was probably already run by sharepeers: assuming peer discovery was run...
-                        do_mesh_propagation = self.read_nodestate(12)
+                    # Great, bootstrapping was successful
+                    # Set global message propagation mode to mesh
+                    # This was probably already run by sharepeers: assuming peer discovery was run...
+                    do_mesh_propagation = self.read_nodestate(12)
 
-                        if not do_mesh_propagation:
-                            do_mesh_propagation = True
-                            self.write_nodestate(nodeState, 12, do_mesh_propagation)
+                    if not do_mesh_propagation:
+                        do_mesh_propagation = True
+                        self.write_nodestate(nodeState, 12, do_mesh_propagation)
 
         # Catch all errors in respond() and log the traceback to stdout. This keeps the client from crashing due to
         # random errors which may occur in other modules that may/may not have proper exception handling
