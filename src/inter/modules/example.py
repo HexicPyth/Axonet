@@ -7,6 +7,7 @@ os.chdir(this_dir)
 sys.path.insert(0, '../../../client/')
 sys.path.insert(0, '../../../server/')
 
+
 def initiate(net_tuple, arguments):
     """ Called from the network injector when it receives a $[name]: flag"""
 
