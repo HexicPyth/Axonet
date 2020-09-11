@@ -300,7 +300,8 @@ max_network_size = 100
 
 os.system("ls -al")
 
-max_hosts = [hosts_line.strip("\n") for hosts_line in open("../../NetworkGenerator/hosts.bin").readlines()] # generate from hosts.bin
+# this assumes a bootstrap: has already been called or each node already had hosts.bin stored locally...
+max_hosts = [hosts_line.strip("\n") for hosts_line in open("../../inter/mem/hosts.bin").readlines()]
 
 # This controls the maximum connectedness of your scalable mesh network. Use the comment below for network_c_ext
 # to pick a reasonable value, multiply it by some number >~2.7 to get a value for this; round to nearest integer
