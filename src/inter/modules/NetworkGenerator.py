@@ -1,5 +1,8 @@
 import random
-import string
+import os
+
+this_dir = os.path.dirname(os.path.realpath(__file__))
+os.chdir(this_dir)
 # hosts = [item.strip('\n') for item in open("hosts.bin", "r").readlines()][:network_size]
 # All of the comments below rely on your understanding of the content in
 # https://drive.google.com/file/d/1INYHo6JnkKYqLyNVMg2fRVyJKrPShAfa/view?usp=sharing
@@ -203,6 +206,9 @@ def get_broadcast_ttl(in_network, in_hosts, source, verbose=True):
 
     # Determine what time-to-live value is needed for a message to be received by all nodes if it is continuously
     # broadcast by all receiving nodes who haven't already broadcast the message until ttl=0
+    # Honestly, don't bother trying to read this function unless its broken, its just a complicated mess which was
+    # directly translated from a pen-and-paper algorithm that accomplishes the same thing.
+
     levels = []
     in_hosts = [hostname + "-0" for hostname in in_hosts]  # Initialize all levels at zero
 
@@ -289,7 +295,12 @@ max_network_size = 100
 # You may assign these generalized hostnames to IP addresses however you wish
 # or, if you want, you can just replace this list with a list of IP addresses, then you won't have to change anything,
 # but if you do this you need to make the list at least max_network_size items long
-max_hosts = [str(x) for x in range(1,max_network_size+1)]
+
+#max_hosts = [str(x) for x in range(1,max_network_size+1)] # '1' ... 'N'
+
+os.system("ls -al")
+
+max_hosts = [hosts_line.strip("\n") for hosts_line in open("../../NetworkGenerator/hosts.bin").readlines()] # generate from hosts.bin
 
 # This controls the maximum connectedness of your scalable mesh network. Use the comment below for network_c_ext
 # to pick a reasonable value, multiply it by some number >~2.7 to get a value for this; round to nearest integer
@@ -325,11 +336,11 @@ network_c_ext = 3  # default: 5
 # This is the actual size of your network. If it is significantly smaller than max_network_size, then
 # your network can be incrementally increased or decreased(scaled) without significantly impacting the network
 # architecture by modifying this value. (Yay scalability!)
-network_size = 10  # default: 51
+network_size = 5  # default: 51
 hosts = max_hosts[:network_size]  # max_network_size > network_size so len(max_hosts) > len(hosts)
 
 network = compress_network(max_network, network_size, network_c_ext)
 pretty_print(network)
 print(classify_network(network))
 
-print("broadcast ttl from node 1: " + str(get_broadcast_ttl(network, hosts, '1', verbose=False)))
+print("broadcast ttl from node 1: " + str(get_broadcast_ttl(network, hosts, '192.168.53.33', verbose=False)))
