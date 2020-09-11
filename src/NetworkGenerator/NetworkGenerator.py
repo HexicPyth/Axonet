@@ -271,6 +271,8 @@ def get_broadcast_ttl(in_network, in_hosts, source, verbose=True):
 
 # This is a random number which seeds the RNG to ultimately determine the exact network architecture of the finished
 # network. It must be the same across all nodes in order for each node to generate the same network.
+# Give it some entropy, because (potentially hundreds of) other seeds will be derived from it for large network sizes
+# to generate the network
 initial_seed = 253358919245475086853614223034892822600
 current_seed = initial_seed
 
@@ -282,23 +284,21 @@ current_seed = initial_seed
 # you will have to crank the max_network_c_ext up very high to achieve reasonable connectedness(redundancy)
 # which creates a large performance penalty for the network generator.
 max_network_size = 100
+
+# Represents an generalized arbitrary sized network as a collection of nodes['1', '2', '3', .... 'N']
+# You may assign these generalized hostnames to IP addresses however you wish
+# or, if you want, you can just replace this list with a list of IP addresses, then you won't have to change anything,
+# but if you do this you need to make the list at least max_network_size items long
 max_hosts = [str(x) for x in range(1,max_network_size+1)]
+
 # This controls the maximum connectedness of your scalable mesh network. Use the comment below for network_c_ext
 # to pick a reasonable value, multiply it by some number >~2.7 to get a value for this; round to nearest integer
 # (The network compressor cannot make a network with a c_ext greater than about 3/8 of the input network c_ext)
 # max_network_c_ext = 25
-max_network_c_ext = 25
+max_network_c_ext = 30  # default: 25
 
-# Represents an generalized arbitrary sized network as a collection of nodes['1', '2', '3', .... 'N']
-# You may assign these generalized hostnames to IP addresses however you wish
 
 max_network = generate_uncompressed_mesh(max_hosts, max_network_c_ext)
-
-# This is the actual size of your network. If it is significantly smaller than max_network_size, then
-# your network can be incrementally increased or decreased(scaled) without significantly impacting the network
-# architecture by modifying this value. (Yay scalability!)
-network_size = 51
-hosts = max_hosts[:network_size]  # max_network_size > network_size so len(max_hosts) > len(hosts)
 
 # This controls the connectedness of your network. It represents how many other nodes each node connects to it to form
 # the output mesh. If c_ext = network_size-1 then the network is "fully complete" meaning all nodes are connected to
@@ -307,11 +307,11 @@ hosts = max_hosts[:network_size]  # max_network_size > network_size so len(max_h
 # (that's 2550 connections for N=51!)
 # The ratio of c_ext to network size roughly determines (on average) the number of nodes which would have to go down
 # before packet delivery to the remaining nodes is impacted. For example, for N=20 and c_ext=5, on average
-# (depends on initial seed) 25% of the nodes(5 of them) would have to go down before packet delivery between the
-# remaining 15 was significantly impacted. Recommended value is in the 3-10 range for networks under 150 nodes.
+# 25% of the nodes(5 of them) would have to go down before packet delivery between the
+# remaining 15 was significantly impaired. Recommended value is in the 3-10 range for networks under 150 nodes.
 # If this value is too low, the network may be unsolvable
 # (some nodes will be completely isolated from the rest of the network) so keep this above 3-ish to avoid this
-network_c_ext = 5
+network_c_ext = 3  # default: 5
 
 # The network compressor turns the maximum size (max_network_size) network into a smaller one which can be
 # incrementally scaled up to max_network_size by increasing network_size without significantly altering the
@@ -322,8 +322,14 @@ network_c_ext = 5
 # connectedness() is lossy and has a hard time reducing the c_ext to values higher than about 3/8 of the input network
 # c_ext, hence why max_c_ext should be >~2.7x larger than the target one.
 
-#network = compress_network(max_network, network_size, network_c_ext)
-#pretty_print(network)
-#print(classify_network(network))
+# This is the actual size of your network. If it is significantly smaller than max_network_size, then
+# your network can be incrementally increased or decreased(scaled) without significantly impacting the network
+# architecture by modifying this value. (Yay scalability!)
+network_size = 10  # default: 51
+hosts = max_hosts[:network_size]  # max_network_size > network_size so len(max_hosts) > len(hosts)
 
-#print(get_broadcast_ttl(network, hosts, '1', verbose=True))
+network = compress_network(max_network, network_size, network_c_ext)
+pretty_print(network)
+print(classify_network(network))
+
+print("broadcast ttl from node 1: " + str(get_broadcast_ttl(network, hosts, '1', verbose=False)))
