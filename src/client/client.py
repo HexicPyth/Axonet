@@ -450,7 +450,7 @@ class Client:
 
         return 0
 
-    def write_to_page(self, page_id, data, signin09852g=True, filter_duplicate_data=True):
+    def write_to_page(self, page_id, data, signing=True, filter_duplicate_data=True):
         global fileIO_lock
         """ Append data to a given pagefile by ID."""
 
