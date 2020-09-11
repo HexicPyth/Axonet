@@ -52,7 +52,7 @@ class Client:
     @staticmethod
     def lock(lock, name=None):
         if name and type(name) == str:
-         Primitives.log("Locking: "+name, in_log_level="Info")
+            Primitives.log("Locking: "+name, in_log_level="Info")
 
         lock.acquire()
 
@@ -1177,15 +1177,8 @@ class Client:
                     discover.start(net_tuple, op_id, is_cluster_rep)
 
                 # Ring Network --> Mesh network bootstrapping routine
-                if message.startswith("bootstrap:"):
+                if message.startswith("bootstrap"):
                     directory_server = self.read_nodeconfig(10)
-                    arguments = Primitives.parse_cmd(message)
-
-                    # arguments[0] = network architecture to bootstrap into (e.x "mesh")
-                    # arguments[1] = c_ext
-
-                    net_architecture = arguments[0]
-                    c_ext = int(arguments[1])
 
                     # Download the hosts file
                     try:
@@ -1209,10 +1202,39 @@ class Client:
                         except FileNotFoundError:
                             # Fuck fuck fuck this is bad!
                             Primitives.log("No cached hosts found, refusing to bootstrap!")
-                            potential_peers = 1
 
                     import NetworkGenerator
-                    NetworkGenerator.init()
+                    initial_seed = 253358919245475086853614223034892822600  # TODO: add to client_configuration.json
+                    max_network_c_ext = 30  # TODO: add to client_configuration.json
+                    network_c_ext = 3  # TODO: add to client_configuration.json
+                    network_size = 5  # TODO: add to client_configuration.json
+
+                    # potential_peers is only referenced before assignment if no cached hosts are found, which
+                    # shouldn't ever happen. TODO: handle this
+                    # noinspection PyUnboundLocalVariable
+                    network = NetworkGenerator.generate(initial_seed, potential_peers,
+                                                        max_network_c_ext, network_c_ext, network_size)
+
+                    NetworkGenerator.pretty_print(network)
+                    print(NetworkGenerator.classify_network(network))
+
+                    this_node = (self.read_nodeconfig(11), "127.0.0.1")
+
+                    # Disconnect from everything other than localhost
+                    net_tuple = self.read_nodestate(0)
+                    for peer in net_tuple:
+                        if peer != this_node:
+                            self.disconnect(peer)
+                            net_tuple = self.read_nodestate(0)  # Refresh the network tuple after disconnecting
+                        else:
+                            pass  # Don't disconnect from localhost
+
+                    our_peers = network[Primitives.get_local_ip()]
+                    print("Connecting to: "+str(our_peers))
+                    for peer in our_peers:
+                        sock = socket.socket()
+                        connection = (sock, peer)
+                        self.connect(connection, peer, self.read_nodeconfig(0))
 
                     # Great, bootstrapping was successful
                     # Set global message propagation mode to mesh
@@ -1314,7 +1336,7 @@ class Client:
         global nodeConfig
         global Primitives
 
-        SALT = secrets.token_hex(16) # Generate SALT
+        SALT = secrets.token_hex(16)  # Generate SALT
 
         # nodeConfig assignments
         self.write_nodeconfig(nodeConfig, 0, port)
