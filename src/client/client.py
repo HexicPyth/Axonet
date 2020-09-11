@@ -1179,7 +1179,7 @@ class Client:
                     # Download the hosts file
                     try:
                         print("Trying to download hosts...")
-                        directory_server_hostsfile_contents = Primitives.download_file(directory_server + "hosts.bin")
+                        directory_server_hostsfile_contents = Primitives.download_file(directory_server + "/hosts.bin")
                         directory_server_hosts = directory_server_hostsfile_contents.split('\n')
                         potential_peers = [line for line in directory_server_hosts
                                            if line not in ("", '', "\n")]
