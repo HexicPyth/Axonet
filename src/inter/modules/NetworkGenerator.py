@@ -1,5 +1,6 @@
 import random
 import os
+import socket, struct
 
 this_dir = os.path.dirname(os.path.realpath(__file__))
 os.chdir(this_dir)
@@ -301,8 +302,13 @@ max_network_size = 100
 os.system("ls -al")
 
 # this assumes a bootstrap: has already been called or each node already had hosts.bin stored locally...
-max_hosts = [hosts_line.strip("\n") for hosts_line in open("../../inter/mem/hosts.bin").readlines()]
+hosts_bin_hosts = [hosts_line.strip("\n") for hosts_line in open("../../inter/mem/hosts.bin").readlines()]
+hosts_bin_hosts = sorted(hosts_bin_hosts, key=lambda ip: struct.unpack("!L", socket.inet_aton(ip))[0])  # Sort it
+hosts_bin_hosts = list(dict.fromkeys(hosts_bin_hosts))  # Remove duplicates
 
+
+max_hosts = hosts_bin_hosts
+print(max_hosts)
 # This controls the maximum connectedness of your scalable mesh network. Use the comment below for network_c_ext
 # to pick a reasonable value, multiply it by some number >~2.7 to get a value for this; round to nearest integer
 # (The network compressor cannot make a network with a c_ext greater than about 3/8 of the input network c_ext)
