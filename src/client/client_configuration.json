@@ -8,6 +8,6 @@
   "network_architecture" : "mesh",
   "directory_server" : "http://192.168.53.44/hosted",
   "initial_seed" : 253358919245475086853614223034892822600,
-  "max_network_c_ext" : 5,
+  "max_network_c_ext" : 25,
   "network_c_ext" : 3
 }
