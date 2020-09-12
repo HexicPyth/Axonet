@@ -281,9 +281,9 @@ def generate(initial_seed, max_hosts, max_network_c_ext, network_c_ext, network_
 
     current_seed = initial_seed
 
-    hosts_bin_hosts = [hosts_line.strip("\n") for hosts_line in open("../inter/mem/hosts.bin").readlines()]
-    hosts_bin_hosts = sorted(hosts_bin_hosts, key=lambda ip: struct.unpack("!L", socket.inet_aton(ip))[0])  # Sort it
-    hosts_bin_hosts = list(dict.fromkeys(hosts_bin_hosts))  # Remove duplicates
+    sorted_hosts = sorted(max_hosts, key=lambda ip: struct.unpack("!L", socket.inet_aton(ip))[0])  # Sort it
+    sorted_hosts = list(dict.fromkeys(sorted_hosts))  # Remove duplicates
+    max_hosts = sorted_hosts  # Apply changes
 
     max_network = generate_uncompressed_mesh(max_hosts, max_network_c_ext)
     max_network_size = len(max_hosts)
