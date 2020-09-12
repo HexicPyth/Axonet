@@ -1179,78 +1179,75 @@ class Client:
                 # Ring Network --> Mesh network bootstrapping routine
                 if message.startswith("bootstrap"):
 
-                    # nodeState[12] is do_mesh_propagation, which will only be true if we have already bootstrapped
-                    print("do_mesh_propagation: "+str(self.read_nodestate(12)))
-                    if not self.read_nodestate(12):
-                        directory_server = self.read_nodeconfig(10)
+                    directory_server = self.read_nodeconfig(10)
 
-                        # Download the hosts file
+                    # Download the hosts file
+                    try:
+                        print("Trying to download hosts...")
+                        potential_peers, directory_server_hostsfile_contents = self.download_hosts(directory_server)
+
+                        # Cache these hosts so we can use them again if the directory server becomes inaccessible
+                        self.write_to_page('hosts', directory_server_hostsfile_contents, False)
+
+                    except AttributeError:
+                        # download_file returned an integer(1) because the directory server is not reachable
+                        Primitives.log("Directory server not reachable... using cached hosts...")
+
                         try:
-                            print("Trying to download hosts...")
-                            potential_peers, directory_server_hostsfile_contents = self.download_hosts(directory_server)
+                            os.chdir(original_path)
+                            hosts_lines = open("../inter/mem/hosts.bin", "r+").readlines()
+                            potential_peers = [host_entry for host_entry in hosts_lines if host_entry != "\n"]
+                            if len(potential_peers) == 0:
+                                raise FileNotFoundError("No potential peers found; hosts.bin empty")
 
-                            # Cache these hosts so we can use them again if the directory server becomes inaccessible
-                            self.write_to_page('hosts', directory_server_hostsfile_contents, False)
+                        except FileNotFoundError:
+                            # Fuck fuck fuck this is bad!
+                            Primitives.log("No cached hosts found, refusing to bootstrap!")
 
-                        except AttributeError:
-                            # download_file returned an integer(1) because the directory server is not reachable
-                            Primitives.log("Directory server not reachable... using cached hosts...")
+                    # noinspection PyUnboundLocalVariable
+                    # potential_peers is only referenced before assignment if no cached hosts are found, which
+                    # shouldn't ever happen. TODO: handle this
+                    potential_peers = [peer.strip('\n') for peer in potential_peers]  # Remove newlines
 
-                            try:
-                                os.chdir(original_path)
-                                hosts_lines = open("../inter/mem/hosts.bin", "r+").readlines()
-                                potential_peers = [host_entry for host_entry in hosts_lines if host_entry != "\n"]
-                                if len(potential_peers) == 0:
-                                    raise FileNotFoundError("No potential peers found; hosts.bin empty")
+                    import NetworkGenerator
+                    initial_seed = self.read_nodeconfig(12)
+                    max_network_c_ext = self.read_nodeconfig(13)
+                    network_c_ext = self.read_nodeconfig(14)
+                    network_size = self.read_nodeconfig(7)
 
-                            except FileNotFoundError:
-                                # Fuck fuck fuck this is bad!
-                                Primitives.log("No cached hosts found, refusing to bootstrap!")
+                    network = NetworkGenerator.generate(initial_seed, potential_peers,
+                                                        max_network_c_ext, network_c_ext, network_size)
 
-                        # noinspection PyUnboundLocalVariable
-                        # potential_peers is only referenced before assignment if no cached hosts are found, which
-                        # shouldn't ever happen. TODO: handle this
-                        potential_peers = [peer.strip('\n') for peer in potential_peers]  # Remove newlines
+                    NetworkGenerator.pretty_print(network)
+                    print(NetworkGenerator.classify_network(network))
+                    our_peers = network[Primitives.get_local_ip()]
 
-                        import NetworkGenerator
-                        initial_seed = self.read_nodeconfig(12)
-                        max_network_c_ext = self.read_nodeconfig(13)
-                        network_c_ext = self.read_nodeconfig(14)
-                        network_size = self.read_nodeconfig(7)
+                    this_node = (self.read_nodeconfig(11), "127.0.0.1")
 
-                        network = NetworkGenerator.generate(initial_seed, potential_peers,
-                                                            max_network_c_ext, network_c_ext, network_size)
+                    # Disconnect from everything other than localhost
+                    net_tuple = self.read_nodestate(0)
+                    for peer in net_tuple:
+                        # but don't disconnect from peers we have to connect to later anyway
+                        if peer != this_node and peer[1] not in our_peers:
+                            self.disconnect(peer)
+                            net_tuple = self.read_nodestate(0)  # Refresh the network tuple after disconnecting
+                        else:
+                            pass  # Don't disconnect from localhost
 
-                        NetworkGenerator.pretty_print(network)
-                        print(NetworkGenerator.classify_network(network))
-                        our_peers = network[Primitives.get_local_ip()]
+                    Primitives.log("Connecting to: "+str(our_peers), in_log_level="Info")
+                    for peer in our_peers:
+                        if peer not in [connection[1] for connection in net_tuple]:
+                            sock = socket.socket()
+                            connection = (sock, peer)
+                            self.connect(connection, peer, self.read_nodeconfig(0))
 
-                        this_node = (self.read_nodeconfig(11), "127.0.0.1")
-
-                        # Disconnect from everything other than localhost
-                        net_tuple = self.read_nodestate(0)
-                        for peer in net_tuple:
-                            # but don't disconnect from peers we have to connect to later anyway
-                            if peer != this_node and peer[1] not in our_peers:
-                                self.disconnect(peer)
-                                net_tuple = self.read_nodestate(0)  # Refresh the network tuple after disconnecting
-                            else:
-                                pass  # Don't disconnect from localhost
-
-                        Primitives.log("Connecting to: "+str(our_peers), in_log_level="Info")
-                        for peer in our_peers:
-                            if peer not in [connection[1] for connection in net_tuple]:
-                                sock = socket.socket()
-                                connection = (sock, peer)
-                                self.connect(connection, peer, self.read_nodeconfig(0))
-
-                        # Great, bootstrapping was successful
-                        # Set global message propagation mode to mesh
-                        # This was probably already run by sharepeers: assuming peer discovery was run...
-                        do_mesh_propagation = self.read_nodestate(12)
-                        if not do_mesh_propagation:
-                            do_mesh_propagation = True
-                            self.write_nodestate(nodeState, 12, do_mesh_propagation)
+                    # Great, bootstrapping was successful
+                    # Set global message propagation mode to mesh
+                    # This was probably already run by sharepeers: assuming peer discovery was run...
+                    do_mesh_propagation = self.read_nodestate(12)
+                    if not do_mesh_propagation:
+                        do_mesh_propagation = True
+                        self.write_nodestate(nodeState, 12, do_mesh_propagation)
 
         # Catch all errors in respond() and log the traceback to stdout. This keeps the client from crashing due to
         # random errors which may occur in other modules that may/may not have proper exception handling
