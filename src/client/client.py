@@ -1203,15 +1203,17 @@ class Client:
                             # Fuck fuck fuck this is bad!
                             Primitives.log("No cached hosts found, refusing to bootstrap!")
 
+                    # noinspection PyUnboundLocalVariable
+                    # potential_peers is only referenced before assignment if no cached hosts are found, which
+                    # shouldn't ever happen. TODO: handle this
+                    potential_peers = [peer.strip('\n') for peer in potential_peers]  # Remove newlines
+
                     import NetworkGenerator
                     initial_seed = self.read_nodeconfig(12)
                     max_network_c_ext = self.read_nodeconfig(13)
                     network_c_ext = self.read_nodeconfig(14)
                     network_size = self.read_nodeconfig(7)
 
-                    # potential_peers is only referenced before assignment if no cached hosts are found, which
-                    # shouldn't ever happen. TODO: handle this
-                    # noinspection PyUnboundLocalVariable
                     network = NetworkGenerator.generate(initial_seed, potential_peers,
                                                         max_network_c_ext, network_c_ext, network_size)
 
@@ -1386,6 +1388,7 @@ class Client:
 
             Primitives.log("Connection to localhost successful", in_log_level="Info")
             Primitives.log("Starting listener on localhost...", in_log_level="Info")
+            self.broadcast(self.prepare("bootstrap"))
 
             self.listen(localhost_connection)
 
