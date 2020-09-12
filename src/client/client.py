@@ -1179,7 +1179,7 @@ class Client:
                 # Ring Network --> Mesh network bootstrapping routine
                 if message.startswith("bootstrap"):
 
-                    # nodeConfig[12] is do_mesh_propagation, which will only be true if we have already bootstrapped
+                    # nodeState[12] is do_mesh_propagation, which will only be true if we have already bootstrapped
                     print("do_mesh_propagation: "+str(self.read_nodestate(12)))
                     if not self.read_nodestate(12):
                         directory_server = self.read_nodeconfig(10)
@@ -1223,24 +1223,26 @@ class Client:
 
                         NetworkGenerator.pretty_print(network)
                         print(NetworkGenerator.classify_network(network))
+                        our_peers = network[Primitives.get_local_ip()]
 
                         this_node = (self.read_nodeconfig(11), "127.0.0.1")
 
                         # Disconnect from everything other than localhost
                         net_tuple = self.read_nodestate(0)
                         for peer in net_tuple:
-                            if peer != this_node:
+                            # but don't disconnect from peers we have to connect to later anyway
+                            if peer != this_node and peer[1] not in our_peers:
                                 self.disconnect(peer)
                                 net_tuple = self.read_nodestate(0)  # Refresh the network tuple after disconnecting
                             else:
                                 pass  # Don't disconnect from localhost
 
-                        our_peers = network[Primitives.get_local_ip()]
                         Primitives.log("Connecting to: "+str(our_peers), in_log_level="Info")
                         for peer in our_peers:
-                            sock = socket.socket()
-                            connection = (sock, peer)
-                            self.connect(connection, peer, self.read_nodeconfig(0))
+                            if peer not in [connection[1] for connection in net_tuple]:
+                                sock = socket.socket()
+                                connection = (sock, peer)
+                                self.connect(connection, peer, self.read_nodeconfig(0))
 
                         # Great, bootstrapping was successful
                         # Set global message propagation mode to mesh
