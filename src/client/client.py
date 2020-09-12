@@ -1178,74 +1178,76 @@ class Client:
 
                 # Ring Network --> Mesh network bootstrapping routine
                 if message.startswith("bootstrap"):
-                    directory_server = self.read_nodeconfig(10)
 
-                    # Download the hosts file
-                    try:
-                        print("Trying to download hosts...")
-                        potential_peers, directory_server_hostsfile_contents = self.download_hosts(directory_server)
+                    # nodeConfig[12] is do_mesh_propagation, which will only be true if we have already bootstrapped
+                    if not self.read_nodeconfig(12):
+                        directory_server = self.read_nodeconfig(10)
 
-                        # Cache these hosts so we can use them again if the directory server becomes inaccessible
-                        self.write_to_page('hosts', directory_server_hostsfile_contents, False)
-
-                    except AttributeError:
-                        # download_file returned an integer(1) because the directory server is not reachable
-                        Primitives.log("Directory server not reachable... using cached hosts...")
-
+                        # Download the hosts file
                         try:
-                            os.chdir(original_path)
-                            hosts_lines = open("../inter/mem/hosts.bin", "r+").readlines()
-                            potential_peers = [host_entry for host_entry in hosts_lines if host_entry != "\n"]
-                            if len(potential_peers) == 0:
-                                raise FileNotFoundError("No potential peers found; hosts.bin empty")
+                            print("Trying to download hosts...")
+                            potential_peers, directory_server_hostsfile_contents = self.download_hosts(directory_server)
 
-                        except FileNotFoundError:
-                            # Fuck fuck fuck this is bad!
-                            Primitives.log("No cached hosts found, refusing to bootstrap!")
+                            # Cache these hosts so we can use them again if the directory server becomes inaccessible
+                            self.write_to_page('hosts', directory_server_hostsfile_contents, False)
 
-                    # noinspection PyUnboundLocalVariable
-                    # potential_peers is only referenced before assignment if no cached hosts are found, which
-                    # shouldn't ever happen. TODO: handle this
-                    potential_peers = [peer.strip('\n') for peer in potential_peers]  # Remove newlines
+                        except AttributeError:
+                            # download_file returned an integer(1) because the directory server is not reachable
+                            Primitives.log("Directory server not reachable... using cached hosts...")
 
-                    import NetworkGenerator
-                    initial_seed = self.read_nodeconfig(12)
-                    max_network_c_ext = self.read_nodeconfig(13)
-                    network_c_ext = self.read_nodeconfig(14)
-                    network_size = self.read_nodeconfig(7)
+                            try:
+                                os.chdir(original_path)
+                                hosts_lines = open("../inter/mem/hosts.bin", "r+").readlines()
+                                potential_peers = [host_entry for host_entry in hosts_lines if host_entry != "\n"]
+                                if len(potential_peers) == 0:
+                                    raise FileNotFoundError("No potential peers found; hosts.bin empty")
 
-                    network = NetworkGenerator.generate(initial_seed, potential_peers,
-                                                        max_network_c_ext, network_c_ext, network_size)
+                            except FileNotFoundError:
+                                # Fuck fuck fuck this is bad!
+                                Primitives.log("No cached hosts found, refusing to bootstrap!")
 
-                    NetworkGenerator.pretty_print(network)
-                    print(NetworkGenerator.classify_network(network))
+                        # noinspection PyUnboundLocalVariable
+                        # potential_peers is only referenced before assignment if no cached hosts are found, which
+                        # shouldn't ever happen. TODO: handle this
+                        potential_peers = [peer.strip('\n') for peer in potential_peers]  # Remove newlines
 
-                    this_node = (self.read_nodeconfig(11), "127.0.0.1")
+                        import NetworkGenerator
+                        initial_seed = self.read_nodeconfig(12)
+                        max_network_c_ext = self.read_nodeconfig(13)
+                        network_c_ext = self.read_nodeconfig(14)
+                        network_size = self.read_nodeconfig(7)
 
-                    # Disconnect from everything other than localhost
-                    net_tuple = self.read_nodestate(0)
-                    for peer in net_tuple:
-                        if peer != this_node:
-                            self.disconnect(peer)
-                            net_tuple = self.read_nodestate(0)  # Refresh the network tuple after disconnecting
-                        else:
-                            pass  # Don't disconnect from localhost
+                        network = NetworkGenerator.generate(initial_seed, potential_peers,
+                                                            max_network_c_ext, network_c_ext, network_size)
 
-                    our_peers = network[Primitives.get_local_ip()]
-                    Primitives.log("Connecting to: "+str(our_peers), in_log_level="Info")
-                    for peer in our_peers:
-                        sock = socket.socket()
-                        connection = (sock, peer)
-                        self.connect(connection, peer, self.read_nodeconfig(0))
+                        NetworkGenerator.pretty_print(network)
+                        print(NetworkGenerator.classify_network(network))
 
-                    # Great, bootstrapping was successful
-                    # Set global message propagation mode to mesh
-                    # This was probably already run by sharepeers: assuming peer discovery was run...
-                    do_mesh_propagation = self.read_nodestate(12)
+                        this_node = (self.read_nodeconfig(11), "127.0.0.1")
 
-                    if not do_mesh_propagation:
-                        do_mesh_propagation = True
-                        self.write_nodestate(nodeState, 12, do_mesh_propagation)
+                        # Disconnect from everything other than localhost
+                        net_tuple = self.read_nodestate(0)
+                        for peer in net_tuple:
+                            if peer != this_node:
+                                self.disconnect(peer)
+                                net_tuple = self.read_nodestate(0)  # Refresh the network tuple after disconnecting
+                            else:
+                                pass  # Don't disconnect from localhost
+
+                        our_peers = network[Primitives.get_local_ip()]
+                        Primitives.log("Connecting to: "+str(our_peers), in_log_level="Info")
+                        for peer in our_peers:
+                            sock = socket.socket()
+                            connection = (sock, peer)
+                            self.connect(connection, peer, self.read_nodeconfig(0))
+
+                        # Great, bootstrapping was successful
+                        # Set global message propagation mode to mesh
+                        # This was probably already run by sharepeers: assuming peer discovery was run...
+                        do_mesh_propagation = self.read_nodestate(12)
+                        if not do_mesh_propagation:
+                            do_mesh_propagation = True
+                            self.write_nodestate(nodeState, 12, do_mesh_propagation)
 
         # Catch all errors in respond() and log the traceback to stdout. This keeps the client from crashing due to
         # random errors which may occur in other modules that may/may not have proper exception handling
