@@ -1180,7 +1180,8 @@ class Client:
                 if message.startswith("bootstrap"):
 
                     # nodeConfig[12] is do_mesh_propagation, which will only be true if we have already bootstrapped
-                    if not self.read_nodeconfig(12):
+                    print("do_mesh_propagation: "+str(self.read_nodestate(12)))
+                    if not self.read_nodestate(12):
                         directory_server = self.read_nodeconfig(10)
 
                         # Download the hosts file
