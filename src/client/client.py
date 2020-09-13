@@ -1246,7 +1246,7 @@ class Client:
 
                     if net_tuple == new_net_tuple:
                         Primitives.log("Bootstrap successful, no connections were changed. This node was probably"
-                                       "already fully bootstrapped...")
+                                       " already fully bootstrapped...")
                     else:
                         Primitives.log("Bootstrap successful!")
 
