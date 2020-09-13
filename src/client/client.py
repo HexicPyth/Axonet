@@ -890,7 +890,7 @@ class Client:
 
                         # https://stackoverflow.com/a/1216544
                         # https://stackoverflow.com/users/146442/marcell
-                        # The following two lines of code are the work were written by "Marcel" from StackOverflow.
+                        # The following two lines of code are the work of "Marcel" from StackOverflow.
 
                         # Remove duplicate lines from page
                         unique_lines = set(open(file_path).readlines())
@@ -1222,24 +1222,33 @@ class Client:
                     print(NetworkGenerator.classify_network(network))
                     our_peers = network[Primitives.get_local_ip()]
 
-                    this_node = (self.read_nodeconfig(11), "127.0.0.1")
+                    localhost_connection = (self.read_nodeconfig(11), "127.0.0.1")
+                    net_tuple = self.read_nodestate(0)
 
                     # Disconnect from everything other than localhost
-                    net_tuple = self.read_nodestate(0)
                     for peer in net_tuple:
-                        # but don't disconnect from peers we have to connect to later anyway
-                        if peer != this_node and peer[1] not in our_peers:
+                        # but don't disconnect from our calculated peers
+                        if peer != localhost_connection and peer[1] not in our_peers:
                             self.disconnect(peer)
                             net_tuple = self.read_nodestate(0)  # Refresh the network tuple after disconnecting
-                        else:
-                            pass  # Don't disconnect from localhost
 
                     Primitives.log("Connecting to: "+str(our_peers), in_log_level="Info")
+
+                    # Connect to our calculated peers
                     for peer in our_peers:
+                        # but if we're already connected to some/all of them, don't connect again
                         if peer not in [connection[1] for connection in net_tuple]:
                             sock = socket.socket()
                             connection = (sock, peer)
                             self.connect(connection, peer, self.read_nodeconfig(0))
+
+                    new_net_tuple = self.read_nodestate(0)
+
+                    if net_tuple == new_net_tuple:
+                        Primitives.log("Bootstrap successful, no connections were changed. This node was probably"
+                                       "already fully bootstrapped...")
+                    else:
+                        Primitives.log("Bootstrap successful!")
 
                     # Great, bootstrapping was successful
                     # Set global message propagation mode to mesh
@@ -1385,7 +1394,6 @@ class Client:
         localhost_connection = (self.read_nodeconfig(11), '127.0.0.1')
 
         try:
-            print("!!!", port)
             self.connect(localhost_connection, 'localhost', port, local=True)
 
             Primitives.log("Connection to localhost successful", in_log_level="Info")
@@ -1410,7 +1418,6 @@ class Client:
 
             for remote_address in remote_addresses:
                 # Join the network if one already exists...
-
                 sock = socket.socket()
 
                 try:
