@@ -1390,7 +1390,6 @@ class Client:
 
             Primitives.log("Connection to localhost successful", in_log_level="Info")
             Primitives.log("Starting listener on localhost...", in_log_level="Info")
-            self.broadcast(self.prepare("bootstrap"))
 
             self.listen(localhost_connection)
 
