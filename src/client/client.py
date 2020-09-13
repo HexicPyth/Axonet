@@ -181,7 +181,7 @@ class Client:
 
     # TODO: This really doesn't need to be here, we're not using this as a mixing network,
     # the only good it does it making race conditions really obvious by causing any algorithm dependent on message
-    # being received in a certain order to fail, forcing someone to fix it :)
+    # being received in a certain order to fail, therefore forcing someone to fix it :)
     def permute_network_tuple(self):
         """ Permute the network tuple. Repetitive permutation after each call
             of respond() functionally allows the network to inherit many of the anonymous
@@ -356,15 +356,14 @@ class Client:
             Primitives.log("Already disconnected from that address, passing...", in_log_level="Warning")
             pass
 
-    """ The following send() function was written by StackOverflow user 
-    Adam Rosenfield, then modified by me, HexicPyth.
+    """ The following send() function and primitives.receive() and primitives.receiveall()
+    was written by StackOverflow user  Adam Rosenfield, then modified by me, HexicPyth.
     https://stackoverflow.com/a/17668009
     https://stackoverflow.com/users/9530/adam-rosenfield """
 
     def send(self, connection, message, sign=True):
         """Helper function to encode a given message and send it to a given server.
-            Set sign=False to disable automatic message signing(useful for no_prop things)
-            """
+            Set sign=False to disable automatic message signing(useful for no_prop things)"""
 
         global send_lock
 

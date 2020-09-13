@@ -144,7 +144,7 @@ class Server:
             if in_sock == discovered_socket:
                 return item[1]
 
-    """ The two functions below were written by StackOverflow user 
+    """ server.send() and primitives.receive() and primitives.receiveall() were written by StackOverflow user 
     Adam Rosenfield and modified by me, HexicPyth.
     https://stackoverflow.com/a/17668009
     https://stackoverflow.com/users/9530/adam-rosenfield """
