@@ -1369,7 +1369,6 @@ class Client:
         self.write_nodeconfig(nodeConfig, 13, max_network_c_ext)
         self.write_nodeconfig(nodeConfig, 14, network_c_ext)
         print(nodeConfig)
-        # nodeConfig[11] is magic; don't touch
 
         if remote_addresses:
             output_node = random.choice(remote_addresses)
