@@ -8,8 +8,7 @@ port = 3705
 def init(network_architecture="complete"):
     x = server.Server()
     x.initialize(port=port, network_architecture=network_architecture, method="socket",
-                 listening=True, network_injection=True, default_log_level="Debug",
-                 modules=["corecount"])
+                 listening=True, network_injection=True, default_log_level="Debug")
 
 
 if __name__ == "__main__":
